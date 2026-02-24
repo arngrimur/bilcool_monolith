@@ -9,28 +9,24 @@ The backend is written in Golang, the front-end is a single page React UI ( gene
 
 
 ## Design
-
-@startuml Components
-
-[Web / UI]
-[Bookings]
-[Authentication]
-[Users]
-[Journals]
-
+```plantuml
+@startuml
+    hide empty members
+    skinparam monochrome true
+    skinparam componentStyle uml2
+    skinparam class {
+        BackgroundColor White
+        BorderColor Black
+    }  
+    [Web / UI]
+    [Bookings]
+    [Authentication]
+    [Users]
+    [Journals]
+    
+    Bookings --> Authentication
+    Authentication --> Users
+    Users --> Journals
+    
 @enduml
-
-
-architecture-beta
-group api(cloud)[API]
-
-    service db(database)[Database] in api
-    service disk1(disk)[Storage] in api
-    service disk2(disk)[Storage] in api
-    service server(server)[Server] in api
-
-    db:L -- R:server
-    disk1:T -- B:server
-    disk2:T -- B:db
-
-
+```
