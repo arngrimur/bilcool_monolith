@@ -9,24 +9,43 @@ The backend is written in Golang, the front-end is a single page React UI ( gene
 
 
 ## Design
-```plantuml
-@startuml
-    hide empty members
-    skinparam monochrome true
-    skinparam componentStyle uml2
-    skinparam class {
-        BackgroundColor White
-        BorderColor Black
-    }  
-    [Web / UI]
-    [Bookings]
-    [Authentication]
-    [Users]
-    [Journals]
+```mermaid
+    C4Context
+      title BilCool Component Model
+        Enterprise_Boundary( BilCool, "BilCool") {
+            System_Boundary(Web, "Web") {
+                System(FrontEnd, "FrontEnd", "React SPA")
+            }
+            System_Boundary(Bookings, "Bookings") {
+                System(BookingService, "BookingService", "gRPC service")
+                SystemDb(BookingDb,"booking database", "Postgres")
+                Rel(BookingService, BookingDb,"")
+            }
+            System_Boundary(Authentication, "Authentication") {
+                System(AuthService, "AuthService", "gRPC service")
+                SystemDb(AuthDb,"authentication database", "Postgres")
+                Rel(AuthService,AuthDb,"")
+            }
+            System_Boundary(Users, "Users"){
+                System(UserService, "UserService", "gRPC service")
+                SystemDb(UserDb,"user database", "Postgres")
+                Rel(UserService,UserDb,"")
+            }
+            System_Boundary(Journals, "Journals"){
+                System(JournalService, "JournalService", "gRPC service")
+                SystemDb(JournalDb,"journal database", "Postgres")
+                Rel(JournalService,JournalDb,"")
+            }
+            System_Boundary(EventLedger, "EventLedger"){
+                System(EventLedger, "EventLedgerService", "gRPC service")
+                SystemDb(EventLedgerDb,"event ledger database", "Postgres")
+                Rel(EventLedger,EventLedgerDb,"")
+            }
+            
+            BiRel(BookingService,UserService,"event")
+            BiRel(BookingService,JournalService,"event")
+            BiRel(JournalService, UserService,"event")
+        }
+        
     
-    Bookings --> Authentication
-    Authentication --> Users
-    Users --> Journals
-    
-@enduml
 ```
