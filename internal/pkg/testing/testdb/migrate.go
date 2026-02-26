@@ -35,7 +35,7 @@ type DBMate struct {
 //
 // By default logs are discarded, unless -v flag is passed to go test.
 func NewDBMate(t *testing.T, optionsFunc ...OptionsFunc) *DBMate {
-	var log io.Writer = io.Discard
+	log := io.Discard
 	if testing.Verbose() {
 		log = NewWriteLogger(t, &bytes.Buffer{})
 	}

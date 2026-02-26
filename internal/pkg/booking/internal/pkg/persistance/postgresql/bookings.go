@@ -8,35 +8,33 @@ import (
 	"github.com/google/uuid"
 
 	"bilcool_monolith/internal/pkg/booking/internal/pkg/domain"
-	"bilcool_monolith/internal/pkg/booking/internal/pkg/persistance"
 )
 
-type bookingDatabase struct {
-	persistance.DbActions
+type BookingRepository struct {
+	DbActions
 }
 
-func NewBookingsDb(a *sql.DB) bookingDatabase {
-	return bookingDatabase{DbActions: a}
+func NewBookingsDb(a *sql.DB) BookingRepository {
+	return BookingRepository{DbActions: a}
 }
 
-func (bdb bookingDatabase) Get(ctx context.Context, br domain.BookingRequest) domain.BookingResponse {
+func (bdb BookingRepository) Find(ctx context.Context, request domain.BookingRequest) (domain.BookingResponse, error) {
 	query := `SELECT  start_date, end_date, user_ref 
 FROM bookings 
 WHERE booking_reference = $1`
 
 	var (
-		stime time.Time
-		etime sql.NullTime
+		sTime time.Time
+		eTime time.Time
 		uRef  uuid.UUID
 	)
 
-	bdb.QueryRowContext(ctx, query, br.BookingReference).Scan(&stime, &etime, &uRef)
-	var et *time.Time = nil
-	if etime.Valid {
-		et = &etime.Time
+	err := bdb.QueryRowContext(ctx, query, request.BookingReference).Scan(&sTime, &eTime, &uRef)
+	if err != nil {
+		return domain.BookingResponse{}, err
 	}
 
-	response := domain.NewBookingResponse(br.BookingReference, stime, et, uRef)
+	response := domain.NewBookingResponse(request.BookingReference, sTime, eTime, uRef)
 
-	return response
+	return response, err
 }
