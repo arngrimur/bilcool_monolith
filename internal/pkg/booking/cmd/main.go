@@ -10,6 +10,7 @@ import (
 	"bilcool_monolith/internal/pkg/booking/internal/pkg/persistance/postgresql"
 )
 
+// go:embed
 func main() {
 	// TODO: setup context for the application
 	// Read Config

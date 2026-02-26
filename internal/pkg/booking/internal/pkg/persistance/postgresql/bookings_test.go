@@ -17,7 +17,10 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"bilcool_monolith/internal/pkg/booking/internal/pkg/domain"
+	"bilcool_monolith/internal/pkg/booking/migrations"
 	"bilcool_monolith/internal/pkg/testing/testdb"
+
+	_ "github.com/lib/pq"
 )
 
 type bookingsTestSuite struct {
@@ -54,7 +57,7 @@ func (suite *bookingsTestSuite) SetupSuite() {
 	suite.db, err = sql.Open("postgres", u.String())
 	suite.Require().NoError(err)
 
-	dbMate := testdb.NewDBMate(suite.T(), testdb.WithProjectRoot(testdb.TestData))
+	dbMate := testdb.NewDBMate(suite.T(), testdb.WithEmbeddedFs(migrations.FS))
 	err = dbMate.Migrate(suite.db, u)
 	suite.Require().NoError(err)
 
