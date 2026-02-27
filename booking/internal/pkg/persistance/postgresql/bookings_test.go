@@ -87,11 +87,48 @@ func (suite *bookingsTestSuite) TestGetBooking() {
 	suite.Require().Equal(suite.now.Truncate(time.Millisecond), booking.EndDate.Truncate(time.Millisecond), "should be nil")
 }
 
-func (suite *bookingsTestSuite) TestFindAll() {
+func (suite *bookingsTestSuite) TestFindAllBookings() {
 	database := NewBookingsRepository(suite.Db)
 	bookings, _ := database.FindAll(context.Background())
 	suite.Require().Len(bookings, 2, "Should return 2 bookings")
 	suite.Require().NotEqual(bookings[0].BookingReference, bookings[1].BookingReference, "Should return 2 different bookings")
+}
+
+func (suite *bookingsTestSuite) TestUpdateExistingBooking() {
+	database := NewBookingsRepository(suite.Db)
+	booking, _ := database.Find(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
+	err := database.UpdateBooking(context.Background(), domain.UpdateBookingRequest{
+		BookingReference: suite.bookingRef,
+		StartDate:        suite.now.Add(time.Hour),
+		EndDate:          suite.now.Add(time.Hour),
+		UserRef:          suite.userRef,
+	})
+	suite.Require().NoError(err)
+	booking2, _ := database.Find(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().Equal(booking2.BookingReference, booking.BookingReference, "Booking reference should be the same")
+	suite.Require().Equal(time.Hour, booking2.StartDate.Sub(booking.StartDate), "Start date should be the same")
+	suite.Require().Equal(time.Hour, booking2.EndDate.Sub(booking.EndDate), "Start date should be the same")
+}
+
+func (suite *bookingsTestSuite) TestCreateNewBooking() {
+	database := NewBookingsRepository(suite.Db)
+	userRef := uuid.New()
+	bookingRef := uuid.New()
+	_, err := database.Find(context.Background(), domain.BookingRequest{BookingReference: bookingRef})
+	suite.Require().Error(err)
+
+	err = database.UpdateBooking(context.Background(), domain.UpdateBookingRequest{
+		BookingReference: bookingRef,
+		StartDate:        suite.now.Add(time.Hour).Truncate(time.Second),
+		EndDate:          suite.now.Add(time.Hour).Truncate(time.Second),
+		UserRef:          userRef,
+	})
+	suite.Require().NoError(err)
+
+	booking2, _ := database.Find(context.Background(), domain.BookingRequest{BookingReference: bookingRef})
+	suite.Require().Equal(booking2.BookingReference, bookingRef, "Booking reference should be the same")
+	suite.Require().WithinDuration(booking2.StartDate, suite.now, time.Hour+time.Minute, "Start date should be the same")
+	suite.Require().WithinDuration(booking2.EndDate, suite.now, time.Hour+time.Minute, "Start date should be the same")
 }
 
 // endregion tests

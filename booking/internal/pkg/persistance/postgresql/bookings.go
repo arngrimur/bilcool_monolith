@@ -19,7 +19,7 @@ func NewBookingsRepository(a *sql.DB) BookingRepository {
 }
 
 func (bdb BookingRepository) Find(ctx context.Context, request domain.BookingRequest) (domain.BookingResponse, error) {
-	query := `SELECT  start_date, end_date, user_ref 
+	const query = `SELECT  start_date, end_date, user_ref 
 FROM bookings 
 WHERE booking_reference = $1`
 
@@ -63,4 +63,11 @@ FROM bookings`
 	}
 
 	return bookings, nil
+}
+
+func (bdb BookingRepository) UpdateBooking(ctx context.Context, request domain.UpdateBookingRequest) error {
+	const query = `INSERT INTO bookings (booking_reference, start_date, end_date, user_ref) VALUES ($1, $2, $3, $4)
+ON CONFLICT (booking_reference) DO UPDATE SET start_date = $2, end_date = $3`
+	_, err := bdb.ExecContext(ctx, query, request.BookingReference, request.StartDate, request.EndDate, request.UserRef)
+	return err
 }

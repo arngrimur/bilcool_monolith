@@ -13,10 +13,7 @@ type BookingResponse struct {
 	EndDate          time.Time `json:"end_date" validate:"required,date_format=2006-01-02"`
 }
 
-type UpdateBookingRequest struct {
-	BookingReference uuid.UUID `json:"booking_reference" validate:"required,uuid"`
-	StartDate        time.Time `json:"start_date" validate:"required,date_format=2006-01-02"`
-}
+type UpdateBookingRequest BookingResponse
 
 type BookingRequest struct {
 	BookingReference uuid.UUID `json:"booking_reference" validate:"required,uuid"`

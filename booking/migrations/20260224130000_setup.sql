@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE bookings
 (
     id         SERIAL PRIMARY KEY,
-    booking_reference uuid NOT NULL,
+    booking_reference uuid NOT NULL UNIQUE,
     start_date timestamptz NOT NULL,
     end_date   timestamptz,
     user_ref   uuid NOT NULL
