@@ -38,3 +38,29 @@ WHERE booking_reference = $1`
 
 	return response, err
 }
+
+func (bdb BookingRepository) FindAll(ctx context.Context) ([]domain.BookingResponse, error) {
+	const query = `SELECT booking_reference, start_date, end_date, user_ref 
+FROM bookings`
+	var (
+		bookings  = []domain.BookingResponse{}
+		sTime     time.Time
+		eTime     time.Time
+		uRef      uuid.UUID
+		bookinRef uuid.UUID
+	)
+
+	rows, err := bdb.QueryContext(ctx, query)
+	if err != nil {
+		return bookings, err
+	}
+	for rows.Next() {
+		err = rows.Scan(&bookinRef, &sTime, &eTime, &uRef)
+		if err != nil {
+			return nil, err
+		}
+		bookings = append(bookings, domain.NewBookingResponse(bookinRef, sTime, eTime, uRef))
+	}
+
+	return bookings, nil
+}

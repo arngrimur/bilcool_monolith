@@ -20,3 +20,7 @@ func NewGetBookingsHandler(bookings persistance.BookingsRepository) GetBookingsH
 func (h GetBookingsHandler) GetBooking(ctx context.Context, b domain.BookingRequest) (domain.BookingResponse, error) {
 	return h.Find(ctx, b)
 }
+
+func (h GetBookingsHandler) GetAllBooking(ctx context.Context) ([]domain.BookingResponse, error) {
+	return h.FindAll(ctx)
+}

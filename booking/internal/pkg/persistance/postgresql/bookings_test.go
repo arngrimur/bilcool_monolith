@@ -87,4 +87,11 @@ func (suite *bookingsTestSuite) TestGetBooking() {
 	suite.Require().Equal(suite.now.Truncate(time.Millisecond), booking.EndDate.Truncate(time.Millisecond), "should be nil")
 }
 
+func (suite *bookingsTestSuite) TestFindAll() {
+	database := NewBookingsRepository(suite.Db)
+	bookings, _ := database.FindAll(context.Background())
+	suite.Require().Len(bookings, 2, "Should return 2 bookings")
+	suite.Require().NotEqual(bookings[0].BookingReference, bookings[1].BookingReference, "Should return 2 different bookings")
+}
+
 // endregion tests
