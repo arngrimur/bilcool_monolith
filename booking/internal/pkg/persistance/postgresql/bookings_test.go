@@ -132,4 +132,14 @@ func (suite *bookingsTestSuite) TestCreateNewBooking() {
 	suite.Require().WithinDuration(booking2.EndDate, suite.now, time.Hour+time.Minute, "Start date should be the same")
 }
 
+func (suite *bookingsTestSuite) TestDeleteBooking() {
+	database := NewBookingsRepository(suite.Db)
+	err := database.DeleteBooking(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().NoError(err)
+	_, err = database.Find(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().Error(err)
+	err = database.DeleteBooking(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().Error(err)
+}
+
 // endregion tests

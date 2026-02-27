@@ -20,3 +20,7 @@ func NewUpdateBookingsHandler(bookings persistance.BookingsRepository) UpdateBoo
 func (h UpdateBookingsHandler) UpdateBooking(ctx context.Context, b domain.UpdateBookingRequest) error {
 	return h.BookingsRepository.UpdateBooking(ctx, b)
 }
+
+func (h UpdateBookingsHandler) DeleteBooking(ctx context.Context, request domain.BookingRequest) error {
+	return h.BookingsRepository.DeleteBooking(ctx, request)
+}

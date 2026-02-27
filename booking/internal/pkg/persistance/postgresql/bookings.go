@@ -3,6 +3,7 @@ package postgresql
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +13,22 @@ import (
 
 type BookingRepository struct {
 	DbActions
+}
+
+func (bdb BookingRepository) DeleteBooking(ctx context.Context, request domain.BookingRequest) error {
+	const query = `DELETE FROM bookings WHERE booking_reference = $1`
+	result, err := bdb.ExecContext(ctx, query, request.BookingReference)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected != 1 {
+		return fmt.Errorf("no booking found with reference %s", request.BookingReference)
+	}
+	return nil
 }
 
 func NewBookingsRepository(a *sql.DB) BookingRepository {
