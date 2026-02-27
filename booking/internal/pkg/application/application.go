@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 
+	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application/commands"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application/queries"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance"
@@ -15,10 +16,13 @@ type (
 		Queries
 	}
 
-	Commands interface{}
+	Commands interface {
+		UpdateBooking(ctx context.Context, request domain.UpdateBookingRequest) error
+	}
 
 	Queries interface {
 		GetBooking(ctx context.Context, request domain.BookingRequest) (domain.BookingResponse, error)
+		GetAllBooking(ctx context.Context) ([]domain.BookingResponse, error)
 	}
 )
 
@@ -28,8 +32,10 @@ type (
 		appCommands
 		appQueries
 	}
-	appCommands struct{}
-	appQueries  struct {
+	appCommands struct {
+		commands.UpdateBookingsHandler
+	}
+	appQueries struct {
 		queries.GetBookingsHandler
 	}
 )
@@ -39,7 +45,9 @@ var _ App = (*Application)(nil)
 
 func New(bookingsRepo persistance.BookingsRepository) *Application {
 	return &Application{
-		appCommands{},
+		appCommands{
+			UpdateBookingsHandler: commands.NewUpdateBookingsHandler(bookingsRepo),
+		},
 		appQueries{
 			GetBookingsHandler: queries.NewGetBookingsHandler(bookingsRepo),
 		},

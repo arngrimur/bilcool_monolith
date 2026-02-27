@@ -39,6 +39,7 @@ func (suite *applicationTestSuite) SetupSuite() {
 }
 func (suite *applicationTestSuite) TearDownSuite() {
 	go suite.CancelFunc()
+	_ = suite.Db.Close()
 	testcontainers.CleanupContainer(suite.T(), suite.PostgresContainer)
 }
 func (suite *applicationTestSuite) BeforeTest(suiteName, testName string) {
@@ -73,6 +74,24 @@ func (suite *applicationTestSuite) TestGetASingleBooking() {
 	booking, err := application.GetBooking(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
 	suite.Require().NoError(err)
 	suite.Require().Equal(suite.bookingRef, booking.BookingReference, "Booking reference should be the same")
+}
+
+func (suite *applicationTestSuite) TestUpdateBooking() {
+	bookingRepository := postgresql.NewBookingsRepository(suite.Db)
+	application := New(bookingRepository)
+	r := domain.UpdateBookingRequest{
+		BookingReference: uuid.New(),
+		StartDate:        suite.now,
+		EndDate:          suite.now,
+		UserRef:          uuid.New(),
+	}
+	err := application.UpdateBooking(context.Background(), r)
+	suite.Require().NoError(err)
+	e, err := application.GetBooking(context.Background(), domain.BookingRequest{BookingReference: r.BookingReference})
+	suite.Require().NoError(err)
+	suite.Require().Equal(r.BookingReference, e.BookingReference, "Booking reference should be the same")
+	suite.Require().WithinDuration(r.StartDate, e.StartDate, time.Second, "Start date should be the same")
+	suite.Require().WithinDuration(r.EndDate, e.EndDate, time.Second, "Start date should be the same")
 }
 
 // endregion tests
