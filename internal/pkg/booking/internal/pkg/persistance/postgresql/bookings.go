@@ -14,7 +14,7 @@ type BookingRepository struct {
 	DbActions
 }
 
-func NewBookingsDb(a *sql.DB) BookingRepository {
+func NewBookingsRepository(a *sql.DB) BookingRepository {
 	return BookingRepository{DbActions: a}
 }
 

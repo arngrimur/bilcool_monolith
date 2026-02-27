@@ -33,7 +33,7 @@ type bookingsTestSuite struct {
 
 // region setup
 func (suite *bookingsTestSuite) SetupSuite() {
-	suite.SuiteDbIntegration = testdb.SetupDatabase(suite.T(), "postgres://postgres:postgres@localhost:%s/bookings?sslmode=disable", migrations.FS)
+	suite.SuiteDbIntegration = testdb.SetupDatabase(suite.T(), migrations.BookingsConnUrlTemplate, migrations.FS)
 	suite.bookingRef = uuid.New()
 	suite.userRef = uuid.New()
 	loc, _ := time.LoadLocation("Etc/UTC")
@@ -46,10 +46,10 @@ func (suite *bookingsTestSuite) TearDownSuite() {
 }
 
 func (suite *bookingsTestSuite) BeforeTest(suiteName, testName string) {
-	q := "INSERT INTO bookings (booking_reference, start_date, user_ref) VALUES ($1, $2, $3)"
-	_, err := suite.Db.Exec(q, suite.bookingRef, suite.now, suite.userRef)
+	q := "INSERT INTO bookings (booking_reference, start_date, end_date, user_ref) VALUES ($1, $2, $3, $4)"
+	_, err := suite.Db.Exec(q, suite.bookingRef, suite.now, suite.now, suite.userRef)
 	suite.Require().NoError(err)
-	_, err = suite.Db.Exec(q, uuid.New(), suite.now, uuid.New())
+	_, err = suite.Db.Exec(q, uuid.New(), suite.now, suite.now, uuid.New())
 	suite.Require().NoError(err)
 }
 
@@ -77,10 +77,7 @@ func TestRunSuitebookings(t *testing.T) {
 // endregion setup
 // region tests
 func (suite *bookingsTestSuite) TestGetBooking() {
-	_, err := suite.Db.Exec("UPDATE bookings SET end_date = $1 WHERE booking_reference = $2", suite.now, suite.bookingRef)
-	suite.Require().NoError(err)
-
-	database := NewBookingsDb(suite.Db)
+	database := NewBookingsRepository(suite.Db)
 	booking, _ := database.Find(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
 	suite.Require().Equal(suite.bookingRef, booking.BookingReference, "Booking reference should be the same")
 	suite.Require().Equal(suite.userRef, booking.UserRef, "User reference should be the same")

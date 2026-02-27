@@ -24,6 +24,6 @@ func main() {
 		log.Fatal().Err(err).Msg("Error opening database connection")
 	}
 	// Create Application
-	app := application.New(postgresql.NewBookingsDb(psqlDb))
+	app := application.New(postgresql.NewBookingsRepository(psqlDb))
 	_ = app
 }
