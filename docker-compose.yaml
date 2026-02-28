@@ -16,7 +16,7 @@ services:
     image: amacneil/dbmate
     entrypoint: ["/bin/sh", "-c",  "dbmate --wait --migrations-dir /migrations migrate"]
     volumes:
-      - "./internal/pkg/booking/migrations:/migrations"
+      - "./booking/migrations:/migrations"
     depends_on:
       - booking-database
     environment:

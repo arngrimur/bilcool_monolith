@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,4 +27,28 @@ func NewBookingResponse(bookingRef uuid.UUID, startTime time.Time, endTime time.
 		StartDate:        startTime,
 		EndDate:          endTime,
 	}
+}
+
+type Bookings struct {
+	r BookingsRepository
+}
+
+func NewBookings(r BookingsRepository) *Bookings {
+	return &Bookings{r}
+}
+
+func (b Bookings) UpdateBooking(ctx context.Context, request UpdateBookingRequest) error {
+	return b.r.UpdateBooking(ctx, request)
+}
+
+func (b Bookings) DeleteBooking(ctx context.Context, request BookingRequest) error {
+	return b.r.DeleteBooking(ctx, request)
+}
+
+func (b Bookings) FindAll(ctx context.Context) ([]BookingResponse, error) {
+	return b.r.FindAll(ctx)
+}
+
+func (b Bookings) Find(ctx context.Context, request BookingRequest) (BookingResponse, error) {
+	return b.r.Find(ctx, request)
 }

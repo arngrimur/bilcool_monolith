@@ -6,7 +6,6 @@ import (
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application/commands"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application/queries"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
-	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance"
 )
 
 // The interfaces supported by the application
@@ -43,13 +42,13 @@ type (
 // Dummy for interface
 var _ App = (*Application)(nil)
 
-func New(bookingsRepo persistance.BookingsRepository) *Application {
+func New(bookingsRepo domain.BookingsRepository) *Application {
 	return &Application{
 		appCommands{
-			UpdateBookingsHandler: commands.NewUpdateBookingsHandler(bookingsRepo),
+			UpdateBookingsHandler: commands.NewUpdateBookingsHandler(domain.NewBookings(bookingsRepo)),
 		},
 		appQueries{
-			GetBookingsHandler: queries.NewGetBookingsHandler(bookingsRepo),
+			GetBookingsHandler: queries.NewGetBookingsHandler(domain.NewBookings(bookingsRepo)),
 		},
 	}
 }

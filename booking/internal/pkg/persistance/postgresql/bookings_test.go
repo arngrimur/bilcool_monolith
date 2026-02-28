@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integrationtest
 
 package postgresql
 
@@ -140,6 +140,60 @@ func (suite *bookingsTestSuite) TestDeleteBooking() {
 	suite.Require().Error(err)
 	err = database.DeleteBooking(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
 	suite.Require().Error(err)
+}
+
+func (suite *bookingsTestSuite) TestBookingCanBeUpdated() {
+	database := NewBookingsRepository(suite.Db)
+	booking1 := domain.UpdateBookingRequest{
+		UserRef:          uuid.New(),
+		BookingReference: uuid.New(),
+		StartDate:        time.Date(2026, 2, 28, 3, 0, 0, 0, time.UTC),
+		EndDate:          time.Date(2026, 2, 28, 5, 0, 0, 0, time.UTC),
+	}
+	booking2 := domain.UpdateBookingRequest{
+		UserRef:          uuid.New(),
+		BookingReference: uuid.New(),
+		StartDate:        time.Date(2026, 2, 28, 5, 0, 0, 0, time.UTC),
+		EndDate:          time.Date(2026, 2, 28, 7, 0, 0, 0, time.UTC),
+	}
+	booking3 := domain.UpdateBookingRequest{
+		UserRef:          uuid.New(),
+		BookingReference: uuid.New(),
+		StartDate:        time.Date(2026, 2, 28, 7, 0, 0, 0, time.UTC),
+		EndDate:          time.Date(2026, 2, 28, 9, 0, 0, 0, time.UTC),
+	}
+	ctx := context.Background()
+	err := database.UpdateBooking(ctx, booking1)
+	suite.Require().NoError(err)
+	err = database.UpdateBooking(ctx, booking2)
+	suite.Require().NoError(err)
+	err = database.UpdateBooking(ctx, booking3)
+	suite.Require().NoError(err)
+
+	suite.T().Run("change booking2 start time earlier booking 1 end time", func(t *testing.T) {
+		ti := booking2.StartDate
+		defer func() { booking2.StartDate = ti }()
+		booking2.StartDate = time.Date(2026, 2, 28, 4, 0, 0, 0, time.UTC)
+		err := database.UpdateBooking(ctx, booking2)
+		suite.Require().Error(err)
+	})
+
+	suite.T().Run("change booking2 end time to 15 minutes later", func(t *testing.T) {
+		ti := booking2.EndDate
+		defer func() { booking2.EndDate = ti }()
+		booking2.EndDate = booking2.EndDate.Add(time.Minute * 15)
+		err := database.UpdateBooking(ctx, booking2)
+		suite.Require().Error(err)
+	})
+
+	suite.T().Run("change booking2 start time to 15 minutes later", func(t *testing.T) {
+		ti := booking2.StartDate
+		defer func() { booking2.StartDate = ti }()
+		booking2.StartDate = booking2.StartDate.Add(time.Minute * 15)
+		err := database.UpdateBooking(ctx, booking2)
+		suite.Require().NoError(err)
+	})
+
 }
 
 // endregion tests

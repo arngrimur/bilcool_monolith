@@ -4,23 +4,22 @@ import (
 	"context"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
-	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance"
 )
 
 type UpdateBookingsHandler struct {
-	persistance.BookingsRepository
+	*domain.Bookings
 }
 
-func NewUpdateBookingsHandler(bookings persistance.BookingsRepository) UpdateBookingsHandler {
+func NewUpdateBookingsHandler(bookings *domain.Bookings) UpdateBookingsHandler {
 	return UpdateBookingsHandler{
-		BookingsRepository: bookings,
+		Bookings: bookings,
 	}
 }
 
 func (h UpdateBookingsHandler) UpdateBooking(ctx context.Context, b domain.UpdateBookingRequest) error {
-	return h.BookingsRepository.UpdateBooking(ctx, b)
+	return h.Bookings.UpdateBooking(ctx, b)
 }
 
 func (h UpdateBookingsHandler) DeleteBooking(ctx context.Context, request domain.BookingRequest) error {
-	return h.BookingsRepository.DeleteBooking(ctx, request)
+	return h.Bookings.DeleteBooking(ctx, request)
 }
