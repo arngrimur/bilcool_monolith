@@ -1,4 +1,4 @@
-//go:build integrationtest
+//go:build integration
 
 package postgresql
 

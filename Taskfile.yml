@@ -1,0 +1,18 @@
+version: '3'
+
+tasks:
+  up:
+    dir: '{{.USER_WORKING_DIR}}'
+    preconditions:
+      - test -f docker-compose.yaml
+    cmds:
+      - docker-compose up -d
+  down:
+    dir: '{{.USER_WORKING_DIR}}'
+    preconditions:
+      - test -f docker-compose.yaml
+    cmds:
+      - docker-compose down --remove-orphans
+  bookings_db:
+    dir: '{{.USER_WORKING_DIR}}'
+    cmd: docker exec -it bookings-db psql -U postgres -d bookings
