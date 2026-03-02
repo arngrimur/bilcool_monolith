@@ -17,7 +17,7 @@ type BookingResponse struct {
 type UpdateBookingRequest BookingResponse
 
 type BookingRequest struct {
-	BookingReference uuid.UUID `json:"booking_reference" validate:"required,uuid"`
+	BookingReference uuid.UUID `json:"booking_reference" validate:"required,uuid" binding:"required,uuid"`
 }
 
 func NewBookingResponse(bookingRef uuid.UUID, startTime time.Time, endTime time.Time, userRef uuid.UUID) BookingResponse {

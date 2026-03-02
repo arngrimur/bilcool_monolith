@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,9 +12,14 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/gin-gonic/gin"
+	"github.com/swaggo/files"
+	"github.com/swaggo/gin-swagger"
+
+	_ "github.com/arngrimur/bilcool_monolith/docs"
+
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
-	"github.com/gin-gonic/gin"
 )
 
 // @title           Swagger Example API
@@ -49,6 +55,8 @@ func NewRouter(q application.Queries) *httpRouter {
 	h.router.GET("/ping", func(c *gin.Context) {
 		c.String(http.StatusOK, "pong")
 	})
+	// use ginSwagger middleware to serve the API docs
+	h.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	h.router.GET("/api/v1/bookings", h.getAllBookings)
 	h.router.GET("/api/v1/bookings/:id", h.getBooking)
@@ -83,6 +91,18 @@ func (h *httpRouter) StartRouter(addr string) error {
 	return srv.Shutdown(ctx)
 }
 
+// GetBookingAccount godoc
+// @Summary      Show a booking
+// @Description  get booking by booking reference
+// @Tags         bookings
+// @Accept       json
+// @Produce      json
+// @Param        id   path      uuid  true  "Booking reference"
+// @Success      200  {object}  domain.BookingRequest
+// @Failure      400  {object}  HTTPError
+// @Failure      404  {object}  HTTPError
+// @Failure      500  {object}  HTTPError
+// @Router       /booking/{id} [get]
 func (h *httpRouter) getBooking(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -92,11 +112,10 @@ func (h *httpRouter) getBooking(c *gin.Context) {
 
 	booking, err := h.queries.GetBooking(c.Request.Context(), domain.BookingRequest{BookingReference: id})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no booking found"})
+		NewError(c, http.StatusBadRequest, fmt.Errorf("failed to get booking"))
 		return
 	}
 	c.JSON(http.StatusOK, booking)
-
 }
 
 func (h *httpRouter) getAllBookings(c *gin.Context) {

@@ -16,3 +16,10 @@ tasks:
   bookings_db:
     dir: '{{.USER_WORKING_DIR}}'
     cmd: docker exec -it bookings-db psql -U postgres -d bookings
+
+  swagger:
+    dir: '{{.USER_WORKING_DIR}}'
+    preconditions:
+      - go install github.com/swaggo/swag/cmd/swag@latest
+    cmd:  swag init -g router.go -o docs -d bookings/internal/pkg/web,bookings/internal/pkg/domain  --generatedTime
+
