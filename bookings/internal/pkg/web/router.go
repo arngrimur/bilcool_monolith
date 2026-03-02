@@ -91,14 +91,14 @@ func (h *httpRouter) StartRouter(addr string) error {
 	return srv.Shutdown(ctx)
 }
 
-// GetBookingAccount godoc
+// GetBooking godoc
 // @Summary      Show a booking
 // @Description  get booking by booking reference
 // @Tags         bookings
 // @Accept       json
 // @Produce      json
 // @Param        id   path      uuid  true  "Booking reference"
-// @Success      200  {object}  domain.BookingRequest
+// @Success      200  {object}  domain.BookingResponse
 // @Failure      400  {object}  HTTPError
 // @Failure      404  {object}  HTTPError
 // @Failure      500  {object}  HTTPError
@@ -118,6 +118,17 @@ func (h *httpRouter) getBooking(c *gin.Context) {
 	c.JSON(http.StatusOK, booking)
 }
 
+// GetBookings godoc
+// @Summary      Show all bookings
+// @Description  get all booking
+// @Tags         bookings
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  []domain.BookingResponse
+// @Failure      400  {object}  HTTPError
+// @Failure      404  {object}  HTTPError
+// @Failure      500  {object}  HTTPError
+// @Router       /booking [get]
 func (h *httpRouter) getAllBookings(c *gin.Context) {
 	bookings, err := h.queries.GetAllBooking(c.Request.Context())
 	if err != nil {

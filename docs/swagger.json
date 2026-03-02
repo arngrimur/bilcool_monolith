@@ -18,6 +18,50 @@
     "host": "localhost:8080",
     "basePath": "/api/v1",
     "paths": {
+        "/booking": {
+            "get": {
+                "description": "get all booking",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "Show all bookings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.BookingResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/web.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/web.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/web.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/booking/{id}": {
             "get": {
                 "description": "get booking by booking reference",
@@ -35,7 +79,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.BookingRequest"
+                            "$ref": "#/definitions/domain.BookingResponse"
                         }
                     },
                     "400": {
@@ -61,13 +105,25 @@
         }
     },
     "definitions": {
-        "domain.BookingRequest": {
+        "domain.BookingResponse": {
             "type": "object",
             "required": [
-                "booking_reference"
+                "booking_reference",
+                "end_date",
+                "start_date",
+                "user_ref"
             ],
             "properties": {
                 "booking_reference": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "user_ref": {
                     "type": "string"
                 }
             }
