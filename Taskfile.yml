@@ -20,6 +20,7 @@ tasks:
   swagger:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
+      - test -d bookings
       - go install github.com/swaggo/swag/cmd/swag@latest
     cmd:  swag init -g router.go -o docs -d bookings/internal/pkg/web,bookings/internal/pkg/domain  --generatedTime
 

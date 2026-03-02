@@ -22,9 +22,9 @@ import (
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
 )
 
-// @title           Swagger Example API
+// @title          BilCool REST API
 // @version         1.0
-// @description     This is a sample server celler server.
+// @description     The REST API for BilCool to book and view bookings and other stuff.
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
@@ -37,7 +37,7 @@ import (
 // @host      localhost:8080
 // @BasePath  /api/v1
 
-// @securityDefinitions.basic  BasicAuth
+// @securityDefinitions.basic  None
 
 // @externalDocs.description  OpenAPI
 // @externalDocs.url          https://swagger.io/resources/open-api/

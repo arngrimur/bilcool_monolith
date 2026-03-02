@@ -1,8 +1,9 @@
 module github.com/arngrimur/bilcool_monolith/bookings
 
-go 1.25.0
+go 1.26.0
 
 require (
+	github.com/arngrimur/bilcool_monolith v0.0.0-20260302103517-7319c06412d2
 	github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260227145144-0acb31c3784f
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
@@ -11,7 +12,6 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
-	github.com/swaggo/swag v1.16.6
 	github.com/testcontainers/testcontainers-go v0.40.0
 )
 
@@ -86,6 +86,7 @@ require (
 	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.6 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
+	github.com/swaggo/swag v1.16.6 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect

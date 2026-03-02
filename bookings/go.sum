@@ -16,6 +16,8 @@ github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 h1:d+Bc7a5rLufV
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/amacneil/dbmate/v2 v2.31.0 h1:MW+YyamfyqnDga9O65EIPVK7p8zKXkxrAyOA2zojgL8=
 github.com/amacneil/dbmate/v2 v2.31.0/go.mod h1:qTsdBUSAYpxeVWkqEhGEnYSlL8cj/1RvTxfNm3fZa/g=
+github.com/arngrimur/bilcool_monolith v0.0.0-20260302103517-7319c06412d2 h1:EJqnZjuZxciSiuf0aANnGeAOu1cfED5H9hr81FUS4Es=
+github.com/arngrimur/bilcool_monolith v0.0.0-20260302103517-7319c06412d2/go.mod h1:cSVEvfPcvq3hP4XWG2Jdzko0DQFiSmTzOZPrUzsuAzw=
 github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260227145144-0acb31c3784f h1:LLeBbheHoIcM3ft+R5AmIwl2+SQfhWYDSy2as89rPrA=
 github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260227145144-0acb31c3784f/go.mod h1:uSiBPDrbM+yjkiEQp7VKi4CoLXSN9RC2rhtFpAVUD38=
 github.com/bytedance/gopkg v0.1.3 h1:TPBSwH8RsouGCBcMBktLt1AymVo2TVsBVCY4b6TnZ/M=

@@ -1,6 +1,6 @@
 module github.com/arngrimur/bilcool_monolith
 
-go 1.25.0
+go 1.26.0
 
 require github.com/swaggo/swag v1.16.6
 

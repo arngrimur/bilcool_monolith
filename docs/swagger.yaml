@@ -25,12 +25,12 @@ info:
     email: support@swagger.io
     name: API Support
     url: http://www.swagger.io/support
-  description: This is a sample server celler server.
+  description: The REST API for BilCool to book and view bookings and other stuff.
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
-  title: Swagger Example API
+  title: BilCool REST API
   version: "1.0"
 paths:
   /booking/{id}:
@@ -61,6 +61,6 @@ paths:
       tags:
       - bookings
 securityDefinitions:
-  BasicAuth:
+  None:
     type: basic
 swagger: "2.0"

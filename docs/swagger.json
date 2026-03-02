@@ -1,8 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "This is a sample server celler server.",
-        "title": "Swagger Example API",
+        "description": "The REST API for BilCool to book and view bookings and other stuff.",
+        "title": "BilCool REST API",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",
@@ -87,7 +87,7 @@
         }
     },
     "securityDefinitions": {
-        "BasicAuth": {
+        "None": {
             "type": "basic"
         }
     },
