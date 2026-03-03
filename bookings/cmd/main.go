@@ -26,7 +26,7 @@ func main() {
 	psqlDb := setupPostgresDatabase(c)
 	// Create Application
 	app := application.New(postgresql.NewBookingsRepository(psqlDb))
-	webService := web.NewRouter(app.GetBookingsHandler)
+	webService := web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler)
 	webService.StartRouter(":8080")
 }
 

@@ -15,6 +15,8 @@ require (
 	github.com/testcontainers/testcontainers-go v0.40.0
 )
 
+replace github.com/arngrimur/bilcool_monolith => ./..
+
 require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect

@@ -8,16 +8,16 @@ import (
 )
 
 type BookingResponse struct {
-	UserRef          uuid.UUID `json:"user_ref" validate:"required,uuid"`
-	BookingReference uuid.UUID `json:"booking_reference" validate:"required,uuid"`
-	StartDate        time.Time `json:"start_date" validate:"required,date_format=2006-01-02"`
-	EndDate          time.Time `json:"end_date" validate:"required,date_format=2006-01-02"`
+	UserRef          uuid.UUID `json:"user_ref" validate:"required,uuid" example:"123e4567-e89b-12d3-a456-426655440000" type:"uuid" binding:"required,uuid"`
+	BookingReference uuid.UUID `json:"booking_reference" validate:"required,uuid" example:"123e4567-e89b-12d3-a456-426655440000" binding:"required,uuid"`
+	StartDate        time.Time `json:"start_date" example:"2021-01-01 10:00:00" binding:"required" time_format:"2006-01-02T15:04:05Z07:00"`
+	EndDate          time.Time `json:"end_date" example:"2021-01-01 12:00:00" binding:"required" time_format:"2006-01-02T15:04:05Z07:00"`
 }
 
 type UpdateBookingRequest BookingResponse
 
 type BookingRequest struct {
-	BookingReference uuid.UUID `json:"booking_reference" validate:"required,uuid" binding:"required,uuid"`
+	BookingReference uuid.UUID `uri:"id" json:"booking_reference" validate:"required,uuid" binding:"required,uuid"`
 }
 
 func NewBookingResponse(bookingRef uuid.UUID, startTime time.Time, endTime time.Time, userRef uuid.UUID) BookingResponse {

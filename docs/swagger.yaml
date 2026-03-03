@@ -3,12 +3,16 @@ definitions:
   domain.BookingResponse:
     properties:
       booking_reference:
+        example: 123e4567-e89b-12d3-a456-426655440000
         type: string
       end_date:
+        example: "2021-01-01 12:00:00"
         type: string
       start_date:
+        example: "2021-01-01 10:00:00"
         type: string
       user_ref:
+        example: 123e4567-e89b-12d3-a456-426655440000
         type: string
     required:
     - booking_reference
@@ -42,7 +46,7 @@ info:
   title: BilCool REST API
   version: "1.0"
 paths:
-  /booking:
+  /bookings:
     get:
       consumes:
       - application/json
@@ -68,10 +72,35 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/web.HTTPError'
-      summary: Show all bookings
+      summary: List all bookings
       tags:
       - bookings
-  /booking/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Update or add a new booking
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.BookingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/web.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/web.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/web.HTTPError'
+      tags:
+      - bookings
+  /bookings/{id}:
     get:
       consumes:
       - application/json

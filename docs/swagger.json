@@ -18,7 +18,7 @@
     "host": "localhost:8080",
     "basePath": "/api/v1",
     "paths": {
-        "/booking": {
+        "/bookings": {
             "get": {
                 "description": "get all booking",
                 "consumes": [
@@ -30,7 +30,7 @@
                 "tags": [
                     "bookings"
                 ],
-                "summary": "Show all bookings",
+                "summary": "List all bookings",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -60,9 +60,47 @@
                         }
                     }
                 }
+            },
+            "post": {
+                "description": "Update or add a new booking",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.BookingResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/web.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/web.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/web.HTTPError"
+                        }
+                    }
+                }
             }
         },
-        "/booking/{id}": {
+        "/bookings/{id}": {
             "get": {
                 "description": "get booking by booking reference",
                 "consumes": [
@@ -115,16 +153,20 @@
             ],
             "properties": {
                 "booking_reference": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426655440000"
                 },
                 "end_date": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2021-01-01 12:00:00"
                 },
                 "start_date": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2021-01-01 10:00:00"
                 },
                 "user_ref": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426655440000"
                 }
             }
         },
