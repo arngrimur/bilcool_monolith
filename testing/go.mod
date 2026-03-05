@@ -1,6 +1,6 @@
 module github.com/arngrimur/bilcool_monolith/testing
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/amacneil/dbmate/v2 v2.31.0
