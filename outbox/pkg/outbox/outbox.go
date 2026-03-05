@@ -26,7 +26,7 @@ const (
 type Outbox struct {
 }
 
-func NewOutbox(ctx context.Context, connStr url.URL, outputPlugin OutputPlugin, p []Publication) error {
+func NewOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin, p []Publication) error {
 	connStr.Query().Add("replication", "database")
 	conn, err := pgconn.Connect(context.Background(), connStr.String())
 	if err != nil {

@@ -7,4 +7,4 @@ import (
 //go:embed *sql
 var FS embed.FS
 
-const BookingsConnUrlTemplate = "postgres://postgres:postgres@localhost:%s/bookings?sslmode=disable"
+const OutboxTestConnUrlTemplate = "postgres://postgres:postgres@localhost:%s/outbox?sslmode=disable"

@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE apa
 (
-    id         SERIAL PRIMARY KEY,
+    id         SERIAL PRIMARY KEY
 );
 
 CREATE TABLE bepa (

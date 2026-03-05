@@ -3,7 +3,7 @@ module github.com/arngrimur/bilcool_monolith/outbox
 go 1.26.0
 
 require (
-	github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260303095456-66739da59a35
+	github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260305165813-91f5f20f80b1
 	github.com/jackc/pgconn v1.14.3
 	github.com/jackc/pglogrepl v0.0.0-20251213150135-2e8d0df862c1
 	github.com/jackc/pgx/v5 v5.8.0
