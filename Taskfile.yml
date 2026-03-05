@@ -6,7 +6,7 @@ tasks:
     preconditions:
       - test -f docker-compose.yaml
     cmds:
-      - docker-compose up -d
+      - docker-compose up -d 
   down:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:

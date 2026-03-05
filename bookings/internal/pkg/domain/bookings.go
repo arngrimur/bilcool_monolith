@@ -42,6 +42,7 @@ func (b Bookings) UpdateBooking(ctx context.Context, request UpdateBookingReques
 }
 
 func (b Bookings) DeleteBooking(ctx context.Context, request BookingRequest) error {
+	// TODO check that the booing has not started
 	return b.r.DeleteBooking(ctx, request)
 }
 

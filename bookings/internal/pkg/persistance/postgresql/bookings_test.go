@@ -41,9 +41,7 @@ func (suite *bookingsTestSuite) SetupSuite() {
 }
 
 func (suite *bookingsTestSuite) TearDownSuite() {
-	go suite.CancelFunc()
-	_ = suite.Db.Close()
-	testcontainers.CleanupContainer(suite.T(), suite.PostgresContainer)
+	suite.SuiteDbIntegration.Close()
 }
 
 func (suite *bookingsTestSuite) BeforeTest(suiteName, testName string) {

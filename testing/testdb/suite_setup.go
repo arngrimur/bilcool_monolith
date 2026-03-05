@@ -54,3 +54,8 @@ func SetupDatabase(t *testing.T, connUrl string, fs embed.FS) SuiteDbIntegration
 	return suiteDb
 
 }
+func (s *SuiteDbIntegration) TearDown(t *testing.T) {
+	go s.CancelFunc()
+	_ = s.Db.Close()
+	testcontainers.CleanupContainer(t, s.PostgresContainer)
+}
