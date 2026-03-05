@@ -29,6 +29,11 @@ func SetupDatabase(t *testing.T, connUrl string, fs embed.FS) SuiteDbIntegration
 	suiteDb.Ctx, suiteDb.CancelFunc = context.WithCancel(context.Background())
 
 	var err error
+	port, err := suiteDb.PostgresContainer.MappedPort(suiteDb.Ctx, "5432/tcp")
+	require.NoError(t, err)
+	u, err := url.Parse(fmt.Sprintf(connUrl, port.Port()))
+	require.NoError(t, err)
+
 	suiteDb.PostgresContainer, err = testcontainers.Run(
 		suiteDb.Ctx, "postgres:18",
 		testcontainers.WithExposedPorts("5432/tcp"),
@@ -37,12 +42,8 @@ func SetupDatabase(t *testing.T, connUrl string, fs embed.FS) SuiteDbIntegration
 			wait.ForLog("database system is ready to accept connections"),
 		),
 		testcontainers.WithName("bookings_test_db"),
-		testcontainers.WithEnv(map[string]string{"POSTGRES_PASSWORD": "postgres", "POSTGRES_USER": "postgres", "POSTGRES_DB": "bookings"}),
+		testcontainers.WithEnv(map[string]string{"POSTGRES_PASSWORD": "postgres", "POSTGRES_USER": "postgres", "POSTGRES_DB": u.Path[1:]}),
 	)
-	require.NoError(t, err)
-	port, err := suiteDb.PostgresContainer.MappedPort(suiteDb.Ctx, "5432/tcp")
-	require.NoError(t, err)
-	u, err := url.Parse(fmt.Sprintf(connUrl, port.Port()))
 	require.NoError(t, err)
 
 	suiteDb.Db, err = sql.Open("postgres", u.String())
