@@ -24,23 +24,37 @@ const (
 )
 
 type Outbox struct {
+	clientXLogPos              pglogrepl.LSN
+	standbyMessageTimeout      time.Duration
+	nextStandbyMessageDeadline time.Time
+	relationsV2                map[uint32]*pglogrepl.RelationMessageV2
+	typeMap                    *pgtype.Map
+	inStream                   bool
+	outputPlugin               OutputPlugin
+	conn                       *pgconn.PgConn
 }
 
-func NewOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin, p []Publication) error {
-	connStr.Query().Add("replication", "database")
+func NewOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin, p Publication) (*Outbox, error) {
+	q := connStr.Query()
+	q.Add("replication", "database")
+	connStr.RawQuery = q.Encode()
+
 	conn, err := pgconn.Connect(context.Background(), connStr.String())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer conn.Close(context.Background())
 
+	err = p.DoOp(ctx, conn)
+	if err != nil {
+		return nil, err
+	}
 	var pluginArguments []string
 	if outputPlugin == PgOutputPlugin {
 		// streaming of large transactions is available since PG 14 (protocol version 2)
 		// we also need to set 'streaming' to 'true'
 		pluginArguments = []string{
 			"proto_version '2'",
-			"publication_names 'bookings_pub'",
+			"publication_names " + p.GetPubs(),
 			"messages 'true'",
 			"streaming 'true'",
 		}
@@ -54,9 +68,9 @@ func NewOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin,
 	}
 	log.Info().Msgf("SystemID: %s, Timeline: %d, XLogPos: %d, DBName: %s", sysident.SystemID, sysident.Timeline, sysident.XLogPos, sysident.DBName)
 
-	slotName := "bookings_pub"
-
-	_, err = pglogrepl.CreateReplicationSlot(context.Background(), conn, slotName, outputPlugin.String(), pglogrepl.CreateReplicationSlotOptions{Temporary: true})
+	slotName := p.Name()
+	_, err = pglogrepl.CreateReplicationSlot(context.Background(), conn, slotName, outputPlugin.String(),
+		pglogrepl.CreateReplicationSlotOptions{Temporary: false, Mode: pglogrepl.LogicalReplication})
 	if err != nil {
 		log.Fatal().Err(err).Msgf("CreateReplicationSlot failed")
 	}
@@ -68,77 +82,95 @@ func NewOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin,
 	}
 	log.Info().Msgf("Logical replication started on slot %s", slotName)
 
-	clientXLogPos := sysident.XLogPos
 	standbyMessageTimeout := time.Second * 10
-	nextStandbyMessageDeadline := time.Now().Add(standbyMessageTimeout)
-	relationsV2 := map[uint32]*pglogrepl.RelationMessageV2{}
-	typeMap := pgtype.NewMap()
+	return &Outbox{
+		clientXLogPos:              sysident.XLogPos,
+		standbyMessageTimeout:      standbyMessageTimeout,
+		nextStandbyMessageDeadline: time.Now().Add(standbyMessageTimeout),
+		relationsV2:                map[uint32]*pglogrepl.RelationMessageV2{},
+		typeMap:                    pgtype.NewMap(),
 
-	// whenever we get StreamStartMessage we set inStream to true and then pass it to DecodeV2 function
-	// on StreamStopMessage we set it back to false
-	inStream := false
+		// whenever we get StreamStartMessage we set inStream to true and then pass it to DecodeV2 function
+		// on StreamStopMessage we set it back to false
+		inStream:     false,
+		outputPlugin: outputPlugin,
+		conn:         conn,
+	}, err
 
-	for {
-		if time.Now().After(nextStandbyMessageDeadline) {
-			err = pglogrepl.SendStandbyStatusUpdate(context.Background(), conn, pglogrepl.StandbyStatusUpdate{WALWritePosition: clientXLogPos})
-			if err != nil {
-				log.Fatal().Msgf("SendStandbyStatusUpdate failed: %s", err)
+}
+
+func (o *Outbox) StartReplication() chan struct{} {
+	stopCh := make(chan struct{})
+	go func() {
+		defer o.conn.Close(context.Background())
+		for {
+			select {
+			case <-stopCh:
+				return
+			default:
 			}
-			log.Info().Msgf("Sent Standby status message at %s", clientXLogPos)
-			nextStandbyMessageDeadline = time.Now().Add(standbyMessageTimeout)
-		}
+			if time.Now().After(o.nextStandbyMessageDeadline) {
+				err := pglogrepl.SendStandbyStatusUpdate(context.Background(), o.conn, pglogrepl.StandbyStatusUpdate{WALWritePosition: o.clientXLogPos})
+				if err != nil {
+					log.Fatal().Msgf("SendStandbyStatusUpdate failed: %s", err)
+				}
+				log.Info().Msgf("Sent Standby status message at %s", o.clientXLogPos)
+				o.nextStandbyMessageDeadline = time.Now().Add(o.standbyMessageTimeout)
+			}
 
-		ctx, cancel := context.WithDeadline(context.Background(), nextStandbyMessageDeadline)
-		rawMsg, err := conn.ReceiveMessage(ctx)
-		cancel()
-		if err != nil {
-			if pgconn.Timeout(err) {
+			ctx, cancel := context.WithDeadline(context.Background(), o.nextStandbyMessageDeadline)
+			rawMsg, err := o.conn.ReceiveMessage(ctx)
+			cancel()
+			if err != nil {
+				if pgconn.Timeout(err) {
+					continue
+				}
+				log.Fatal().Msgf("ReceiveMessage failed: %s", err)
+			}
+
+			if errMsg, ok := rawMsg.(*pgproto3.ErrorResponse); ok {
+				log.Fatal().Msgf("received Postgres WAL error: %+v", errMsg)
+			}
+
+			msg, ok := rawMsg.(*pgproto3.CopyData)
+			if !ok {
+				log.Info().Msgf("Received unexpected message: %T\n", rawMsg)
 				continue
 			}
-			log.Fatal().Msgf("ReceiveMessage failed: %s", err)
-		}
 
-		if errMsg, ok := rawMsg.(*pgproto3.ErrorResponse); ok {
-			log.Fatal().Msgf("received Postgres WAL error: %+v", errMsg)
-		}
+			switch msg.Data[0] {
+			case pglogrepl.PrimaryKeepaliveMessageByteID:
+				pkm, err := pglogrepl.ParsePrimaryKeepaliveMessage(msg.Data[1:])
+				if err != nil {
+					log.Fatal().Err(err).Msg("ParsePrimaryKeepaliveMessage failed")
+				}
+				log.Info().Msgf("Primary Keepalive Message => ServerWALEnd: %s ServerTime: %s ReplyRequested: %t", pkm.ServerWALEnd, pkm.ServerTime, pkm.ReplyRequested)
+				if pkm.ServerWALEnd > o.clientXLogPos {
+					o.clientXLogPos = pkm.ServerWALEnd
+				}
+				if pkm.ReplyRequested {
+					o.nextStandbyMessageDeadline = time.Time{}
+				}
 
-		msg, ok := rawMsg.(*pgproto3.CopyData)
-		if !ok {
-			log.Info().Msgf("Received unexpected message: %T\n", rawMsg)
-			continue
-		}
+			case pglogrepl.XLogDataByteID:
+				xld, err := pglogrepl.ParseXLogData(msg.Data[1:])
+				if err != nil {
+					log.Fatal().Err(err).Msg("ParseXLogData failed")
+				}
+				if o.outputPlugin == W2JoutputPlugin {
+					log.Info().Msgf("wal2json data: %s\n", string(xld.WALData))
+				} else {
+					log.Info().Msgf("XLogData => WALStart %s ServerWALEnd %s ServerTime %s WALData:\n", xld.WALStart, xld.ServerWALEnd, xld.ServerTime)
+					processV2(xld.WALData, o.relationsV2, o.typeMap, &o.inStream)
+				}
 
-		switch msg.Data[0] {
-		case pglogrepl.PrimaryKeepaliveMessageByteID:
-			pkm, err := pglogrepl.ParsePrimaryKeepaliveMessage(msg.Data[1:])
-			if err != nil {
-				log.Fatal().Err(err).Msg("ParsePrimaryKeepaliveMessage failed")
-			}
-			log.Info().Msgf("Primary Keepalive Message => ServerWALEnd: %s ServerTime: %s ReplyRequested: %t", pkm.ServerWALEnd, pkm.ServerTime, pkm.ReplyRequested)
-			if pkm.ServerWALEnd > clientXLogPos {
-				clientXLogPos = pkm.ServerWALEnd
-			}
-			if pkm.ReplyRequested {
-				nextStandbyMessageDeadline = time.Time{}
-			}
-
-		case pglogrepl.XLogDataByteID:
-			xld, err := pglogrepl.ParseXLogData(msg.Data[1:])
-			if err != nil {
-				log.Fatal().Err(err).Msg("ParseXLogData failed")
-			}
-			if outputPlugin == W2JoutputPlugin {
-				log.Info().Msgf("wal2json data: %s\n", string(xld.WALData))
-			} else {
-				log.Info().Msgf("XLogData => WALStart %s ServerWALEnd %s ServerTime %s WALData:\n", xld.WALStart, xld.ServerWALEnd, xld.ServerTime)
-				processV2(xld.WALData, relationsV2, typeMap, &inStream)
-			}
-
-			if xld.WALStart > clientXLogPos {
-				clientXLogPos = xld.WALStart
+				if xld.WALStart > o.clientXLogPos {
+					o.clientXLogPos = xld.WALStart
+				}
 			}
 		}
-	}
+	}()
+	return stopCh
 }
 
 func processV2(walData []byte, relations map[uint32]*pglogrepl.RelationMessageV2, typeMap *pgtype.Map, inStream *bool) {

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -18,6 +19,7 @@ type SuiteDbIntegration struct {
 	PostgresContainer *testcontainers.DockerContainer
 	CancelFunc        context.CancelFunc
 	Ctx               context.Context
+	ConnString        *url.URL
 }
 
 // SetupDatabase sets up a database for testing.
@@ -42,6 +44,10 @@ func SetupDatabase(t *testing.T, connUrl string, fs embed.FS) SuiteDbIntegration
 		),
 		testcontainers.WithName("bookings_test_db"),
 		testcontainers.WithEnv(map[string]string{"POSTGRES_PASSWORD": "postgres", "POSTGRES_USER": "postgres", "POSTGRES_DB": withDummyPort.Path[1:]}),
+		//"-c wal_level=logical -c max_wal_senders=5 -c max_replication_slots=5"
+		testcontainers.WithConfigModifier(func(config *container.Config) {
+			config.Cmd = []string{"-c", "wal_level=logical", "-c", "max_wal_senders=5", "-c", "max_replication_slots=5"}
+		}),
 	)
 	require.NoError(t, err)
 
@@ -51,6 +57,7 @@ func SetupDatabase(t *testing.T, connUrl string, fs embed.FS) SuiteDbIntegration
 	require.NoError(t, err)
 	suiteDb.Db, err = sql.Open("postgres", u.String())
 	require.NoError(t, err)
+	suiteDb.ConnString = u
 
 	dbMate := NewDBMate(t, WithEmbeddedFs(fs))
 	err = dbMate.Migrate(suiteDb.Db, u)

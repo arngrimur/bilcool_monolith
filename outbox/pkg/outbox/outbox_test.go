@@ -5,7 +5,6 @@ package outbox
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -21,6 +20,7 @@ type outBoxTestSuite struct {
 
 	// region variables
 	outboxDB testdb.SuiteDbIntegration
+
 	//endregion variables
 }
 
@@ -57,19 +57,19 @@ func TestRunSuiteoutBox(t *testing.T) {
 func (suite *outBoxTestSuite) TestCreatePublication() {
 	p := CreatePublication{
 		publication: publication{
-			Name:         "outbox",
-			DatabaseName: "apa",
-			Tables:       []string{"apa", "bepa"},
+			PublicationName: "outbox_test_pub",
+			DatabaseName:    "outbox",
+			Tables:          []string{"apa", "bepa"},
 		},
 	}
-	u, err := url.Parse(testdata.OutboxTestConnUrlTemplate)
+	outbox, err := NewOutbox(context.Background(), suite.outboxDB.ConnString, PgOutputPlugin, p)
 	suite.Require().NoError(err)
-	err = NewOutbox(context.Background(), u, PgOutputPlugin, []Publication{p})
-	suite.Require().NoError(err)
+	stopChannel := outbox.StartReplication()
+	defer close(stopChannel)
 	row := suite.outboxDB.Db.QueryRow("select count(*) from pg_publication_tables")
 	count := 0
 	row.Scan(&count)
-	suite.Require().Equal(1, count)
+	suite.Require().Equal(2, count)
 }
 
 // endregion tests
