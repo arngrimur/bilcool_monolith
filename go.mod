@@ -6,7 +6,6 @@ require github.com/swaggo/swag v1.16.6
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260305171408-b3bf17f2fd5c // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/jsonreference v0.21.5 // indirect
 	github.com/go-openapi/spec v0.22.4 // indirect

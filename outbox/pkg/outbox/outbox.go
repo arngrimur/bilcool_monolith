@@ -2,7 +2,9 @@ package outbox
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/jackc/pglogrepl"
@@ -20,7 +22,7 @@ func (p OutputPlugin) String() string {
 
 const (
 	PgOutputPlugin  OutputPlugin = "pgoutput"
-	W2JoutputPlugin OutputPlugin = "wal2JsonOutput"
+	W2JoutputPlugin OutputPlugin = "wal2json"
 )
 
 type Outbox struct {
@@ -32,9 +34,28 @@ type Outbox struct {
 	inStream                   bool
 	outputPlugin               OutputPlugin
 	conn                       *pgconn.PgConn
+	ActionMap                  *Actions
+	Publication                Publication
 }
 
+var (
+	outboxInstance *Outbox
+	outboxOnce     sync.Once
+	outboxErr      error
+)
+
 func NewOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin, p Publication) (*Outbox, error) {
+	outboxOnce.Do(func() {
+		outboxInstance, outboxErr = newOutbox(ctx, connStr, outputPlugin, p)
+		if outboxErr != nil {
+			return
+		}
+		outboxInstance.ActionMap = p.Actions()
+	})
+	return outboxInstance, outboxErr
+}
+
+func newOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin, p Publication) (*Outbox, error) {
 	q := connStr.Query()
 	q.Add("replication", "database")
 	connStr.RawQuery = q.Encode()
@@ -48,42 +69,30 @@ func NewOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin,
 	if err != nil {
 		return nil, err
 	}
-	var pluginArguments []string
-	if outputPlugin == PgOutputPlugin {
-		// streaming of large transactions is available since PG 14 (protocol version 2)
-		// we also need to set 'streaming' to 'true'
-		pluginArguments = []string{
-			"proto_version '2'",
-			"publication_names " + p.GetPubs(),
-			"messages 'true'",
-			"streaming 'true'",
-		}
-	} else if outputPlugin == W2JoutputPlugin {
-		pluginArguments = []string{"\"pretty-print\" 'true'"}
-	}
 
 	sysident, err := pglogrepl.IdentifySystem(context.Background(), conn)
 	if err != nil {
-		log.Fatal().Err(err).Msg("IdentifySystem failed:")
+		log.Error().Err(err).Msg("IdentifySystem failed:")
 	}
-	log.Info().Msgf("SystemID: %s, Timeline: %d, XLogPos: %d, DBName: %s", sysident.SystemID, sysident.Timeline, sysident.XLogPos, sysident.DBName)
+	log.Debug().Msgf("SystemID: %s, Timeline: %d, XLogPos: %d, DBName: %s", sysident.SystemID, sysident.Timeline, sysident.XLogPos, sysident.DBName)
 
-	slotName := p.Name()
-	_, err = pglogrepl.CreateReplicationSlot(context.Background(), conn, slotName, outputPlugin.String(),
+	_, err = pglogrepl.CreateReplicationSlot(context.Background(), conn, p.Name(), outputPlugin.String(),
 		pglogrepl.CreateReplicationSlotOptions{Temporary: false, Mode: pglogrepl.LogicalReplication})
 	if err != nil {
-		log.Fatal().Err(err).Msgf("CreateReplicationSlot failed")
+		v, ok := err.(*pgconn.PgError)
+		if ok && v.Code == "42710" {
+			log.Debug().Msgf("slot %s already exists. Ignoring this error as it is expected", p.Name())
+			err = nil
+		} else {
+			log.Error().Err(err).Msgf("CreateReplicationSlot failed")
+			return nil, err
+		}
 	}
-	log.Info().Msgf("Created temporary replication slot: %s", slotName)
-
-	err = pglogrepl.StartReplication(context.Background(), conn, slotName, sysident.XLogPos, pglogrepl.StartReplicationOptions{PluginArgs: pluginArguments})
-	if err != nil {
-		log.Fatal().Err(err).Msgf("StartReplication failed")
-	}
-	log.Info().Msgf("Logical replication started on slot %s", slotName)
+	log.Debug().Msgf("Created temporary replication slot: %s", p.Name())
 
 	standbyMessageTimeout := time.Second * 10
 	return &Outbox{
+		Publication:                p,
 		clientXLogPos:              sysident.XLogPos,
 		standbyMessageTimeout:      standbyMessageTimeout,
 		nextStandbyMessageDeadline: time.Now().Add(standbyMessageTimeout),
@@ -99,8 +108,29 @@ func NewOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin,
 
 }
 
-func (o *Outbox) StartReplication() chan struct{} {
+func (o *Outbox) StartReplication() (chan struct{}, error) {
 	stopCh := make(chan struct{})
+
+	var pluginArguments []string
+	if o.outputPlugin == PgOutputPlugin {
+		// streaming of large transactions is available since PG 14 (protocol version 2)
+		// we also need to set 'streaming' to 'true'
+		pluginArguments = []string{
+			"proto_version '2'",
+			fmt.Sprintf("publication_names '%s'", o.Publication.Name()),
+			"messages 'true'",
+			"streaming 'true'",
+		}
+	} else if o.outputPlugin == W2JoutputPlugin {
+		pluginArguments = []string{"\"pretty-print\" 'true'"}
+	}
+
+	err := pglogrepl.StartReplication(context.Background(), o.conn, o.Publication.Name(), o.clientXLogPos, pglogrepl.StartReplicationOptions{PluginArgs: pluginArguments})
+	if err != nil {
+		log.Error().Err(err).Msgf("StartReplication failed")
+		return stopCh, err
+	}
+	log.Debug().Msgf("Logical replication started on slot %s", o.Publication.Name())
 	go func() {
 		defer o.conn.Close(context.Background())
 		for {
@@ -112,9 +142,9 @@ func (o *Outbox) StartReplication() chan struct{} {
 			if time.Now().After(o.nextStandbyMessageDeadline) {
 				err := pglogrepl.SendStandbyStatusUpdate(context.Background(), o.conn, pglogrepl.StandbyStatusUpdate{WALWritePosition: o.clientXLogPos})
 				if err != nil {
-					log.Fatal().Msgf("SendStandbyStatusUpdate failed: %s", err)
+					log.Error().Msgf("SendStandbyStatusUpdate failed: %s", err)
 				}
-				log.Info().Msgf("Sent Standby status message at %s", o.clientXLogPos)
+				log.Debug().Msgf("Sent Standby status message at %s", o.clientXLogPos)
 				o.nextStandbyMessageDeadline = time.Now().Add(o.standbyMessageTimeout)
 			}
 
@@ -125,16 +155,16 @@ func (o *Outbox) StartReplication() chan struct{} {
 				if pgconn.Timeout(err) {
 					continue
 				}
-				log.Fatal().Msgf("ReceiveMessage failed: %s", err)
+				log.Error().Msgf("ReceiveMessage failed: %s", err)
 			}
 
 			if errMsg, ok := rawMsg.(*pgproto3.ErrorResponse); ok {
-				log.Fatal().Msgf("received Postgres WAL error: %+v", errMsg)
+				log.Error().Msgf("received Postgres WAL error: %+v", errMsg)
 			}
 
 			msg, ok := rawMsg.(*pgproto3.CopyData)
 			if !ok {
-				log.Info().Msgf("Received unexpected message: %T\n", rawMsg)
+				log.Debug().Msgf("Received unexpected message: %T\n", rawMsg)
 				continue
 			}
 
@@ -142,9 +172,10 @@ func (o *Outbox) StartReplication() chan struct{} {
 			case pglogrepl.PrimaryKeepaliveMessageByteID:
 				pkm, err := pglogrepl.ParsePrimaryKeepaliveMessage(msg.Data[1:])
 				if err != nil {
-					log.Fatal().Err(err).Msg("ParsePrimaryKeepaliveMessage failed")
+					log.Error().Err(err).Msg("ParsePrimaryKeepaliveMessage failed")
+					return
 				}
-				log.Info().Msgf("Primary Keepalive Message => ServerWALEnd: %s ServerTime: %s ReplyRequested: %t", pkm.ServerWALEnd, pkm.ServerTime, pkm.ReplyRequested)
+				log.Debug().Msgf("Primary Keepalive Message => ServerWALEnd: %s ServerTime: %s ReplyRequested: %t", pkm.ServerWALEnd, pkm.ServerTime, pkm.ReplyRequested)
 				if pkm.ServerWALEnd > o.clientXLogPos {
 					o.clientXLogPos = pkm.ServerWALEnd
 				}
@@ -153,45 +184,47 @@ func (o *Outbox) StartReplication() chan struct{} {
 				}
 
 			case pglogrepl.XLogDataByteID:
+				log.Debug().Msgf("RECEIVED MESSAGE: %v", msg.Data[0])
 				xld, err := pglogrepl.ParseXLogData(msg.Data[1:])
 				if err != nil {
-					log.Fatal().Err(err).Msg("ParseXLogData failed")
+					log.Error().Err(err).Msg("ParseXLogData failed")
 				}
 				if o.outputPlugin == W2JoutputPlugin {
-					log.Info().Msgf("wal2json data: %s\n", string(xld.WALData))
+					log.Debug().Msgf("wal2json data: %s\n", string(xld.WALData))
 				} else {
-					log.Info().Msgf("XLogData => WALStart %s ServerWALEnd %s ServerTime %s WALData:\n", xld.WALStart, xld.ServerWALEnd, xld.ServerTime)
-					processV2(xld.WALData, o.relationsV2, o.typeMap, &o.inStream)
+					log.Debug().Msgf("XLogData => WALStart %s ServerWALEnd %s ServerTime %s WALData:\n", xld.WALStart, xld.ServerWALEnd, xld.ServerTime)
+					o.processV2(xld.WALData, o.relationsV2, o.typeMap, &o.inStream)
 				}
 
 				if xld.WALStart > o.clientXLogPos {
 					o.clientXLogPos = xld.WALStart
 				}
+			case pglogrepl.StandbyStatusUpdateByteID:
+				log.Debug().Msgf("Received StandbyStatusUpdate message")
 			}
 		}
 	}()
-	return stopCh
+	return stopCh, nil
 }
 
-func processV2(walData []byte, relations map[uint32]*pglogrepl.RelationMessageV2, typeMap *pgtype.Map, inStream *bool) {
+func (o *Outbox) processV2(walData []byte, relations map[uint32]*pglogrepl.RelationMessageV2, typeMap *pgtype.Map, inStream *bool) {
 	logicalMsg, err := pglogrepl.ParseV2(walData, *inStream)
 	if err != nil {
-		log.Fatal().Msgf("Parse logical replication message: %s", err)
+		log.Error().Msgf("Parse logical replication message: %s", err)
 	}
-	log.Info().Msgf("Receive a logical replication message: %s", logicalMsg.Type())
+	log.Debug().Msgf("Receive a logical replication message: %s", logicalMsg.Type())
 	switch logicalMsg := logicalMsg.(type) {
 	case *pglogrepl.RelationMessageV2:
 		relations[logicalMsg.RelationID] = logicalMsg
-
 	case *pglogrepl.BeginMessage:
+		break
 		// Indicates the beginning of a group of changes in a transaction. This is only sent for committed transactions. You won't get any events from rolled back transactions.
-
 	case *pglogrepl.CommitMessage:
-
+		break
 	case *pglogrepl.InsertMessageV2:
 		rel, ok := relations[logicalMsg.RelationID]
 		if !ok {
-			log.Fatal().Msgf("unknown relation ID %d", logicalMsg.RelationID)
+			log.Error().Msgf("unknown relation ID %d", logicalMsg.RelationID)
 		}
 		values := map[string]interface{}{}
 		for idx, col := range logicalMsg.Tuple.Columns {
@@ -204,42 +237,57 @@ func processV2(walData []byte, relations map[uint32]*pglogrepl.RelationMessageV2
 			case 't': //text
 				val, err := decodeTextColumnData(typeMap, col.Data, rel.Columns[idx].DataType)
 				if err != nil {
-					log.Fatal().Msgf("error decoding column data: %s", err)
+					log.Error().Msgf("error decoding column data: %s", err)
 				}
 				values[colName] = val
 			}
 		}
-		log.Info().Msgf("insert for xid %d\n", logicalMsg.Xid)
-		log.Info().Msgf("INSERT INTO %s.%s: %v", rel.Namespace, rel.RelationName, values)
-
+		log.Debug().Msgf("insert for xid %d\n", logicalMsg.Xid)
+		log.Debug().Msgf("INSERT INTO %s.%s: %v", rel.Namespace, rel.RelationName, values)
+		executeActions(o.ActionMap.actions[ActionInsert], Table{
+			SchemaName: rel.Namespace,
+			TableName:  rel.RelationName,
+		})
 	case *pglogrepl.UpdateMessageV2:
-		log.Info().Msgf("update for xid %d\n", logicalMsg.Xid)
-		// ...
+		log.Debug().Msgf("update for xid %d\n", logicalMsg.Xid)
+		break
 	case *pglogrepl.DeleteMessageV2:
-		log.Info().Msgf("delete for xid %d\n", logicalMsg.Xid)
-		// ...
+		log.Debug().Msgf("delete for xid %d\n", logicalMsg.Xid)
+		break
 	case *pglogrepl.TruncateMessageV2:
-		log.Info().Msgf("truncate for xid %d\n", logicalMsg.Xid)
+		log.Debug().Msgf("truncate for xid %d\n", logicalMsg.Xid)
+		break
 		// ...
 
 	case *pglogrepl.TypeMessageV2:
+		break
 	case *pglogrepl.OriginMessage:
-
+		break
 	case *pglogrepl.LogicalDecodingMessageV2:
-		log.Info().Msgf("Logical decoding message: %q, %q, %d", logicalMsg.Prefix, logicalMsg.Content, logicalMsg.Xid)
-
+		log.Debug().Msgf("Logical decoding message: %q, %q, %d", logicalMsg.Prefix, logicalMsg.Content, logicalMsg.Xid)
+		break
 	case *pglogrepl.StreamStartMessageV2:
 		*inStream = true
-		log.Info().Msgf("Stream start message: xid %d, first segment? %d", logicalMsg.Xid, logicalMsg.FirstSegment)
+		log.Debug().Msgf("Stream start message: xid %d, first segment? %d", logicalMsg.Xid, logicalMsg.FirstSegment)
+		break
 	case *pglogrepl.StreamStopMessageV2:
 		*inStream = false
-		log.Info().Msgf("Stream stop message")
+		log.Debug().Msgf("Stream stop message")
+		break
 	case *pglogrepl.StreamCommitMessageV2:
-		log.Info().Msgf("Stream commit message: xid %d", logicalMsg.Xid)
+		log.Debug().Msgf("Stream commit message: xid %d", logicalMsg.Xid)
+		break
 	case *pglogrepl.StreamAbortMessageV2:
-		log.Info().Msgf("Stream abort message: xid %d", logicalMsg.Xid)
+		log.Debug().Msgf("Stream abort message: xid %d", logicalMsg.Xid)
+		break
 	default:
-		log.Info().Msgf("Unknown message type in pgoutput stream: %T", logicalMsg)
+		log.Debug().Msgf("Unknown message type in pgoutput stream: %T", logicalMsg)
+	}
+}
+
+func executeActions(actions []Action, table Table) {
+	for _, action := range actions {
+		action.Execute(table)
 	}
 }
 
