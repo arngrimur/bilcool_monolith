@@ -7,7 +7,7 @@
 //
 
 // Package outbox is a generated GoMock package.
-package outbox
+package domain
 
 import (
 	reflect "reflect"

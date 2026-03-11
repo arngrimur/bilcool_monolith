@@ -23,3 +23,7 @@ func (h UpdateBookingsHandler) UpdateBooking(ctx context.Context, b domain.Updat
 func (h UpdateBookingsHandler) DeleteBooking(ctx context.Context, request domain.BookingRequest) error {
 	return h.Bookings.DeleteBooking(ctx, request)
 }
+
+func (h UpdateBookingsHandler) EndBooking(ctx context.Context, request domain.EndBookingRequest) error {
+	return h.Bookings.EndBooking(ctx, request)
+}

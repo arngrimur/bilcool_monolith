@@ -12,7 +12,6 @@ import (
 	"github.com/arngrimur/bilcool_monolith/testing/testdb"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
-	"github.com/testcontainers/testcontainers-go"
 
 	_ "github.com/lib/pq"
 
@@ -33,7 +32,7 @@ type bookingsTestSuite struct {
 
 // region setup
 func (suite *bookingsTestSuite) SetupSuite() {
-	suite.SuiteDbIntegration = testdb.SetupDatabase(suite.T(), migrations.BookingsConnUrlTemplate, migrations.FS)
+	suite.SuiteDbIntegration = testdb.SetupDatabase(suite.T(), migrations.BookingsConnUrlTemplate, migrations.FS, "bookings_test")
 	suite.bookingRef = uuid.New()
 	suite.userRef = uuid.New()
 	loc, _ := time.LoadLocation("Etc/UTC")
@@ -41,9 +40,7 @@ func (suite *bookingsTestSuite) SetupSuite() {
 }
 
 func (suite *bookingsTestSuite) TearDownSuite() {
-	go suite.CancelFunc()
-	_ = suite.Db.Close()
-	testcontainers.CleanupContainer(suite.T(), suite.PostgresContainer)
+	suite.SuiteDbIntegration.TearDown(suite.T())
 }
 
 func (suite *bookingsTestSuite) BeforeTest(suiteName, testName string) {

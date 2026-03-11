@@ -31,7 +31,7 @@ type applicationTestSuite struct {
 
 // region setup
 func (suite *applicationTestSuite) SetupSuite() {
-	suite.SuiteDbIntegration = testdb.SetupDatabase(suite.T(), migrations.BookingsConnUrlTemplate, migrations.FS)
+	suite.SuiteDbIntegration = testdb.SetupDatabase(suite.T(), migrations.BookingsConnUrlTemplate, migrations.FS, "application_test")
 	suite.bookingRef = uuid.New()
 	suite.userRef = uuid.New()
 	loc, _ := time.LoadLocation("Etc/UTC")

@@ -20,6 +20,17 @@ type BookingRequest struct {
 	BookingReference uuid.UUID `uri:"id" json:"booking_reference" validate:"required,uuid" binding:"required,uuid"`
 }
 
+// Distance is the distance between the start and end point of the booking in meters
+type Distance struct {
+	StartDistance int `json:"start_distance" validate:"required,gte=0" example:"100"`
+	EndDistance   int `json:"end_distance" validate:"required,gte=0" example:"200"`
+}
+
+type EndBookingRequest struct {
+	BookingRequest
+	Distance
+}
+
 func NewBookingResponse(bookingRef uuid.UUID, startTime time.Time, endTime time.Time, userRef uuid.UUID) BookingResponse {
 	return BookingResponse{
 		UserRef:          userRef,
@@ -52,4 +63,8 @@ func (b Bookings) FindAll(ctx context.Context) ([]BookingResponse, error) {
 
 func (b Bookings) Find(ctx context.Context, request BookingRequest) (BookingResponse, error) {
 	return b.r.Find(ctx, request)
+}
+
+func (b Bookings) EndBooking(ctx context.Context, request EndBookingRequest) error {
+	return b.r.EndBooking(ctx, request)
 }

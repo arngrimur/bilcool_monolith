@@ -18,6 +18,7 @@ type (
 	Commands interface {
 		UpdateBooking(ctx context.Context, request domain.UpdateBookingRequest) error
 		DeleteBooking(ctx context.Context, request domain.BookingRequest) error
+		EndBooking(ctx context.Context, request domain.EndBookingRequest) error
 	}
 
 	Queries interface {

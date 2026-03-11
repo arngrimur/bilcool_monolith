@@ -1,6 +1,6 @@
 //go:build integration
 
-package outbox
+package domain
 
 import (
 	"context"
@@ -10,10 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 
+	"github.com/arngrimur/bilcool_monolith/outbox/pkg/outbox/postgres"
 	"github.com/arngrimur/bilcool_monolith/testing/testdb"
 
 	"github.com/arngrimur/bilcool_monolith/outbox/pkg/outbox/testdata"
@@ -39,7 +41,7 @@ func (suite *outBoxTestSuite) BeforeTest(suiteName, testName string) {
 	outboxOnce = sync.Once{}
 	outboxInstance = nil
 	outboxErr = nil
-	suite.outboxDB = testdb.SetupDatabase(suite.T(), testdata.OutboxTestConnUrlTemplate, testdata.FS)
+	suite.outboxDB = testdb.SetupDatabase(suite.T(), testdata.OutboxTestConnUrlTemplate, testdata.FS, "outbox_test")
 }
 func (suite *outBoxTestSuite) AfterTest(suiteName, testName string) {
 	suite.outboxDB.TearDown(suite.T())
@@ -71,9 +73,9 @@ func (suite *outBoxTestSuite) TestCreatePublication() {
 	}
 	outbox, err := NewOutbox(context.Background(), suite.outboxDB.ConnString, PgOutputPlugin, p)
 	suite.Require().NoError(err)
-	_, err = outbox.StartReplication()
+	stopChannel, err := outbox.StartReplication()
 	suite.Require().NoError(err)
-	//defer close(stopChannel)
+	defer close(stopChannel)
 	row := suite.outboxDB.Db.QueryRow("select count(*) from pg_publication_tables")
 	count := 0
 	row.Scan(&count)
@@ -94,19 +96,26 @@ func (suite *outBoxTestSuite) TestCreatePublicationAfterStop() {
 	suite.Require().NoError(err)
 	_, err = NewOutbox(context.Background(), suite.outboxDB.ConnString, PgOutputPlugin, p)
 	suite.Require().NoError(err)
+
 }
 
 func (suite *outBoxTestSuite) TestProcessData() {
 	mockCtrl := gomock.NewController(suite.T())
+
+	postgres.CreateTable(suite.outboxDB.Db)
+
 	actions := NewActions()
-	action := NewMockAction(mockCtrl)
-	action.EXPECT().Execute(gomock.Any()).Return().Times(1)
-	actions.Add(ActionInsert, action)
+	insertAction := NewMockAction(mockCtrl)
+	insertAction.EXPECT().Execute(gomock.Any()).Return().Times(2)
+	actions.Add(ActionInsert, insertAction)
+	commitAction := NewMockAction(mockCtrl)
+	commitAction.EXPECT().Execute(gomock.Any()).Return().Times(3)
+	actions.Add(ActionCommit, commitAction)
 	p := CreatePublication{
 		publication: publication{
 			PublicationName:  "outbox_test_pub",
 			DatabaseName:     "outbox",
-			Tables:           []string{"apa"},
+			Tables:           []string{"apa", "outbox"},
 			RegisterdActions: actions,
 		},
 	}
@@ -120,9 +129,15 @@ func (suite *outBoxTestSuite) TestProcessData() {
 	}()
 	_, err = suite.outboxDB.Db.Exec("INSERT INTO apa VALUES (100, 'apa')")
 	suite.Require().NoError(err)
-	_, err = suite.outboxDB.Db.Exec("INSERT INTO bepa VALUES (200, 'bepa')")
+	_, err = suite.outboxDB.Db.Exec("INSERT INTO bepa VALUES (200, 'bepa')") // shall not create any WAL execution
 	suite.Require().NoError(err)
-
+	tx, err := suite.outboxDB.Db.BeginTx(context.Background(), nil)
+	suite.Require().NoError(err)
+	_, err = tx.Exec(`INSERT INTO outbox(id,event_id,type,correlation_id,producer,payload) 
+VALUES (2, $1,'commit',$2,'test',$3 )`, uuid.New(), uuid.New(), []byte("test"))
+	suite.Require().NoError(err)
+	err = tx.Commit()
+	suite.Require().NoError(err)
 }
 
 // endregion tests

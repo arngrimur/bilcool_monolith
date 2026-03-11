@@ -25,7 +25,7 @@ type SuiteDbIntegration struct {
 // SetupDatabase sets up a database for testing.
 // connUrl is a template for the database connection URL in form "postgres://postgres:postgres@localhost:%s/bookings?sslmode=disable"
 // fs is a reference to the migrations files
-func SetupDatabase(t *testing.T, connUrl string, fs embed.FS) SuiteDbIntegration {
+func SetupDatabase(t *testing.T, connUrl string, fs embed.FS, dbName string) SuiteDbIntegration {
 	t.Helper()
 	suiteDb := SuiteDbIntegration{}
 	suiteDb.Ctx, suiteDb.CancelFunc = context.WithCancel(context.Background())
@@ -42,7 +42,7 @@ func SetupDatabase(t *testing.T, connUrl string, fs embed.FS) SuiteDbIntegration
 			wait.ForListeningPort("5432/tcp"),
 			wait.ForLog("database system is ready to accept connections"),
 		),
-		testcontainers.WithName("bookings_test_db"),
+		testcontainers.WithName(dbName),
 		testcontainers.WithEnv(map[string]string{"POSTGRES_PASSWORD": "postgres", "POSTGRES_USER": "postgres", "POSTGRES_DB": withDummyPort.Path[1:]}),
 		//"-c wal_level=logical -c max_wal_senders=5 -c max_replication_slots=5"
 		testcontainers.WithConfigModifier(func(config *container.Config) {

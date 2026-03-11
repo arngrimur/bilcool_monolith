@@ -9,4 +9,5 @@ type BookingsRepository interface {
 	FindAll(ctx context.Context) ([]BookingResponse, error)
 	UpdateBooking(ctx context.Context, request UpdateBookingRequest) error
 	DeleteBooking(ctx context.Context, request BookingRequest) error
+	EndBooking(ctx context.Context, request EndBookingRequest) error
 }

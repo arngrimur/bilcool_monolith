@@ -1,4 +1,4 @@
-package outbox
+package domain
 
 type Table struct {
 	SchemaName string

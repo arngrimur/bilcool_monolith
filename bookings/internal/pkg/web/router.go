@@ -76,6 +76,7 @@ func queryRoutes(h *httpRouter) {
 func commandRoutes(h *httpRouter) {
 	h.router.POST("/api/v1/bookings", h.updateBooking)
 	h.router.DELETE("/api/v1/bookings/:id", h.deleteBooking)
+	h.router.POST("/api/v1/bookings/:id/end", h.endBooking)
 }
 
 func (h *httpRouter) StartRouter(addr string) error {
@@ -202,6 +203,29 @@ func (h *httpRouter) deleteBooking(c *gin.Context) {
 	err = h.commands.DeleteBooking(c.Request.Context(), domain.BookingRequest{BookingReference: id})
 	if err != nil {
 		NewError(c, http.StatusBadRequest, fmt.Errorf("failed to delete booking"))
+		return
+	}
+	c.Status(http.StatusAccepted)
+}
+
+func (h httpRouter) endBooking(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
+		return
+	}
+	distance := domain.Distance{}
+	err = c.ShouldBindBodyWithJSON(&distance)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+	err = h.commands.EndBooking(c.Request.Context(), domain.EndBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: id},
+		Distance:       distance,
+	})
+	if err != nil {
+		NewError(c, http.StatusBadRequest, fmt.Errorf("failed to end booking"))
 		return
 	}
 	c.Status(http.StatusAccepted)

@@ -1,4 +1,4 @@
-package outbox
+package domain
 
 import (
 	"context"
@@ -220,6 +220,13 @@ func (o *Outbox) processV2(walData []byte, relations map[uint32]*pglogrepl.Relat
 		break
 		// Indicates the beginning of a group of changes in a transaction. This is only sent for committed transactions. You won't get any events from rolled back transactions.
 	case *pglogrepl.CommitMessage:
+		for _, rel := range relations {
+			t := Table{
+				SchemaName: rel.Namespace,
+				TableName:  rel.RelationName,
+			}
+			executeActions(o.ActionMap.actions[ActionCommit], t)
+		}
 		break
 	case *pglogrepl.InsertMessageV2:
 		rel, ok := relations[logicalMsg.RelationID]
