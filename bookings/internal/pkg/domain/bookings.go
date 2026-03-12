@@ -68,3 +68,8 @@ func (b Bookings) Find(ctx context.Context, request BookingRequest) (BookingResp
 func (b Bookings) EndBooking(ctx context.Context, request EndBookingRequest) error {
 	return b.r.EndBooking(ctx, request)
 }
+
+type CompletedBooking struct {
+	Booking  BookingResponse `json:"booking"`
+	Distance Distance        `json:"distance"`
+}

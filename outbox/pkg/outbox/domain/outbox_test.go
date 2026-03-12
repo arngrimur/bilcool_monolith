@@ -65,7 +65,7 @@ func TestRunSuiteoutBox(t *testing.T) {
 // region tests
 func (suite *outBoxTestSuite) TestCreatePublication() {
 	p := CreatePublication{
-		publication: publication{
+		PublicationBase: PublicationBase{
 			PublicationName: "outbox_test_pub",
 			DatabaseName:    "outbox",
 			Tables:          []string{"apa", "bepa"},
@@ -84,11 +84,11 @@ func (suite *outBoxTestSuite) TestCreatePublication() {
 
 func (suite *outBoxTestSuite) TestCreatePublicationAfterStop() {
 	p := CreatePublication{
-		publication: publication{
-			PublicationName:  "outbox_test_pub",
-			DatabaseName:     "outbox",
-			Tables:           []string{"apa", "bepa"},
-			RegisterdActions: &Actions{},
+		PublicationBase: PublicationBase{
+			PublicationName:   "outbox_test_pub",
+			DatabaseName:      "outbox",
+			Tables:            []string{"apa", "bepa"},
+			RegisteredActions: &Actions{},
 		},
 	}
 
@@ -107,16 +107,16 @@ func (suite *outBoxTestSuite) TestProcessData() {
 	actions := NewActions()
 	insertAction := NewMockAction(mockCtrl)
 	insertAction.EXPECT().Execute(gomock.Any()).Return().Times(2)
-	actions.Add(ActionInsert, insertAction)
+	actions.RegisterAction(ActionInsert, insertAction)
 	commitAction := NewMockAction(mockCtrl)
 	commitAction.EXPECT().Execute(gomock.Any()).Return().Times(3)
-	actions.Add(ActionCommit, commitAction)
+	actions.RegisterAction(ActionCommit, commitAction)
 	p := CreatePublication{
-		publication: publication{
-			PublicationName:  "outbox_test_pub",
-			DatabaseName:     "outbox",
-			Tables:           []string{"apa", "outbox"},
-			RegisterdActions: actions,
+		PublicationBase: PublicationBase{
+			PublicationName:   "outbox_test_pub",
+			DatabaseName:      "outbox",
+			Tables:            []string{"apa", "outbox"},
+			RegisteredActions: actions,
 		},
 	}
 	o, err := NewOutbox(context.Background(), suite.outboxDB.ConnString, PgOutputPlugin, p)

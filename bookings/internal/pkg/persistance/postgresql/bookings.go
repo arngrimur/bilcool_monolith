@@ -16,10 +16,11 @@ import (
 
 type BookingRepository struct {
 	DbActions
+	Transactioner
 }
 
 func NewBookingsRepository(a *sql.DB) BookingRepository {
-	return BookingRepository{DbActions: a}
+	return BookingRepository{DbActions: a, Transactioner: a}
 }
 
 func (bdb BookingRepository) Find(ctx context.Context, request domain.BookingRequest) (domain.BookingResponse, error) {
@@ -47,25 +48,28 @@ func (bdb BookingRepository) FindAll(ctx context.Context) ([]domain.BookingRespo
 	const query = `SELECT booking_reference, start_date, end_date, user_ref 
 FROM bookings`
 	var (
-		bookings  = []domain.BookingResponse{}
-		sTime     time.Time
-		eTime     time.Time
-		uRef      uuid.UUID
-		bookinRef uuid.UUID
+		bookings   = []domain.BookingResponse{}
+		sTime      time.Time
+		eTime      time.Time
+		uRef       uuid.UUID
+		bookingRef uuid.UUID
 	)
 
 	rows, err := bdb.QueryContext(ctx, query)
 	if err != nil {
 		return bookings, err
 	}
+	defer rows.Close()
 	for rows.Next() {
-		err = rows.Scan(&bookinRef, &sTime, &eTime, &uRef)
+		err = rows.Scan(&bookingRef, &sTime, &eTime, &uRef)
 		if err != nil {
 			return nil, err
 		}
-		bookings = append(bookings, domain.NewBookingResponse(bookinRef, sTime, eTime, uRef))
+		bookings = append(bookings, domain.NewBookingResponse(bookingRef, sTime, eTime, uRef))
 	}
-
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 	return bookings, nil
 }
 
@@ -115,23 +119,30 @@ func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndB
 	}
 	defer tx.Rollback()
 	type tmpData struct {
-		id       int
-		booking  domain.BookingResponse
-		distance domain.Distance
+		id        int
+		completed domain.CompletedBooking
 	} // Get booking
 	booking := &tmpData{}
-	err = bdb.QueryRowContext(ctx, "SELECT id, booking_reference, user_ref, start_date, end_date FROM bookings WHERE booking_reference = $1", request.BookingReference).
-		Scan(booking.id, booking.booking.BookingReference, booking.booking.UserRef, booking.booking.StartDate, booking.booking.EndDate)
+	err = local_bdb.QueryRowContext(ctx, "SELECT id, booking_reference, user_ref, start_date, end_date FROM bookings WHERE booking_reference = $1", request.BookingReference).
+		Scan(
+			&booking.id,
+			&booking.completed.Booking.BookingReference,
+			&booking.completed.Booking.UserRef,
+			&booking.completed.Booking.StartDate,
+			&booking.completed.Booking.EndDate,
+		)
 	if err != nil {
 		return err
 	}
 	q := "INSERT INTO distances (fk_booking_id, start_distance, end_distance) VALUES ($1, $2, $3)"
-	local_bdb.ExecContext(ctx, q, booking.id, request.StartDistance, request.EndDistance)
+	_, err = local_bdb.ExecContext(ctx, q, booking.id, request.StartDistance, request.EndDistance)
+	if err != nil {
+		return err
+	}
 	// insert msg in outbox
-	booking.id = 0
-	booking.distance = request.Distance
+	booking.completed.Distance = request.Distance
 
-	bytes, err := json.Marshal(booking)
+	bytes, err := json.Marshal(booking.completed)
 	if err != nil {
 		return err
 	}
@@ -143,9 +154,7 @@ func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndB
 		Producer:      "bookings",
 		Payload:       bytes,
 	}
-	q = `INSERT INTO outbox (event_id, type, correlation_id, producer, emitted_at, payload) VALUES ($1, $2, $3, $4, $5, $6)`
-
-	_, err = local_bdb.ExecContext(ctx, q, e.EventId, e.Type, e.CorrelationId, e.Producer, e.EmittedAt, e.Payload)
+	err = outbox.Insert(ctx, tx, e)
 	if err != nil {
 		return err
 	}
@@ -154,13 +163,9 @@ func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndB
 }
 
 func (bdb BookingRepository) createTransaction(ctx context.Context) (BookingRepository, *sql.Tx, error) {
-	db, ok := bdb.DbActions.(*sql.DB)
-	if !ok {
-		return BookingRepository{}, nil, fmt.Errorf("underlying connection is not *sql.DB")
-	}
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := bdb.BeginTx(ctx, nil)
 	if err != nil {
 		return BookingRepository{}, nil, err
 	}
-	return BookingRepository{DbActions: tx}, tx, nil
+	return BookingRepository{DbActions: tx, Transactioner: bdb.Transactioner}, tx, nil
 }

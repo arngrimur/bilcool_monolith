@@ -32,6 +32,6 @@ func NewActions() *Actions {
 	}
 }
 
-func (a *Actions) Add(name ActionName, action Action) {
+func (a *Actions) RegisterAction(name ActionName, action Action) {
 	a.actions[name] = append(a.actions[name], action)
 }

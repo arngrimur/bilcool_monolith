@@ -7,7 +7,7 @@ import (
 )
 
 func TestGetPubs(t *testing.T) {
-	p := publication{
+	p := PublicationBase{
 		Tables: []string{"foo", "bar"},
 	}
 	expected := "'foo,bar'"

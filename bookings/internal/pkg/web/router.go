@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/swaggo/files"
@@ -48,10 +48,11 @@ type httpRouter struct {
 }
 
 func NewRouter(q application.Queries, c application.Commands) *httpRouter {
+	engine := gin.Default()
 	h := &httpRouter{
 		queries:  q,
 		commands: c,
-		router:   gin.Default(),
+		router:   engine,
 	}
 
 	internalRoutes(h)
@@ -74,7 +75,7 @@ func queryRoutes(h *httpRouter) {
 }
 
 func commandRoutes(h *httpRouter) {
-	h.router.POST("/api/v1/bookings", h.updateBooking)
+	h.router.PUT("/api/v1/bookings", h.updateBooking)
 	h.router.DELETE("/api/v1/bookings/:id", h.deleteBooking)
 	h.router.POST("/api/v1/bookings/:id/end", h.endBooking)
 }
@@ -91,7 +92,7 @@ func (h *httpRouter) StartRouter(addr string) error {
 	// Start server in a goroutine
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+			log.Fatal().Err(err).Msg("failed to start server")
 		}
 	}()
 
@@ -148,7 +149,9 @@ func (h *httpRouter) getBooking(c *gin.Context) {
 func (h *httpRouter) getAllBookings(c *gin.Context) {
 	bookings, err := h.queries.GetAllBooking(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Error().Err(err).Msg("failed to get all bookings")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ooops! Something went wrong"})
+		return
 	}
 	c.JSON(http.StatusOK, bookings)
 

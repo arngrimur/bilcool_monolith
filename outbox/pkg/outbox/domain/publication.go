@@ -7,20 +7,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type publication struct {
-	PublicationName  string
-	DatabaseName     string
-	Tables           []string
-	RegisterdActions *Actions
+type PublicationBase struct {
+	PublicationName   string
+	DatabaseName      string
+	Tables            []string
+	RegisteredActions *Actions
 }
 
-func (p publication) doOp(ctx context.Context, conn *pgconn.PgConn, query string) error {
+func (p PublicationBase) doOp(ctx context.Context, conn *pgconn.PgConn, query string) error {
 	result := conn.Exec(context.Background(), query)
 	_, err := result.ReadAll()
 	return err
 }
 
-func (p publication) GetPubs() string {
+func (p PublicationBase) GetPubs() string {
 	pubs := "'"
 	for _, table := range p.Tables {
 		pubs += table + ","
@@ -28,7 +28,7 @@ func (p publication) GetPubs() string {
 	return pubs[:len(pubs)-1] + "'"
 }
 
-func (p publication) Name() string {
+func (p PublicationBase) Name() string {
 	return p.PublicationName
 }
 
@@ -40,11 +40,26 @@ type Publication interface {
 }
 
 type CreatePublication struct {
-	publication
+	PublicationBase
+}
+
+func NewCreatePublications(publicationName, databaseName string, tables []string, actions map[ActionName]Action) CreatePublication {
+	c := CreatePublication{
+		PublicationBase: PublicationBase{
+			PublicationName:   publicationName,
+			DatabaseName:      databaseName,
+			Tables:            tables,
+			RegisteredActions: NewActions(),
+		},
+	}
+	for n, a := range actions {
+		c.RegisteredActions.RegisterAction(n, a)
+	}
+	return c
 }
 
 func (p CreatePublication) Actions() *Actions {
-	return p.RegisterdActions
+	return p.RegisteredActions
 }
 
 func (p CreatePublication) DoOp(ctx context.Context, connection *pgconn.PgConn) error {
@@ -60,16 +75,16 @@ func (p CreatePublication) DoOp(ctx context.Context, connection *pgconn.PgConn) 
 	if err != nil {
 		v, ok := err.(*pgconn.PgError)
 		if ok && v.Code == "42710" {
-			log.Info().Msgf("publication %s already exists. Ignoring this error as it is expected", p.PublicationName)
+			log.Info().Msgf("PublicationBase %s already exists. Ignoring this error as it is expected", p.PublicationName)
 			return nil
 		}
-		log.Error().Err(err).Msgf("create publication error")
+		log.Error().Err(err).Msgf("create PublicationBase error")
 	}
 	return err
 }
 
 type AlterPublication struct {
-	publication
+	PublicationBase
 }
 
 func (a AlterPublication) DoOp(ctx context.Context, connection *pgconn.PgConn) error {
@@ -84,7 +99,7 @@ func (a AlterPublication) DoOp(ctx context.Context, connection *pgconn.PgConn) e
 	err := a.doOp(ctx, connection, q)
 	if err != nil {
 		// TODO handle an expected error
-		log.Error().Err(err).Msgf("alter publication error")
+		log.Error().Err(err).Msgf("alter PublicationBase error")
 	}
 	return err
 }
