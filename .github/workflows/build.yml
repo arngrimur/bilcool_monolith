@@ -7,14 +7,14 @@ on:
     branches: [main]
 
 jobs:
-  env:
-    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   build-testing:
     name: testing
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: testing/go.mod
           cache-dependency-path: testing/go.sum
@@ -30,10 +30,12 @@ jobs:
   build-message-broker:
     name: message_broker
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     needs: build-testing
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: message_broker/go.mod
           cache-dependency-path: message_broker/go.sum
@@ -51,10 +53,12 @@ jobs:
   build-bookings:
     name: bookings
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     needs: [build-testing, build-message-broker]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: bookings/go.mod
           cache-dependency-path: bookings/go.sum
