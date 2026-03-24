@@ -35,7 +35,7 @@ type subscriberTestSuite struct {
 // region setup
 func (suite *subscriberTestSuite) SetupSuite() {
 	var err error
-	suite.cloud = aws.SetupLocalCloud(suite.T(), "sns,sqs", "localstack")
+	suite.cloud = aws.SetupLocalCloud(suite.T(), "sns,sqs")
 	awsCfg := suite.cloud.CreateConfig(suite.T())
 
 	suite.snsClient = aws_sns.NewFromConfig(awsCfg)

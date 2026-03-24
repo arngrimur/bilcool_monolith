@@ -130,7 +130,7 @@ func (h *httpRouter) getBooking(c *gin.Context) {
 	booking, err := h.queries.GetBooking(c.Request.Context(), domain.BookingRequest{BookingReference: id})
 	if err != nil {
 		e := NewHttpError(err)
-		NewError(c, e.Code, fmt.Errorf("failed to find booking"+e.Message))
+		NewError(c, e.Code, fmt.Errorf("failed to find booking %s", e.Message))
 		return
 	}
 	c.JSON(http.StatusOK, booking)
@@ -179,7 +179,7 @@ func (h *httpRouter) updateBooking(c *gin.Context) {
 	err = h.commands.UpdateBooking(c.Request.Context(), request)
 	if err != nil {
 		e := NewHttpError(err)
-		NewError(c, e.Code, fmt.Errorf("failed to update booking"+e.Message))
+		NewError(c, e.Code, fmt.Errorf("failed to update booking %s", e.Message))
 		return
 	}
 	c.Status(http.StatusAccepted)
@@ -208,7 +208,7 @@ func (h *httpRouter) deleteBooking(c *gin.Context) {
 	err = h.commands.DeleteBooking(c.Request.Context(), domain.BookingRequest{BookingReference: id})
 	if err != nil {
 		e := NewHttpError(err)
-		NewError(c, e.Code, fmt.Errorf("failed to delete booking"+e.Message))
+		NewError(c, e.Code, fmt.Errorf("failed to delete booking %s", e.Message))
 		return
 	}
 	c.Status(http.StatusAccepted)
@@ -232,7 +232,7 @@ func (h *httpRouter) endBooking(c *gin.Context) {
 	})
 	if err != nil {
 		e := NewHttpError(err)
-		NewError(c, e.Code, fmt.Errorf("failed to end booking"+e.Message))
+		NewError(c, e.Code, fmt.Errorf("failed to end booking %s", e.Message))
 		return
 	}
 	c.Status(http.StatusAccepted)

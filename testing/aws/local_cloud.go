@@ -20,7 +20,7 @@ type AwsLocalCloud struct {
 	provider   *testcontainers.DockerProvider
 }
 
-func SetupLocalCloud(t *testing.T, services string, name string) *AwsLocalCloud {
+func SetupLocalCloud(t *testing.T, services string) *AwsLocalCloud {
 	t.Helper()
 	localCloud := &AwsLocalCloud{}
 	localCloud.Ctx, localCloud.CancelFunc = context.WithCancel(context.Background())

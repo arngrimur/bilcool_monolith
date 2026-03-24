@@ -19,7 +19,7 @@ const (
 	ActionStreamCommitMessage
 )
 
-//go:generate mockgen -source=actions.go -destination=actions_mock.go -package=domain github.com/arngrimur/bilcool_monolith/message_broker Actions
+//go:generate mockgen -source=actions.go -destination=actions_mock.go -package=domain github.com/arngrimur/bilcool_monolith/message_broker
 type Action interface {
 	// TODO: Add name to action for logging
 	Execute(ctx context.Context, table Table) error

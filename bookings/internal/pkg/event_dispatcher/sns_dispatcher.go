@@ -34,7 +34,6 @@ func (s SnsDispatcher[T]) Execute(ctx context.Context, table soutbox_domain.Tabl
 	if err != nil {
 		return err
 	}
-	// TODO: Divide into batches of 10
 	for _, e := range events {
 		e.EmittedAt = new(time.Now())
 	}

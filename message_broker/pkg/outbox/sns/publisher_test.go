@@ -29,7 +29,7 @@ type snsTestSuite struct {
 }
 
 func (suite *snsTestSuite) SetupSuite() {
-	suite.cloud = aws.SetupLocalCloud(suite.T(), "sns,sqs", "localstack")
+	suite.cloud = aws.SetupLocalCloud(suite.T(), "sns,sqs")
 	var err error
 	suite.publisher, err = NewPublisher(context.Background(), suite.cloud.CreateConfig(suite.T()))
 	suite.Require().NoError(err)

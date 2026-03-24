@@ -19,8 +19,16 @@ type Publisher interface {
 	SendBatchMessages(ctx context.Context, events []postgres.Event, topic string) (*awssns.PublishBatchOutput, error)
 }
 
+//go:generate mockgen -source=publisher.go -destination=publisher_mock.go -package=sns github.com/arngrimur/bilcool_monolith/message_broker
+type SnsClientAPI interface {
+	Publish(ctx context.Context, params *awssns.PublishInput, optFns ...func(*awssns.Options)) (*awssns.PublishOutput, error)
+	PublishBatch(ctx context.Context, params *awssns.PublishBatchInput, optFns ...func(*awssns.Options)) (*awssns.PublishBatchOutput, error)
+	ListTopics(ctx context.Context, params *awssns.ListTopicsInput, optFns ...func(*awssns.Options)) (*awssns.ListTopicsOutput, error)
+	CreateTopic(ctx context.Context, params *awssns.CreateTopicInput, optFns ...func(*awssns.Options)) (*awssns.CreateTopicOutput, error)
+}
+
 type SnsPublisher struct {
-	snsClient *awssns.Client
+	snsClient SnsClientAPI
 	cache     *TopicCache
 }
 

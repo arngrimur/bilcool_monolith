@@ -35,16 +35,18 @@ func (s SuiteDbIntegration) QueryContext(ctx context.Context, query string, args
 }
 
 // SetupDatabase sets up a database for testing.
-// connUrl is a template for the database connection URL in form "postgres://postgres:postgres@localhost:%s/bookings?sslmode=disable"
+// connUrl is a template for the database connection URL in form "postgres://postgres:postgres@localhost:%s/xyz?sslmode=disable"
 // fs is a reference to the migrations files
-func SetupDatabase(t *testing.T, connUrl string, fs embed.FS, dbName string) SuiteDbIntegration {
+// dbName is the name of the database
+func SetupDatabase(t *testing.T, fs embed.FS, dbName string) SuiteDbIntegration {
 	t.Helper()
+	const connUrl = "postgres://postgres:postgres@localhost:%s/%s?sslmode=disable"
 	suiteDb := SuiteDbIntegration{}
 	suiteDb.Ctx, suiteDb.CancelFunc = context.WithCancel(context.Background())
 
 	var err error
 
-	withDummyPort, err := url.Parse(fmt.Sprintf(connUrl, "1"))
+	withDummyPort, err := url.Parse(fmt.Sprintf(connUrl, "1", dbName))
 	require.NoError(t, err)
 
 	suiteDb.PostgresContainer, err = testcontainers.Run(
@@ -65,7 +67,7 @@ func SetupDatabase(t *testing.T, connUrl string, fs embed.FS, dbName string) Sui
 
 	port, err := suiteDb.PostgresContainer.MappedPort(suiteDb.Ctx, "5432/tcp")
 	require.NoError(t, err)
-	u, err := url.Parse(fmt.Sprintf(connUrl, port.Port()))
+	u, err := url.Parse(fmt.Sprintf(connUrl, port.Port(), dbName))
 	require.NoError(t, err)
 	suiteDb.Db, err = sql.Open("postgres", u.String())
 	require.NoError(t, err)

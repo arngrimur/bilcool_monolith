@@ -24,7 +24,7 @@ type postgresTestSuite struct {
 
 // region setup
 func (suite *postgresTestSuite) SetupSuite() {
-	suite.dbIntegration = testdb.SetupDatabase(suite.T(), "postgres://postgres:postgres@localhost:%s/"+OutboxTableName+"?sslmode=disable", embed.FS{}, OutboxTableName)
+	suite.dbIntegration = testdb.SetupDatabase(suite.T(), embed.FS{}, OutboxTableName)
 	err := CreateTable(suite.dbIntegration.Db)
 	suite.Require().NoError(err)
 }
@@ -32,14 +32,13 @@ func (suite *postgresTestSuite) TearDownSuite() {
 	suite.dbIntegration.TearDown(suite.T())
 }
 func (suite *postgresTestSuite) BeforeTest(suiteName, testName string) {
-	e := Event{
+	event := Event{
 		EventId:       uuid.New(),
 		Type:          "test",
 		CorrelationId: uuid.New(),
 		Producer:      "test",
 		Payload:       []byte(`{"foo":"bar"}`),
 	}
-	event := e
 	err := Insert(context.Background(), suite.dbIntegration.Db, event)
 	suite.Require().NoError(err)
 }

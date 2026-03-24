@@ -13,10 +13,10 @@ import (
 type TopicCache struct {
 	mu        sync.RWMutex
 	topics    map[string]string
-	snsClient *awssns.Client
+	snsClient SnsClientAPI
 }
 
-func CreateCache(ctx context.Context, snsClient *awssns.Client) (*TopicCache, error) {
+func CreateCache(ctx context.Context, snsClient SnsClientAPI) (*TopicCache, error) {
 	c := &TopicCache{
 		snsClient: snsClient,
 		topics:    make(map[string]string),

@@ -12,11 +12,14 @@ import (
 	"time"
 
 	aws_sns "github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/migrations"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
+	outbox_domain "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 	"github.com/arngrimur/bilcool_monolith/testing/aws"
@@ -37,9 +40,10 @@ type snsDispatcherTestSuite struct {
 
 // region setup
 func (suite *snsDispatcherTestSuite) SetupSuite() {
-	suite.cloud = aws.SetupLocalCloud(suite.T(), "sns", "sns_dispatcher_test")
-	suite.db = testdb.SetupDatabase(suite.T(), migrations.BookingsConnUrlTemplate, migrations.FS, "sns_dispatcher_test")
-	var err error
+	suite.cloud = aws.SetupLocalCloud(suite.T(), "sns")
+	suite.db = testdb.SetupDatabase(suite.T(), migrations.FS, "bookings")
+	err := postgres.CreateTable(suite.db.Db)
+	suite.Require().NoError(err)
 	suite.dispatcher, err = NewSnsDispatcher(context.Background(), suite.db.Db, suite.cloud.CreateConfig(suite.T()))
 	suite.Require().NoError(err)
 
@@ -112,7 +116,49 @@ func (suite *snsDispatcherTestSuite) TestSendBatchMessages() {
 }
 
 func (suite *snsDispatcherTestSuite) TestExecuteSendOnlySuccessful() {
-	suite.Fail("How can we test this?")
+	controller := gomock.NewController(suite.T())
+	dispatcher, err := NewSnsDispatcher(context.Background(), suite.db.Db, suite.cloud.CreateConfig(suite.T()))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(dispatcher)
+
+	okEvent := postgres.Event{
+		EventId:       uuid.New(),
+		Type:          "test",
+		CorrelationId: uuid.New(),
+		Producer:      "test",
+		Payload:       []byte(`{"foo":"bar"}`),
+	}
+	err = postgres.Insert(context.Background(), suite.db.Db, okEvent)
+	suite.Require().NoError(err)
+	failedEvent := postgres.Event{
+		EventId:       uuid.New(),
+		Type:          "test",
+		CorrelationId: uuid.New(),
+		Producer:      "test",
+		Payload:       []byte(`{"foo":"bar"}`),
+	}
+	err = postgres.Insert(context.Background(), suite.db.Db, failedEvent)
+	suite.Require().NoError(err)
+
+	out := aws_sns.PublishBatchOutput{
+		Failed:     []types.BatchResultErrorEntry{{Id: new(failedEvent.EventId.String()), SenderFault: false, Message: new("error")}},
+		Successful: []types.PublishBatchResultEntry{{Id: new(okEvent.EventId.String())}},
+	}
+	snsMock := sns.NewMockPublisher(controller)
+	snsMock.EXPECT().SendBatchMessages(gomock.Any(), gomock.Any(), gomock.Any()).Return(&out, nil).Times(1)
+	dispatcher.Publisher = snsMock
+
+	err = dispatcher.Execute(context.Background(), outbox_domain.Table{TableName: "outbox"})
+	suite.Require().NoError(err)
+	cnt := -1
+	q := "select count(*) from outbox where emitted_at IS NULL"
+	suite.Require().NoError(suite.db.Db.QueryRow(q).Scan(&cnt))
+	suite.Require().Equal(1, cnt, "Should have 1 event left in the outbox")
+
+	cnt = -1
+	q = "select count(*) from outbox where emitted_at IS NULL"
+	suite.Require().NoError(suite.db.Db.QueryRow(q).Scan(&cnt))
+	suite.Require().Equal(1, cnt, "Should have 1 event left in the outbox")
 }
 
 // endregion tests
