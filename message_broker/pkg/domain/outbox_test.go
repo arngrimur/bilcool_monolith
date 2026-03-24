@@ -38,7 +38,7 @@ func (suite *outBoxTestSuite) TearDownSuite() {
 
 }
 func (suite *outBoxTestSuite) BeforeTest(suiteName, testName string) {
-	suite.outboxDB = testdb.SetupDatabase(suite.T(), testdata.FS, "outbox_test")
+	suite.outboxDB = testdb.SetupDatabase(suite.T(), testdata.FS, testName)
 }
 func (suite *outBoxTestSuite) AfterTest(suiteName, testName string) {
 	suite.outboxDB.TearDown(suite.T())
