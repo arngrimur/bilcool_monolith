@@ -97,7 +97,7 @@ RETURNING booking_reference`
 }
 
 func (bdb BookingRepository) DeleteBooking(ctx context.Context, request domain.BookingRequest) error {
-	const query = `DELETE FROM bookings WHERE booking_reference = $1`
+	const query = `DELETE FROM bookings WHERE booking_reference = $1 AND start_date > NOW()`
 	result, err := bdb.ExecContext(ctx, query, request.BookingReference)
 	if err != nil {
 		return err
