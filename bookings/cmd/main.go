@@ -64,7 +64,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating outbox")
 	}
-	closer, err := outbox.StartReplication()
+	closer, err := outbox.StartReplication(ctx)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error starting replication")
 	}

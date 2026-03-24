@@ -77,7 +77,8 @@ func TestRunSuitebookings(t *testing.T) {
 // region tests
 func (suite *bookingsTestSuite) TestGetBooking() {
 	database := NewBookingsRepository(suite.Db)
-	booking, _ := database.Find(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
+	booking, err := database.Find(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().NoError(err)
 	suite.Require().Equal(suite.bookingRef, booking.BookingReference, "Booking reference should be the same")
 	suite.Require().Equal(suite.userRef, booking.UserRef, "User reference should be the same")
 	suite.Require().Equal(suite.now.Truncate(time.Millisecond), booking.StartDate.Truncate(time.Millisecond), "Start date should be the same")
@@ -88,7 +89,8 @@ func (suite *bookingsTestSuite) TestGetBooking() {
 
 func (suite *bookingsTestSuite) TestFindAllBookings() {
 	database := NewBookingsRepository(suite.Db)
-	bookings, _ := database.FindAll(context.Background())
+	bookings, err := database.FindAll(context.Background())
+	suite.Require().NoError(err)
 	suite.Require().Len(bookings, 2, "Should return 2 bookings")
 	suite.Require().NotEqual(bookings[0].BookingReference, bookings[1].BookingReference, "Should return 2 different bookings")
 }

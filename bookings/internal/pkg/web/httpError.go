@@ -1,6 +1,11 @@
 package web
 
-import "github.com/gin-gonic/gin"
+import (
+	"database/sql"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 func NewError(ctx *gin.Context, status int, err error) {
 	er := HTTPError{
@@ -14,4 +19,19 @@ func NewError(ctx *gin.Context, status int, err error) {
 type HTTPError struct {
 	Code    int    `json:"code" example:"400"`
 	Message string `json:"message" example:"status bad request"`
+}
+
+func NewHttpError(err error) HTTPError {
+	switch err {
+	case sql.ErrNoRows:
+		return HTTPError{
+			Message: "not found",
+			Code:    http.StatusNotFound,
+		}
+	default:
+		return HTTPError{
+			Message: err.Error(),
+			Code:    http.StatusBadRequest,
+		}
+	}
 }

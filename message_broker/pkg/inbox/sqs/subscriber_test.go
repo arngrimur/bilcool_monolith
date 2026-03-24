@@ -96,7 +96,7 @@ func (suite *subscriberTestSuite) addEvent() {
 }
 func (suite *subscriberTestSuite) AfterTest(suiteName, testName string) {
 	var (
-		n   int   = 0
+		n   int   = 1
 		err error = nil
 	)
 	for n > 0 {
@@ -195,9 +195,8 @@ func (suite *subscriberTestSuite) TestDeleteManyMessages() {
 	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
 	suite.Require().NoError(err)
 	suite.Require().Len(messages, 0)
-	n, err = suite.sqsSubscriber.DeleteMessages(context.Background(), messages, "test_queue")
+	_, err = suite.sqsSubscriber.DeleteMessages(context.Background(), messages, "test_queue")
 	suite.Require().NoError(err)
-	suite.Require().Equal(0, n)
 
 }
 

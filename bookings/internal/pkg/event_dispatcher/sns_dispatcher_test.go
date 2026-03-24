@@ -11,12 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/service/sns"
+	aws_sns "github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/migrations"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 	"github.com/arngrimur/bilcool_monolith/testing/aws"
 	"github.com/arngrimur/bilcool_monolith/testing/testdb"
@@ -43,8 +44,8 @@ func (suite *snsDispatcherTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 
 	suite.snsTopic = "test_topic"
-	snsClient := sns.NewFromConfig(suite.cloud.CreateConfig(suite.T()))
-	snsClient.CreateTopic(context.Background(), &sns.CreateTopicInput{Name: &suite.snsTopic})
+	snsClient := aws_sns.NewFromConfig(suite.cloud.CreateConfig(suite.T()))
+	snsClient.CreateTopic(context.Background(), &aws_sns.CreateTopicInput{Name: &suite.snsTopic})
 }
 func (suite *snsDispatcherTestSuite) TearDownSuite() {
 	suite.cloud.TearDown(suite.T())
@@ -70,6 +71,7 @@ func TestRunSuitesnsDispatcher(t *testing.T) {
 // region tests
 func (suite *snsDispatcherTestSuite) TestSendBatchMessages() {
 	events := []postgres.Event{}
+	eventIds := []string{}
 	for i := 0; i < 11; i++ {
 		b := domain.CompletedBooking{
 			Booking: domain.BookingResponse{
@@ -88,13 +90,14 @@ func (suite *snsDispatcherTestSuite) TestSendBatchMessages() {
 		suite.Require().NoError(err)
 		e := postgres.Event{
 			EventId:       uuid.New(),
-			Type:          "booking_ended",
+			Type:          sns.TypeBookingEnded,
 			CorrelationId: uuid.New(),
-			Producer:      "bookings",
+			Producer:      "bookings", // TODO: Change to env variable
 			EmittedAt:     new(time.Now()),
 			Payload:       message,
 		}
 		events = append(events, e)
+		eventIds = append(eventIds, e.EventId.String())
 	}
 
 	out, err := suite.dispatcher.SendBatchMessages(context.Background(), events, suite.snsTopic)
@@ -102,6 +105,14 @@ func (suite *snsDispatcherTestSuite) TestSendBatchMessages() {
 
 	suite.Require().Equal(11, len(out.Successful))
 	suite.Require().Equal(0, len(out.Failed))
+
+	for _, e := range out.Successful {
+		suite.Require().Contains(eventIds, *e.Id, "Event id should be in the list of sent events")
+	}
+}
+
+func (suite *snsDispatcherTestSuite) TestExecuteSendOnlySuccessful() {
+	suite.Fail("How can we test this?")
 }
 
 // endregion tests

@@ -26,6 +26,7 @@ const (
 )
 
 type Outbox struct {
+	mu                         sync.Mutex
 	clientXLogPos              pglogrepl.LSN
 	standbyMessageTimeout      time.Duration
 	nextStandbyMessageDeadline time.Time
@@ -38,21 +39,13 @@ type Outbox struct {
 	Publication                Publication
 }
 
-var (
-	outboxInstance *Outbox
-	outboxOnce     sync.Once
-	outboxErr      error
-)
-
 func NewOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin, p Publication) (*Outbox, error) {
-	outboxOnce.Do(func() {
-		outboxInstance, outboxErr = newOutbox(ctx, connStr, outputPlugin, p)
-		if outboxErr != nil {
-			return
-		}
-		outboxInstance.ActionMap = p.Actions()
-	})
-	return outboxInstance, outboxErr
+	outboxInstance, err := newOutbox(ctx, connStr, outputPlugin, p)
+	if err != nil {
+		return nil, err
+	}
+	outboxInstance.ActionMap = p.Actions()
+	return outboxInstance, nil
 }
 
 func newOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin, p Publication) (*Outbox, error) {
@@ -108,7 +101,7 @@ func newOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin,
 
 }
 
-func (o *Outbox) StartReplication() (chan struct{}, error) {
+func (o *Outbox) StartReplication(ctx context.Context) (chan struct{}, error) {
 	stopCh := make(chan struct{})
 
 	var pluginArguments []string
@@ -139,17 +132,28 @@ func (o *Outbox) StartReplication() (chan struct{}, error) {
 				return
 			default:
 			}
-			if time.Now().After(o.nextStandbyMessageDeadline) {
-				err := pglogrepl.SendStandbyStatusUpdate(context.Background(), o.conn, pglogrepl.StandbyStatusUpdate{WALWritePosition: o.clientXLogPos})
+			o.mu.Lock()
+			pastDeadline := time.Now().After(o.nextStandbyMessageDeadline)
+			walPos := o.clientXLogPos
+			o.mu.Unlock()
+
+			if pastDeadline {
+				err := pglogrepl.SendStandbyStatusUpdate(context.Background(), o.conn, pglogrepl.StandbyStatusUpdate{WALWritePosition: walPos})
 				if err != nil {
 					log.Error().Msgf("SendStandbyStatusUpdate failed: %s", err)
 				}
-				log.Debug().Msgf("Sent Standby status message at %s", o.clientXLogPos)
+				log.Debug().Msgf("Sent Standby status message at %s", walPos)
+				o.mu.Lock()
 				o.nextStandbyMessageDeadline = time.Now().Add(o.standbyMessageTimeout)
+				o.mu.Unlock()
 			}
 
-			ctx, cancel := context.WithDeadline(context.Background(), o.nextStandbyMessageDeadline)
-			rawMsg, err := o.conn.ReceiveMessage(ctx)
+			o.mu.Lock()
+			deadline := o.nextStandbyMessageDeadline
+			o.mu.Unlock()
+
+			receiveCtx, cancel := context.WithDeadline(context.Background(), deadline)
+			rawMsg, err := o.conn.ReceiveMessage(receiveCtx)
 			cancel()
 			if err != nil {
 				if pgconn.Timeout(err) {
@@ -176,12 +180,14 @@ func (o *Outbox) StartReplication() (chan struct{}, error) {
 					return
 				}
 				log.Debug().Msgf("Primary Keepalive Message => ServerWALEnd: %s ServerTime: %s ReplyRequested: %t", pkm.ServerWALEnd, pkm.ServerTime, pkm.ReplyRequested)
+				o.mu.Lock()
 				if pkm.ServerWALEnd > o.clientXLogPos {
 					o.clientXLogPos = pkm.ServerWALEnd
 				}
 				if pkm.ReplyRequested {
 					o.nextStandbyMessageDeadline = time.Time{}
 				}
+				o.mu.Unlock()
 
 			case pglogrepl.XLogDataByteID:
 				log.Debug().Msgf("RECEIVED MESSAGE: %v", msg.Data[0])
@@ -196,9 +202,11 @@ func (o *Outbox) StartReplication() (chan struct{}, error) {
 					o.processV2(ctx, xld.WALData, o.relationsV2, o.typeMap, &o.inStream)
 				}
 
+				o.mu.Lock()
 				if xld.WALStart > o.clientXLogPos {
 					o.clientXLogPos = xld.WALStart
 				}
+				o.mu.Unlock()
 			case pglogrepl.StandbyStatusUpdateByteID:
 				log.Debug().Msgf("Received StandbyStatusUpdate message")
 			}
@@ -211,6 +219,7 @@ func (o *Outbox) processV2(ctx context.Context, walData []byte, relations map[ui
 	logicalMsg, err := pglogrepl.ParseV2(walData, *inStream)
 	if err != nil {
 		log.Error().Msgf("Parse logical replication message: %s", err)
+		return
 	}
 	log.Debug().Msgf("Receive a logical replication message: %s", logicalMsg.Type())
 	switch logicalMsg := logicalMsg.(type) {

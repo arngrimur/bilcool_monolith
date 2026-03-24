@@ -129,7 +129,8 @@ func (h *httpRouter) getBooking(c *gin.Context) {
 
 	booking, err := h.queries.GetBooking(c.Request.Context(), domain.BookingRequest{BookingReference: id})
 	if err != nil {
-		NewError(c, http.StatusBadRequest, fmt.Errorf("failed to get booking"))
+		e := NewHttpError(err)
+		NewError(c, e.Code, fmt.Errorf("failed to find booking"+e.Message))
 		return
 	}
 	c.JSON(http.StatusOK, booking)
@@ -177,7 +178,8 @@ func (h *httpRouter) updateBooking(c *gin.Context) {
 	}
 	err = h.commands.UpdateBooking(c.Request.Context(), request)
 	if err != nil {
-		NewError(c, http.StatusBadRequest, fmt.Errorf("failed to update booking"))
+		e := NewHttpError(err)
+		NewError(c, e.Code, fmt.Errorf("failed to update booking"+e.Message))
 		return
 	}
 	c.Status(http.StatusAccepted)
@@ -205,13 +207,14 @@ func (h *httpRouter) deleteBooking(c *gin.Context) {
 
 	err = h.commands.DeleteBooking(c.Request.Context(), domain.BookingRequest{BookingReference: id})
 	if err != nil {
-		NewError(c, http.StatusBadRequest, fmt.Errorf("failed to delete booking"))
+		e := NewHttpError(err)
+		NewError(c, e.Code, fmt.Errorf("failed to delete booking"+e.Message))
 		return
 	}
 	c.Status(http.StatusAccepted)
 }
 
-func (h httpRouter) endBooking(c *gin.Context) {
+func (h *httpRouter) endBooking(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
@@ -228,7 +231,8 @@ func (h httpRouter) endBooking(c *gin.Context) {
 		Distance:       distance,
 	})
 	if err != nil {
-		NewError(c, http.StatusBadRequest, fmt.Errorf("failed to end booking"))
+		e := NewHttpError(err)
+		NewError(c, e.Code, fmt.Errorf("failed to end booking"+e.Message))
 		return
 	}
 	c.Status(http.StatusAccepted)

@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -39,9 +38,6 @@ func (suite *outBoxTestSuite) TearDownSuite() {
 
 }
 func (suite *outBoxTestSuite) BeforeTest(suiteName, testName string) {
-	outboxOnce = sync.Once{}
-	outboxInstance = nil
-	outboxErr = nil
 	suite.outboxDB = testdb.SetupDatabase(suite.T(), testdata.OutboxTestConnUrlTemplate, testdata.FS, "outbox_test")
 }
 func (suite *outBoxTestSuite) AfterTest(suiteName, testName string) {
@@ -74,7 +70,7 @@ func (suite *outBoxTestSuite) TestCreatePublication() {
 	}
 	outbox, err := NewOutbox(context.Background(), suite.outboxDB.ConnString, PgOutputPlugin, p)
 	suite.Require().NoError(err)
-	stopChannel, err := outbox.StartReplication()
+	stopChannel, err := outbox.StartReplication(context.Background())
 	suite.Require().NoError(err)
 	defer close(stopChannel)
 	row := suite.outboxDB.Db.QueryRow("select count(*) from pg_publication_tables")
@@ -122,7 +118,7 @@ func (suite *outBoxTestSuite) TestProcessData() {
 	}
 	o, err := NewOutbox(context.Background(), suite.outboxDB.ConnString, PgOutputPlugin, p)
 	suite.Require().NoError(err)
-	cancelF, err := o.StartReplication()
+	cancelF, err := o.StartReplication(context.Background())
 	suite.Require().NoError(err)
 	defer func() {
 		time.Sleep(3 * time.Second)

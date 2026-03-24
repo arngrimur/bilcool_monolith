@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog/log"
@@ -20,21 +21,12 @@ func (p PublicationBase) doOp(ctx context.Context, conn *pgconn.PgConn, query st
 	return err
 }
 
-func (p PublicationBase) GetPubs() string {
-	pubs := "'"
-	for _, table := range p.Tables {
-		pubs += table + ","
-	}
-	return pubs[:len(pubs)-1] + "'"
-}
-
 func (p PublicationBase) Name() string {
 	return p.PublicationName
 }
 
 type Publication interface {
 	DoOp(ctx context.Context, connection *pgconn.PgConn) error
-	GetPubs() string
 	Name() string
 	Actions() *Actions
 }
@@ -63,9 +55,9 @@ func (p CreatePublication) Actions() *Actions {
 }
 
 func (p CreatePublication) DoOp(ctx context.Context, connection *pgconn.PgConn) error {
-	q := "CREATE PUBLICATION " + p.PublicationName + " FOR TABLE "
+	q := "CREATE PUBLICATION " + quoteIdentifier(p.PublicationName) + " FOR TABLE "
 	for i, table := range p.Tables {
-		q += table
+		q += quoteIdentifier(table)
 		if i != len(p.Tables)-1 {
 			q += ","
 		}
@@ -83,23 +75,9 @@ func (p CreatePublication) DoOp(ctx context.Context, connection *pgconn.PgConn) 
 	return err
 }
 
-type AlterPublication struct {
-	PublicationBase
-}
-
-func (a AlterPublication) DoOp(ctx context.Context, connection *pgconn.PgConn) error {
-	q := "ALTER PUBLICATION " + a.PublicationName + " ADD TABLE "
-	for i, table := range a.Tables {
-		q += table
-		if i != len(a.Tables)-1 {
-			q += ","
-		}
-	}
-	q += ";"
-	err := a.doOp(ctx, connection, q)
-	if err != nil {
-		// TODO handle an expected error
-		log.Error().Err(err).Msgf("alter PublicationBase error")
-	}
-	return err
+// quoteIdentifier quotes an identifier to stop DDL injection
+//
+//	pgx.Identifier.Sanitize() is not vendored, so implement a small private helper
+func quoteIdentifier(s string) string {
+	return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
 }

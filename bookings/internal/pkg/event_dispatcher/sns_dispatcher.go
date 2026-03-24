@@ -7,14 +7,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/google/uuid"
 
-	soutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
+	soutbox_domain "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
 type SnsDispatcher[T postgres.Connector] struct {
-	ctx context.Context
-	*sns.SnsPublisher
+	sns.Publisher
 	connector T
 }
 
@@ -24,14 +23,13 @@ func NewSnsDispatcher[T postgres.Connector](ctx context.Context, connector T, aw
 		return nil, err
 	}
 	return &SnsDispatcher[T]{
-		ctx:          ctx,
-		SnsPublisher: publisher,
-		connector:    connector,
+		Publisher: publisher,
+		connector: connector,
 	}, nil
 }
 
 // Execute publish Sns Notifications that subscribers can retrieve from their personal Sqs Queue
-func (s SnsDispatcher[T]) Execute(ctx context.Context, table soutbox.Table) error {
+func (s SnsDispatcher[T]) Execute(ctx context.Context, table soutbox_domain.Table) error {
 	events, err := postgres.FindAllNewEvents(ctx, s.connector)
 	if err != nil {
 		return err
@@ -40,14 +38,14 @@ func (s SnsDispatcher[T]) Execute(ctx context.Context, table soutbox.Table) erro
 	for _, e := range events {
 		e.EmittedAt = new(time.Now())
 	}
-	messages, err := s.SendBatchMessages(ctx, events, "bookings")
+	messages, err := s.SendBatchMessages(ctx, events, sns.TopicBookings)
 	if err != nil {
 		return err
 	}
 
 	successfulEvents := make([]postgres.Event, len(messages.Successful))
 	for i, m := range messages.Successful {
-		uid, err := uuid.Parse(*m.MessageId)
+		uid, err := uuid.Parse(*m.Id)
 		if err != nil {
 			continue
 		}
@@ -55,5 +53,5 @@ func (s SnsDispatcher[T]) Execute(ctx context.Context, table soutbox.Table) erro
 			EventId: uid,
 		}
 	}
-	return postgres.MarkAsEmitted(ctx, s.connector, events)
+	return postgres.MarkAsEmitted(ctx, s.connector, successfulEvents)
 }

@@ -113,7 +113,7 @@ func (bdb BookingRepository) DeleteBooking(ctx context.Context, request domain.B
 }
 
 func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndBookingRequest) error {
-	local_bdb, tx, err := bdb.createTransaction(ctx)
+	local_bdb, tx, err := bdb.createTransaction(context.Background())
 	if err != nil {
 		return err
 	}
