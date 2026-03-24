@@ -19,6 +19,10 @@ jobs:
       - uses: arduino/setup-task@v2
         with:
           version: 3.x
+      - run: go mod tidy
+        working-directory: testing
+      - run: go mod vendor
+        working-directory: testing
       - run: task testing:build
 
   build-message-broker:
@@ -34,6 +38,10 @@ jobs:
       - uses: arduino/setup-task@v2
         with:
           version: 3.x
+      - run: go mod tidy
+        working-directory: message_broker
+      - run: go mod vendor
+        working-directory: message_broker
       - run: task message_broker:build
       - run: task message_broker:test
       - run: task message_broker:integration-test
@@ -51,5 +59,9 @@ jobs:
       - uses: arduino/setup-task@v2
         with:
           version: 3.x
+      - run: go mod tidy
+        working-directory: bookings
+      - run: go mod vendor
+        working-directory: bookings
       - run: task bookings:build
       - run: task bookings:integration-test
