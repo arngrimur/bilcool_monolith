@@ -10,17 +10,14 @@ jobs:
   build-testing:
     name: testing
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version-file: testing/go.mod
           cache-dependency-path: testing/go.sum
-      - uses: arduino/setup-task@v2
-        with:
-          version: 3.x
+      - name: Install task
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
       - run: go mod tidy
         working-directory: testing
       - run: go mod vendor
@@ -30,8 +27,6 @@ jobs:
   build-message-broker:
     name: message_broker
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     needs: build-testing
     steps:
       - uses: actions/checkout@v5
@@ -39,9 +34,8 @@ jobs:
         with:
           go-version-file: message_broker/go.mod
           cache-dependency-path: message_broker/go.sum
-      - uses: arduino/setup-task@v2
-        with:
-          version: 3.x
+      - name: Install task
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
       - run: go mod tidy
         working-directory: message_broker
       - run: go mod vendor
@@ -53,8 +47,6 @@ jobs:
   build-bookings:
     name: bookings
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     needs: [build-testing, build-message-broker]
     steps:
       - uses: actions/checkout@v5
@@ -62,9 +54,8 @@ jobs:
         with:
           go-version-file: bookings/go.mod
           cache-dependency-path: bookings/go.sum
-      - uses: arduino/setup-task@v2
-        with:
-          version: 3.x
+      - name: Install task
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
       - run: go mod tidy
         working-directory: bookings
       - run: go mod vendor
