@@ -1,3 +1,5 @@
+//go:build integration
+
 package sqs
 
 import (
@@ -95,17 +97,18 @@ func (suite *subscriberTestSuite) addEvent() {
 	suite.Require().NoError(err)
 }
 func (suite *subscriberTestSuite) AfterTest(suiteName, testName string) {
-	var (
-		n   int   = 1
-		err error = nil
-	)
-	for n > 0 {
-		messages, _ := suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
-		n, err = suite.sqsSubscriber.DeleteMessages(context.Background(), messages, "test_queue")
-	}
-	if err != nil {
-		suite.sqsSubscriber.sqsClient.PurgeQueue(suite.cloud.Ctx, &sqs.PurgeQueueInput{})
-	}
+	suite.sqsSubscriber.sqsClient.PurgeQueue(suite.cloud.Ctx, &sqs.PurgeQueueInput{})
+	//var (
+	//	n   int   = 1
+	//	err error = nil
+	//)
+	//for n > 0 {
+	//	messages, _ := suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
+	//	n, err = suite.sqsSubscriber.DeleteMessages(context.Background(), messages, "test_queue")
+	//}
+	//if err != nil {
+	//	suite.sqsSubscriber.sqsClient.PurgeQueue(suite.cloud.Ctx, &sqs.PurgeQueueInput{})
+	//}
 }
 func (suite *subscriberTestSuite) HandleStats(suiteName string, stats *suite.SuiteInformation) {
 	if !stats.Passed() {

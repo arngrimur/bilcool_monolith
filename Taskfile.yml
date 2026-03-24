@@ -35,4 +35,5 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
       - test -f go.mod
-    cmd: go test -tags=integration ./...
+    cmds:
+      - go test -tags=integration ./...
