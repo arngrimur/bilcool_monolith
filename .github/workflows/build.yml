@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.work
+          go-version-file: testing/go.mod
           cache-dependency-path: testing/go.sum
       - uses: arduino/setup-task@v2
         with:
@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.work
+          go-version-file: message_broker/go.mod
           cache-dependency-path: message_broker/go.sum
       - uses: arduino/setup-task@v2
         with:
@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.work
+          go-version-file: bookings/go.mod
           cache-dependency-path: bookings/go.sum
       - uses: arduino/setup-task@v2
         with:
