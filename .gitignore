@@ -1,3 +1,4 @@
 .idea/
 vendor
 go.work*
+**/*_mock.go

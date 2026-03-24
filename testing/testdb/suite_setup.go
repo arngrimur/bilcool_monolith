@@ -22,15 +22,15 @@ type SuiteDbIntegration struct {
 	ConnString        *url.URL
 }
 
-func (s *SuiteDbIntegration) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (s SuiteDbIntegration) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return s.Db.Exec(query, args...)
 }
 
-func (s *SuiteDbIntegration) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+func (s SuiteDbIntegration) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	return s.Db.ExecContext(ctx, query, args...)
 }
 
-func (s *SuiteDbIntegration) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+func (s SuiteDbIntegration) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	return s.Db.QueryContext(ctx, query, args...)
 }
 
