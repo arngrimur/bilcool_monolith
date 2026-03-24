@@ -6,7 +6,7 @@ tasks:
     preconditions:
       - test -f docker-compose.yaml
     cmds:
-      - docker-compose up -d 
+      - docker-compose up -d
   down:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
@@ -22,7 +22,7 @@ tasks:
     preconditions:
       - test -d bookings
       - go install github.com/swaggo/swag/cmd/swag@latest
-    cmd:  swag init -g router.go -o docs -d bookings/internal/pkg/web,bookings/internal/pkg/domain  --generatedTime
+    cmd: swag init -g router.go -o docs -d bookings/internal/pkg/web,bookings/internal/pkg/domain --generatedTime
 
   test:
     dir: '{{.USER_WORKING_DIR}}'
@@ -35,5 +35,51 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
       - test -f go.mod
+    env:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    cmds:
+      - go test -tags=integration ./...
+
+  build:
+    dir: '{{.USER_WORKING_DIR}}'
+    preconditions:
+      - test -f go.mod
+    cmds:
+      - go build ./...
+
+  testing:build:
+    dir: testing
+    cmds:
+      - go build ./...
+
+  message_broker:build:
+    dir: message_broker
+    cmds:
+      - go build ./...
+
+  message_broker:test:
+    dir: message_broker
+    cmds:
+      - go test ./...
+
+  message_broker:integration-test:
+    dir: message_broker
+    env:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    cmds:
+      - go test -tags=integration ./...
+
+  bookings:build:
+    dir: bookings
+    cmds:
+      - go build ./...
+
+  bookings:integration-test:
+    dir: bookings
+    env:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
     cmds:
       - go test -tags=integration ./...
