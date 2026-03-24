@@ -15,10 +15,11 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 
-	"github.com/arngrimur/bilcool_monolith/outbox/pkg/outbox/postgres"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
+
 	"github.com/arngrimur/bilcool_monolith/testing/testdb"
 
-	"github.com/arngrimur/bilcool_monolith/outbox/pkg/outbox/testdata"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres/testdata"
 )
 
 type outBoxTestSuite struct {
@@ -106,10 +107,10 @@ func (suite *outBoxTestSuite) TestProcessData() {
 
 	actions := NewActions()
 	insertAction := NewMockAction(mockCtrl)
-	insertAction.EXPECT().Execute(gomock.Any()).Return().Times(2)
+	insertAction.EXPECT().Execute(gomock.Any(), gomock.Any()).Times(2)
 	actions.RegisterAction(ActionInsert, insertAction)
 	commitAction := NewMockAction(mockCtrl)
-	commitAction.EXPECT().Execute(gomock.Any()).Return().Times(3)
+	commitAction.EXPECT().Execute(gomock.Any(), gomock.Any()).Times(3)
 	actions.RegisterAction(ActionCommit, commitAction)
 	p := CreatePublication{
 		PublicationBase: PublicationBase{
@@ -134,7 +135,7 @@ func (suite *outBoxTestSuite) TestProcessData() {
 	tx, err := suite.outboxDB.Db.BeginTx(context.Background(), nil)
 	suite.Require().NoError(err)
 	_, err = tx.Exec(`INSERT INTO outbox(id,event_id,type,correlation_id,producer,payload) 
-VALUES (2, $1,'commit',$2,'test',$3 )`, uuid.New(), uuid.New(), []byte("test"))
+VALUES (2, $1,'commit',$2,'test',$3 )`, uuid.New(), uuid.New(), []byte(`{"test":"data"}`))
 	suite.Require().NoError(err)
 	err = tx.Commit()
 	suite.Require().NoError(err)

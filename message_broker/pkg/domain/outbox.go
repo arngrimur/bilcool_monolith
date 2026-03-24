@@ -193,7 +193,7 @@ func (o *Outbox) StartReplication() (chan struct{}, error) {
 					log.Debug().Msgf("wal2json data: %s\n", string(xld.WALData))
 				} else {
 					log.Debug().Msgf("XLogData => WALStart %s ServerWALEnd %s ServerTime %s WALData:\n", xld.WALStart, xld.ServerWALEnd, xld.ServerTime)
-					o.processV2(xld.WALData, o.relationsV2, o.typeMap, &o.inStream)
+					o.processV2(ctx, xld.WALData, o.relationsV2, o.typeMap, &o.inStream)
 				}
 
 				if xld.WALStart > o.clientXLogPos {
@@ -207,7 +207,7 @@ func (o *Outbox) StartReplication() (chan struct{}, error) {
 	return stopCh, nil
 }
 
-func (o *Outbox) processV2(walData []byte, relations map[uint32]*pglogrepl.RelationMessageV2, typeMap *pgtype.Map, inStream *bool) {
+func (o *Outbox) processV2(ctx context.Context, walData []byte, relations map[uint32]*pglogrepl.RelationMessageV2, typeMap *pgtype.Map, inStream *bool) {
 	logicalMsg, err := pglogrepl.ParseV2(walData, *inStream)
 	if err != nil {
 		log.Error().Msgf("Parse logical replication message: %s", err)
@@ -225,7 +225,7 @@ func (o *Outbox) processV2(walData []byte, relations map[uint32]*pglogrepl.Relat
 				SchemaName: rel.Namespace,
 				TableName:  rel.RelationName,
 			}
-			executeActions(o.ActionMap.actions[ActionCommit], t)
+			executeActions(ctx, o.ActionMap.actions[ActionCommit], t)
 		}
 		break
 	case *pglogrepl.InsertMessageV2:
@@ -251,7 +251,7 @@ func (o *Outbox) processV2(walData []byte, relations map[uint32]*pglogrepl.Relat
 		}
 		log.Debug().Msgf("insert for xid %d\n", logicalMsg.Xid)
 		log.Debug().Msgf("INSERT INTO %s.%s: %v", rel.Namespace, rel.RelationName, values)
-		executeActions(o.ActionMap.actions[ActionInsert], Table{
+		executeActions(ctx, o.ActionMap.actions[ActionInsert], Table{
 			SchemaName: rel.Namespace,
 			TableName:  rel.RelationName,
 		})
@@ -292,9 +292,12 @@ func (o *Outbox) processV2(walData []byte, relations map[uint32]*pglogrepl.Relat
 	}
 }
 
-func executeActions(actions []Action, table Table) {
+func executeActions(ctx context.Context, actions []Action, table Table) {
 	for _, action := range actions {
-		action.Execute(table)
+		err := action.Execute(ctx, table)
+		if err != nil {
+			log.Error().Err(err).Msgf("failed to execute action")
+		}
 	}
 }
 

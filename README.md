@@ -49,3 +49,5 @@ The backend is written in Golang, the front-end is a single page React UI ( gene
         
     
 ```
+Each service has its own database, and a SQS queue for events. Each service uses SNS to publish events. The queues listen 
+to the SNS topics and publish the events to the SQS queues.

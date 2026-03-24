@@ -9,14 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arngrimur/bilcool_monolith/testing/testdb"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/arngrimur/bilcool_monolith/bookings/internal/migrations"
+	"github.com/arngrimur/bilcool_monolith/testing/testdb"
 
 	_ "github.com/lib/pq"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
-	"github.com/arngrimur/bilcool_monolith/bookings/migrations"
 )
 
 type bookingsTestSuite struct {

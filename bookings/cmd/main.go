@@ -6,17 +6,18 @@ import (
 	"net/url"
 	"time"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/rs/zerolog/log"
 
 	_ "github.com/lib/pq"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/config"
+	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/event_dispatcher"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance/postgresql"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/web"
-	soutbox "github.com/arngrimur/bilcool_monolith/outbox/pkg/outbox/domain"
-	coutbox "github.com/arngrimur/bilcool_monolith/outbox/pkg/outbox/postgres"
-	"github.com/arngrimur/bilcool_monolith/outbox/pkg/outbox/sqs"
+	soutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
+	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
 func main() {
@@ -39,13 +40,26 @@ func main() {
 		log.Fatal().Err(err).Msg("Error parsing database url")
 	}
 
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error loading AWS config")
+	}
+	dispatcher, err := event_dispatcher.NewSnsDispatcher[*sql.DB](ctx, psqlDb, awsCfg)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error creating SNS dispatcher")
+	}
 	outbox, err := soutbox.NewOutbox(
 		ctx,
 		dbUrl,
 		soutbox.PgOutputPlugin,
-		soutbox.NewCreatePublications("bookings_pub", "bookings", []string{coutbox.OutboxTableName}, map[soutbox.ActionName]soutbox.Action{
-			soutbox.ActionCommit: sqs.SqsPublisher{},
-		}),
+		soutbox.NewCreatePublications(
+			"bookings_pub",
+			"bookings",
+			[]string{coutbox.OutboxTableName},
+			map[soutbox.ActionName]soutbox.Action{
+				soutbox.ActionCommit: dispatcher,
+			},
+		),
 	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating outbox")

@@ -1,5 +1,7 @@
 package domain
 
+import "context"
+
 type ActionName int
 
 const (
@@ -17,9 +19,10 @@ const (
 	ActionStreamCommitMessage
 )
 
-//go:generate mockgen -source=actions.go -destination=actions_mock.go -package=outbox github.com/arngrimur/bilcool_monolith/outbox Actions
+//go:generate mockgen -source=actions.go -destination=actions_mock.go -package=domain github.com/arngrimur/bilcool_monolith/message_broker Actions
 type Action interface {
-	Execute(table Table)
+	// TODO: Add name to action for logging
+	Execute(ctx context.Context, table Table) error
 }
 
 type Actions struct {
