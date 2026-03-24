@@ -42,7 +42,7 @@ jobs:
         working-directory: message_broker
       - run: go mod vendor
         working-directory: message_broker
-      - run: task message_broker:build12
+      - run: task message_broker:build
       - run: task message_broker:test
       - run: task message_broker:integration-test
 
