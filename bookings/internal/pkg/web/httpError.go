@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
 )
 
 func NewError(ctx *gin.Context, status int, err error) {
@@ -27,6 +29,11 @@ func NewHttpError(err error) HTTPError {
 		return HTTPError{
 			Message: "not found",
 			Code:    http.StatusNotFound,
+		}
+	case domain.ErrBookingAlreadyStarted:
+		return HTTPError{
+			Message: "booking already started",
+			Code:    http.StatusUnprocessableEntity,
 		}
 	default:
 		return HTTPError{

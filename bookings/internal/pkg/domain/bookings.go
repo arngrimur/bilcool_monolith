@@ -2,10 +2,13 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+var ErrBookingAlreadyStarted = errors.New("booking has already started")
 
 type BookingResponse struct {
 	UserRef          uuid.UUID `json:"user_ref" validate:"required,uuid" example:"123e4567-e89b-12d3-a456-426655440000" type:"uuid" binding:"required,uuid"`
@@ -53,7 +56,6 @@ func (b Bookings) UpdateBooking(ctx context.Context, request UpdateBookingReques
 }
 
 func (b Bookings) DeleteBooking(ctx context.Context, request BookingRequest) error {
-	// TODO check that the booing has not started
 	return b.r.DeleteBooking(ctx, request)
 }
 

@@ -29,6 +29,7 @@ tasks:
     preconditions:
       - test -f go.mod
     cmds:
+      - go generate ./...
       - go test ./...
 
   integration-test:
@@ -39,6 +40,7 @@ tasks:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
     cmds:
+      - go generate ./...
       - go test -tags=integration ./...
 
   build:
@@ -61,6 +63,7 @@ tasks:
   message_broker:test:
     dir: message_broker
     cmds:
+      - go generate ./...
       - go test ./...
 
   message_broker:integration-test:
@@ -69,6 +72,7 @@ tasks:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
     cmds:
+      - go generate ./...
       - go test -tags=integration ./...
 
   bookings:build:
@@ -82,4 +86,12 @@ tasks:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
     cmds:
+      - go generate ./...
       - go test -tags=integration ./...
+
+  all-test:
+    cmds:
+      - task: testing:build
+      - task: message_broker:test
+      - task: message_broker:integration-test
+      - task: bookings:integration-test

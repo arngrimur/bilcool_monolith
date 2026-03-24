@@ -25,8 +25,9 @@ type bookingsTestSuite struct {
 	// region variables
 	testdb.SuiteDbIntegration
 	bookingRef uuid.UUID
-	now        time.Time
+	startTime  time.Time
 	userRef    uuid.UUID
+	endTime    time.Time
 
 	// endregion variables
 }
@@ -37,7 +38,8 @@ func (suite *bookingsTestSuite) SetupSuite() {
 	suite.bookingRef = uuid.New()
 	suite.userRef = uuid.New()
 	loc, _ := time.LoadLocation("Etc/UTC")
-	suite.now = time.Now().In(loc)
+	suite.startTime = time.Now().Add(time.Hour).In(loc)
+	suite.endTime = suite.startTime.Add(time.Hour)
 }
 
 func (suite *bookingsTestSuite) TearDownSuite() {
@@ -46,9 +48,9 @@ func (suite *bookingsTestSuite) TearDownSuite() {
 
 func (suite *bookingsTestSuite) BeforeTest(suiteName, testName string) {
 	q := "INSERT INTO bookings (booking_reference, start_date, end_date, user_ref) VALUES ($1, $2, $3, $4)"
-	_, err := suite.Db.Exec(q, suite.bookingRef, suite.now, suite.now, suite.userRef)
+	_, err := suite.Db.Exec(q, suite.bookingRef, suite.startTime, suite.endTime, suite.userRef)
 	suite.Require().NoError(err)
-	_, err = suite.Db.Exec(q, uuid.New(), suite.now, suite.now, uuid.New())
+	_, err = suite.Db.Exec(q, uuid.New(), suite.startTime, suite.endTime, uuid.New())
 	suite.Require().NoError(err)
 }
 
@@ -81,10 +83,8 @@ func (suite *bookingsTestSuite) TestGetBooking() {
 	suite.Require().NoError(err)
 	suite.Require().Equal(suite.bookingRef, booking.BookingReference, "Booking reference should be the same")
 	suite.Require().Equal(suite.userRef, booking.UserRef, "User reference should be the same")
-	suite.Require().Equal(suite.now.Truncate(time.Millisecond), booking.StartDate.Truncate(time.Millisecond), "Start date should be the same")
-
-	suite.Require().Equal(suite.bookingRef, booking.BookingReference, "Booking reference should be the same")
-	suite.Require().Equal(suite.now.Truncate(time.Millisecond), booking.EndDate.Truncate(time.Millisecond), "should be nil")
+	suite.Require().Equal(suite.startTime.Truncate(time.Millisecond), booking.StartDate.Truncate(time.Millisecond), "Start date should be the same")
+	suite.Require().Equal(suite.endTime.Truncate(time.Millisecond), booking.EndDate.Truncate(time.Millisecond), "should be nil")
 }
 
 func (suite *bookingsTestSuite) TestFindAllBookings() {
@@ -100,8 +100,8 @@ func (suite *bookingsTestSuite) TestUpdateExistingBooking() {
 	booking, _ := database.Find(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
 	err := database.UpdateBooking(context.Background(), domain.UpdateBookingRequest{
 		BookingReference: suite.bookingRef,
-		StartDate:        suite.now.Add(time.Hour),
-		EndDate:          suite.now.Add(time.Hour),
+		StartDate:        suite.startTime.Add(time.Hour),
+		EndDate:          suite.endTime.Add(time.Hour),
 		UserRef:          suite.userRef,
 	})
 	suite.Require().NoError(err)
@@ -120,16 +120,16 @@ func (suite *bookingsTestSuite) TestCreateNewBooking() {
 
 	err = database.UpdateBooking(context.Background(), domain.UpdateBookingRequest{
 		BookingReference: bookingRef,
-		StartDate:        suite.now.Add(time.Hour).Truncate(time.Second),
-		EndDate:          suite.now.Add(time.Hour).Truncate(time.Second),
+		StartDate:        suite.startTime.Add(4 * time.Hour).Truncate(time.Second),
+		EndDate:          suite.endTime.Add(4 * time.Hour).Truncate(time.Second),
 		UserRef:          userRef,
 	})
 	suite.Require().NoError(err)
 
 	booking2, _ := database.Find(context.Background(), domain.BookingRequest{BookingReference: bookingRef})
 	suite.Require().Equal(booking2.BookingReference, bookingRef, "Booking reference should be the same")
-	suite.Require().WithinDuration(booking2.StartDate, suite.now, time.Hour+time.Minute, "Start date should be the same")
-	suite.Require().WithinDuration(booking2.EndDate, suite.now, time.Hour+time.Minute, "Start date should be the same")
+	suite.Require().WithinDuration(booking2.StartDate, suite.startTime, 4*time.Hour+time.Minute, "Start date should be the same")
+	suite.Require().WithinDuration(booking2.EndDate, suite.endTime, 4*time.Hour+time.Minute, "Start date should be the same")
 }
 
 func (suite *bookingsTestSuite) TestDeleteBooking() {
@@ -140,6 +140,18 @@ func (suite *bookingsTestSuite) TestDeleteBooking() {
 	suite.Require().Error(err)
 	err = database.DeleteBooking(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
 	suite.Require().Error(err)
+}
+
+func (suite *bookingsTestSuite) TestDeleteBookingThatHasStarted() {
+	ref := uuid.New()
+	q := "INSERT INTO bookings (booking_reference, start_date, end_date, user_ref) VALUES ($1, $2, $3, $4)"
+	_, err := suite.Db.Exec(q, ref, suite.startTime.Add(-4*time.Hour), suite.endTime, suite.userRef)
+	suite.Require().NoError(err)
+
+	database := NewBookingsRepository(suite.Db)
+	err = database.DeleteBooking(context.Background(), domain.BookingRequest{BookingReference: ref})
+	suite.Require().Error(err)
+
 }
 
 func (suite *bookingsTestSuite) TestBookingCanBeUpdated() {

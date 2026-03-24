@@ -97,7 +97,7 @@ RETURNING booking_reference`
 }
 
 func (bdb BookingRepository) DeleteBooking(ctx context.Context, request domain.BookingRequest) error {
-	const query = `DELETE FROM bookings WHERE booking_reference = $1`
+	const query = `DELETE FROM bookings WHERE booking_reference = $1 AND start_date > NOW()`
 	result, err := bdb.ExecContext(ctx, query, request.BookingReference)
 	if err != nil {
 		return err
@@ -107,6 +107,14 @@ func (bdb BookingRepository) DeleteBooking(ctx context.Context, request domain.B
 		return err
 	}
 	if rowsAffected != 1 {
+		var started bool
+		err = bdb.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM bookings WHERE booking_reference = $1 AND start_date <= NOW())`, request.BookingReference).Scan(&started)
+		if err != nil {
+			return err
+		}
+		if started {
+			return domain.ErrBookingAlreadyStarted
+		}
 		return fmt.Errorf("no booking found with reference %s", request.BookingReference)
 	}
 	return nil
