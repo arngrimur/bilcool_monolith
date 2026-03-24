@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
-	outbox "github.com/arngrimur/bilcool_monolith/outbox/pkg/outbox/postgres"
+	outbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
 type BookingRepository struct {

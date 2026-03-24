@@ -22,6 +22,18 @@ type SuiteDbIntegration struct {
 	ConnString        *url.URL
 }
 
+func (s SuiteDbIntegration) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return s.Db.Exec(query, args...)
+}
+
+func (s SuiteDbIntegration) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	return s.Db.ExecContext(ctx, query, args...)
+}
+
+func (s SuiteDbIntegration) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return s.Db.QueryContext(ctx, query, args...)
+}
+
 // SetupDatabase sets up a database for testing.
 // connUrl is a template for the database connection URL in form "postgres://postgres:postgres@localhost:%s/bookings?sslmode=disable"
 // fs is a reference to the migrations files
@@ -61,6 +73,9 @@ func SetupDatabase(t *testing.T, connUrl string, fs embed.FS, dbName string) Sui
 
 	dbMate := NewDBMate(t, WithEmbeddedFs(fs))
 	err = dbMate.Migrate(suiteDb.Db, u)
+	if err != nil && err.Error() == "no migration files found" {
+		return suiteDb
+	}
 	require.NoError(t, err)
 	return suiteDb
 

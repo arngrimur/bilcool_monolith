@@ -9,14 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arngrimur/bilcool_monolith/testing/testdb"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 
+	"github.com/arngrimur/bilcool_monolith/bookings/internal/migrations"
+	"github.com/arngrimur/bilcool_monolith/testing/testdb"
+
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance/postgresql"
-	"github.com/arngrimur/bilcool_monolith/bookings/migrations"
 )
 
 type applicationTestSuite struct {
