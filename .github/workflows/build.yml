@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-testing:
+    name: testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache-dependency-path: testing/go.sum
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+      - run: task testing:build
+
+  build-message-broker:
+    name: message_broker
+    runs-on: ubuntu-latest
+    needs: build-testing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache-dependency-path: message_broker/go.sum
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+      - run: task message_broker:build
+      - run: task message_broker:test
+      - run: task message_broker:integration-test
+
+  build-bookings:
+    name: bookings
+    runs-on: ubuntu-latest
+    needs: [build-testing, build-message-broker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache-dependency-path: bookings/go.sum
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+      - run: task bookings:build
+      - run: task bookings:integration-test
