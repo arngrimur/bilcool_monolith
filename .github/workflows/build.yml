@@ -5,43 +5,75 @@ on:
     branches: [main]
 
 jobs:
+  vendor:
+    name: vendor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Install task
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+      - name: Cache vendor directories
+        id: cache-vendor
+        uses: actions/cache@v4
+        with:
+          path: |
+            testing/vendor
+            message_broker/vendor
+            bookings/vendor
+          key: vendor-${{ hashFiles('testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+      - name: Vendor dependencies
+        if: steps.cache-vendor.outputs.cache-hit != 'true'
+        run: task vendor
+
   build-testing:
     name: testing
     runs-on: ubuntu-latest
+    needs: vendor
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version-file: testing/go.mod
-          cache-dependency-path: testing/go.sum
+          cache: false
       - name: Install task
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
       - name: Install mockgen
         run: go install github.com/golang/mock/mockgen@latest
-      - run: go mod tidy
-        working-directory: testing
-      - run: go mod vendor
-        working-directory: testing
+      - name: Restore vendor cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            testing/vendor
+            message_broker/vendor
+            bookings/vendor
+          key: vendor-${{ hashFiles('testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
       - run: task testing:build
 
   build-message-broker:
     name: message_broker
     runs-on: ubuntu-latest
-    needs: build-testing
+    needs: [vendor, build-testing]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version-file: message_broker/go.mod
-          cache-dependency-path: message_broker/go.sum
+          cache: false
       - name: Install task
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
       - name: Install mockgen
         run: go install github.com/golang/mock/mockgen@latest
-      - run: go mod tidy
-        working-directory: message_broker
-      - run: go mod vendor
-        working-directory: message_broker
+      - name: Restore vendor cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            testing/vendor
+            message_broker/vendor
+            bookings/vendor
+          key: vendor-${{ hashFiles('testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
       - run: task message_broker:build
       - run: task message_broker:test
       - run: task message_broker:integration-test
@@ -49,20 +81,24 @@ jobs:
   build-bookings:
     name: bookings
     runs-on: ubuntu-latest
-    needs: [build-testing, build-message-broker]
+    needs: [vendor, build-testing, build-message-broker]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version-file: bookings/go.mod
-          cache-dependency-path: bookings/go.sum
+          cache: false
       - name: Install task
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
       - name: Install mockgen
         run: go install github.com/golang/mock/mockgen@latest
-      - run: go mod tidy
-        working-directory: bookings
-      - run: go mod vendor
-        working-directory: bookings
+      - name: Restore vendor cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            testing/vendor
+            message_broker/vendor
+            bookings/vendor
+          key: vendor-${{ hashFiles('testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
       - run: task bookings:build
       - run: task bookings:integration-test

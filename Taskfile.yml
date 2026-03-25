@@ -95,3 +95,27 @@ tasks:
       - task: message_broker:test
       - task: message_broker:integration-test
       - task: bookings:integration-test
+
+  vendor:
+    cmds:
+      - task: testing:vendor
+      - task: message_broker:vendor
+      - task: bookings:vendor
+
+  testing:vendor:
+    dir: testing
+    cmds:
+      - go mod tidy
+      - go mod vendor
+
+  message_broker:vendor:
+    dir: message_broker
+    cmds:
+      - go mod tidy
+      - go mod vendor
+
+  bookings:vendor:
+    dir: bookings
+    cmds:
+      - go mod tidy
+      - go mod vendor
