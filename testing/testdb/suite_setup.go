@@ -46,19 +46,17 @@ func SetupDatabase(t *testing.T, fs embed.FS, dbName string) SuiteDbIntegration 
 
 	var err error
 
-	withDummyPort, err := url.Parse(fmt.Sprintf(connUrl, "1", dbName))
-	require.NoError(t, err)
-
 	suiteDb.PostgresContainer, err = testcontainers.Run(
 		suiteDb.Ctx, "postgres:18",
 		testcontainers.WithExposedPorts("5432/tcp"),
 		testcontainers.WithWaitStrategy(
 			wait.ForListeningPort("5432/tcp"),
 			wait.ForLog("database system is ready to accept connections"),
+			wait.ForExposedPort(),
+			wait.ForMappedPort("5432/tcp"),
 		),
 		testcontainers.WithName(dbName),
-		testcontainers.WithEnv(map[string]string{"POSTGRES_PASSWORD": "postgres", "POSTGRES_USER": "postgres", "POSTGRES_DB": withDummyPort.Path[1:]}),
-		//"-c wal_level=logical -c max_wal_senders=5 -c max_replication_slots=5"
+		testcontainers.WithEnv(map[string]string{"POSTGRES_PASSWORD": "postgres", "POSTGRES_USER": "postgres", "POSTGRES_DB": dbName}),
 		testcontainers.WithConfigModifier(func(config *container.Config) {
 			config.Cmd = []string{"-c", "wal_level=logical", "-c", "max_wal_senders=5", "-c", "max_replication_slots=5"}
 		}),
@@ -78,7 +76,7 @@ func SetupDatabase(t *testing.T, fs embed.FS, dbName string) SuiteDbIntegration 
 	if err != nil && err.Error() == "no migration files found" {
 		return suiteDb
 	}
-	require.NoError(t, err)
+	require.NoError(t, err, "error migrating database ", err.Error())
 	return suiteDb
 
 }
