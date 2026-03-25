@@ -100,24 +100,5 @@ tasks:
 
   vendor:
     cmds:
-      - task: testing:vendor
-      - task: message_broker:vendor
-      - task: bookings:vendor
-
-  testing:vendor:
-    dir: testing
-    cmds:
-      - go mod tidy
-      - go mod vendor
-
-  message_broker:vendor:
-    dir: message_broker
-    cmds:
-      - go mod tidy
-      - go mod vendor
-
-  bookings:vendor:
-    dir: bookings
-    cmds:
-      - go mod tidy
-      - go mod vendor
+      - go work init . ./bookings ./message_broker ./testing
+      - go work vendor

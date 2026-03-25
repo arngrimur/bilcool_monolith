@@ -20,11 +20,8 @@ jobs:
         id: cache-vendor
         uses: actions/cache@v5
         with:
-          path: |
-            testing/vendor
-            message_broker/vendor
-            bookings/vendor
-          key: vendor-${{ hashFiles('testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+          path: vendor
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
       - name: Vendor dependencies
         if: steps.cache-vendor.outputs.cache-hit != 'true'
         run: task vendor
@@ -46,11 +43,10 @@ jobs:
       - name: Restore vendor cache
         uses: actions/cache@v5
         with:
-          path: |
-            testing/vendor
-            message_broker/vendor
-            bookings/vendor
-          key: vendor-${{ hashFiles('testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+          path: vendor
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+      - name: Initialize workspace
+        run: go work init . ./bookings ./message_broker ./testing
       - run: task testing:build
 
   build-message-broker:
@@ -70,11 +66,10 @@ jobs:
       - name: Restore vendor cache
         uses: actions/cache@v5
         with:
-          path: |
-            testing/vendor
-            message_broker/vendor
-            bookings/vendor
-          key: vendor-${{ hashFiles('testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+          path: vendor
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+      - name: Initialize workspace
+        run: go work init . ./bookings ./message_broker ./testing
       - run: task message_broker:build
       - run: task message_broker:test
       - run: task message_broker:integration-test
@@ -96,10 +91,9 @@ jobs:
       - name: Restore vendor cache
         uses: actions/cache@v5
         with:
-          path: |
-            testing/vendor
-            message_broker/vendor
-            bookings/vendor
-          key: vendor-${{ hashFiles('testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+          path: vendor
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+      - name: Initialize workspace
+        run: go work init . ./bookings ./message_broker ./testing
       - run: task bookings:build
       - run: task bookings:integration-test
