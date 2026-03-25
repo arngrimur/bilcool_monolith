@@ -78,7 +78,7 @@ func SetupDatabase(t *testing.T, fs embed.FS, dbName string) SuiteDbIntegration 
 	if err != nil && err.Error() == "no migration files found" {
 		return suiteDb
 	}
-	require.NoError(t, err)
+	require.NoError(t, err, "error migrating database ", err.Error())
 	return suiteDb
 
 }
