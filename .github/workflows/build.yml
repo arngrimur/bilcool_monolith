@@ -36,9 +36,9 @@ jobs:
           cache-dependency-path: message_broker/go.sum
       - name: Install task
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
-      - run: go mod tidy
       - name: Install mockgen
         run: go install github.com/golang/mock/mockgen@latest
+      - run: go mod tidy
         working-directory: message_broker
       - run: go mod vendor
         working-directory: message_broker
