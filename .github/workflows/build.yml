@@ -17,7 +17,7 @@ jobs:
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
       - name: Cache vendor directories
         id: cache-vendor
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             testing/vendor

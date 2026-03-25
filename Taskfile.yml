@@ -48,11 +48,13 @@ tasks:
     preconditions:
       - test -f go.mod
     cmds:
+      - go generate ./...
       - go build ./...
 
   testing:build:
     dir: testing
     cmds:
+      - go generate ./...
       - go build ./...
 
   message_broker:build:
