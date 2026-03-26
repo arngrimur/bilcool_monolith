@@ -4,7 +4,6 @@ vars:
   COVERAGE_OUTPUT_DIR: /tmp/coverage
   COVERAGE_OUTPUT_FILE: coverage.out
   COVERAGE_OUTPUT_HTML: coverage.html
-  COVERAGE_PARAMS:
 
 tasks:
   up:
@@ -36,7 +35,7 @@ tasks:
       - test -f go.mod
     cmds:
       - go generate ./...
-      - go test {{COVERAGE_PARAMS}} ./...
+      - go test ./...
 
   integration-test:
     dir: '{{.USER_WORKING_DIR}}'
@@ -47,7 +46,7 @@ tasks:
       AWS_SECRET_ACCESS_KEY: test
     cmds:
       - go generate ./...
-      - go test -tags=integration {{COVERAGE_PARAMS}} ./...
+      - go test -tags=integration ./...
 
   build:
     dir: '{{.USER_WORKING_DIR}}'
@@ -72,7 +71,7 @@ tasks:
     dir: message_broker
     cmds:
       - go generate ./...
-      - go test {{COVERAGE_PARAMS}} ./...
+      - go test ./...
 
   message_broker:integration-test:
     dir: message_broker
@@ -81,7 +80,7 @@ tasks:
       AWS_SECRET_ACCESS_KEY: test
     cmds:
       - go generate ./...
-      - go test -tags=integration {{COVERAGE_PARAMS}} ./...
+      - go test -tags=integration ./...
 
   bookings:build:
     dir: bookings
@@ -95,7 +94,7 @@ tasks:
       AWS_SECRET_ACCESS_KEY: test
     cmds:
       - go generate ./...
-      - go test -tags=integration {{COVERAGE_PARAMS}} ./...
+      - go test -tags=integration ./...
 
   test-all:
     cmds:
