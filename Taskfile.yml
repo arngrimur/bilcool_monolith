@@ -1,5 +1,11 @@
 version: '3'
 
+vars:
+  COVERAGE_OUTPUT_DIR: /tmp/coverage
+  COVERAGE_OUTPUT_FILE: coverage.out
+  COVERAGE_OUTPUT_HTML: coverage.html
+  COVERAGE_PARAMS:
+
 tasks:
   up:
     dir: '{{.USER_WORKING_DIR}}'
@@ -30,7 +36,7 @@ tasks:
       - test -f go.mod
     cmds:
       - go generate ./...
-      - go test ./...
+      - go test {{COVERAGE_PARAMS}} ./...
 
   integration-test:
     dir: '{{.USER_WORKING_DIR}}'
@@ -41,7 +47,7 @@ tasks:
       AWS_SECRET_ACCESS_KEY: test
     cmds:
       - go generate ./...
-      - go test -tags=integration ./...
+      - go test -tags=integration {{COVERAGE_PARAMS}} ./...
 
   build:
     dir: '{{.USER_WORKING_DIR}}'
@@ -66,7 +72,7 @@ tasks:
     dir: message_broker
     cmds:
       - go generate ./...
-      - go test ./...
+      - go test {{COVERAGE_PARAMS}} ./...
 
   message_broker:integration-test:
     dir: message_broker
@@ -75,7 +81,7 @@ tasks:
       AWS_SECRET_ACCESS_KEY: test
     cmds:
       - go generate ./...
-      - go test -tags=integration ./...
+      - go test -tags=integration {{COVERAGE_PARAMS}} ./...
 
   bookings:build:
     dir: bookings
@@ -89,9 +95,9 @@ tasks:
       AWS_SECRET_ACCESS_KEY: test
     cmds:
       - go generate ./...
-      - go test -tags=integration ./...
+      - go test -tags=integration {{COVERAGE_PARAMS}} ./...
 
-  all-test:
+  test-all:
     cmds:
       - task: testing:build
       - task: message_broker:test
@@ -102,3 +108,27 @@ tasks:
     cmds:
       - go work init . ./bookings ./message_broker ./testing
       - go work vendor
+
+  coverage-all:
+    dir: '{{.USER_WORKING_DIR}}'
+    env:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    vars:
+      MB_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_unit.out"
+      MB_INT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_int.out"
+      BK_INT: "{{.COVERAGE_OUTPUT_DIR}}/bookings_int.out"
+      MERGED: "{{.COVERAGE_OUTPUT_DIR}}/{{.COVERAGE_OUTPUT_FILE}}"
+      HTML: "{{.COVERAGE_OUTPUT_DIR}}/{{.COVERAGE_OUTPUT_HTML}}"
+    cmds:
+      - mkdir -p {{.COVERAGE_OUTPUT_DIR}}
+      - cd message_broker && go generate ./... && go test -coverprofile={{.MB_UNIT}} -covermode=atomic -coverpkg=./... ./...
+      - cd message_broker && go test -tags=integration -coverprofile={{.MB_INT}} -covermode=atomic -coverpkg=./... ./...
+      - cd bookings && go generate ./... && go test -tags=integration -coverprofile={{.BK_INT}} -covermode=atomic -coverpkg=./... ./...
+      - "printf 'mode: atomic\\n' > {{.MERGED}}"
+      - "tail -n +2 {{.MB_UNIT}} >> {{.MERGED}}"
+      - "tail -n +2 {{.MB_INT}} >> {{.MERGED}}"
+      - "tail -n +2 {{.BK_INT}} >> {{.MERGED}}"
+      - go tool cover -html={{.MERGED}} -o {{.HTML}}
+      - echo "Coverage profile -> {{.MERGED}}"
+      - echo "HTML report      -> {{.HTML}}"

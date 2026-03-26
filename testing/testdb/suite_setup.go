@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"math/rand/v2"
 	"net/url"
 	"testing"
 
@@ -55,7 +56,7 @@ func SetupDatabase(t *testing.T, fs embed.FS, dbName string) SuiteDbIntegration 
 			wait.ForExposedPort(),
 			wait.ForMappedPort("5432/tcp"),
 		),
-		testcontainers.WithName(dbName),
+		testcontainers.WithName(fmt.Sprintf("%s_%d", dbName, rand.Int())),
 		testcontainers.WithEnv(map[string]string{"POSTGRES_PASSWORD": "postgres", "POSTGRES_USER": "postgres", "POSTGRES_DB": dbName}),
 		testcontainers.WithConfigModifier(func(config *container.Config) {
 			config.Cmd = []string{"-c", "wal_level=logical", "-c", "max_wal_senders=5", "-c", "max_replication_slots=5"}
