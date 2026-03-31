@@ -15,34 +15,41 @@ import (
 )
 
 type SqsSubscriber struct {
-	sqsClient *aws_sqs.Client
+	sqsClient         *aws_sqs.Client
+	visibilityTimeout int32
+	waitTimeout       int32
+	queueUrl          *aws_sqs.GetQueueUrlOutput
 }
 
-func NewSubscriber(ctx context.Context, c aws.Config) *SqsSubscriber {
-	return &SqsSubscriber{
-		sqsClient: aws_sqs.NewFromConfig(c),
+func NewSubscriber(ctx context.Context, c aws.Config, queueName string) (*SqsSubscriber, error) {
+	s := &SqsSubscriber{
+		sqsClient:         aws_sqs.NewFromConfig(c),
+		visibilityTimeout: 10,
+		waitTimeout:       10,
 	}
-}
-
-func (s *SqsSubscriber) RetrieveMessages(ctx context.Context, queueName string) (map[string]postgres.MessageBody, error) {
 	url, err := s.sqsClient.GetQueueUrl(ctx, &aws_sqs.GetQueueUrlInput{QueueName: &queueName})
 	if err != nil {
 		return nil, err
 	}
+	s.queueUrl = url
+	return s, nil
+}
+
+func (s *SqsSubscriber) RetrieveMessages(ctx context.Context) ([]postgres.Message, error) {
 	sqsMessages, err := s.sqsClient.ReceiveMessage(ctx, &aws_sqs.ReceiveMessageInput{
-		QueueUrl:                    url.QueueUrl,
+		QueueUrl:                    s.queueUrl.QueueUrl,
 		MaxNumberOfMessages:         10,
 		MessageAttributeNames:       nil,
 		MessageSystemAttributeNames: nil,
 		ReceiveRequestAttemptId:     nil,
-		VisibilityTimeout:           10,
-		WaitTimeSeconds:             10,
+		VisibilityTimeout:           s.visibilityTimeout,
+		WaitTimeSeconds:             s.waitTimeout,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	events := make(map[string]postgres.MessageBody)
+	events := make([]postgres.Message, 0)
 	for _, message := range sqsMessages.Messages {
 		m := postgres.MessageBody{}
 		md5Sum := md5.Sum([]byte(*message.Body))
@@ -57,30 +64,30 @@ func (s *SqsSubscriber) RetrieveMessages(ctx context.Context, queueName string) 
 			}
 			l.Msg("Unmarshal failed")
 		}
-		events[*message.ReceiptHandle] = m
+
+		events = append(events, postgres.Message{
+			ReceiptHandle: *message.ReceiptHandle,
+			MessageBody:   m,
+		})
 	}
 	return events, nil
 }
 
 // DeleteMessages deletes the messages from the queue
 // returns the number of messages deleted and an error if something went wrong
-func (s *SqsSubscriber) DeleteMessages(ctx context.Context, messages map[string]postgres.MessageBody, queueName string) (int, error) {
+func (s *SqsSubscriber) DeleteMessages(ctx context.Context, messages []postgres.Message) (int, error) {
 	if len(messages) > 10 {
 		return 0, fmt.Errorf("too many messages to delete, max 10 is allowed")
 	}
 	if len(messages) == 0 {
 		return 0, nil
 	}
-	url, err := s.sqsClient.GetQueueUrl(ctx, &aws_sqs.GetQueueUrlInput{QueueName: &queueName})
-	if err != nil {
-		return 0, err
-	}
 
 	receiptHandles := make([]string, 0, len(messages))
-	for k := range messages {
-		receiptHandles = append(receiptHandles, k)
+	for _, k := range messages {
+		receiptHandles = append(receiptHandles, k.ReceiptHandle)
 	}
-	return s.deleteBatch(ctx, receiptHandles, url)
+	return s.deleteBatch(ctx, receiptHandles, s.queueUrl)
 
 }
 
@@ -96,5 +103,12 @@ func (s *SqsSubscriber) deleteBatch(ctx context.Context, receiptHandles []string
 		Entries:  entries,
 		QueueUrl: url.QueueUrl,
 	})
-	return len(result.Successful), err
+	if err != nil {
+		return 0, nil
+	}
+	return len(result.Successful), nil
+}
+
+func (s *SqsSubscriber) VisibilityTimeout() int {
+	return int(s.visibilityTimeout)
 }

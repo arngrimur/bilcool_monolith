@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
+	extdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 )
 
 type GetBookingsHandler struct {
@@ -16,10 +17,10 @@ func NewGetBookingsHandler(bookings *domain.Bookings) GetBookingsHandler {
 	}
 }
 
-func (h GetBookingsHandler) GetBooking(ctx context.Context, b domain.BookingRequest) (domain.BookingResponse, error) {
+func (h GetBookingsHandler) GetBooking(ctx context.Context, b domain.BookingRequest) (extdomain.BookingResponse, error) {
 	return h.Bookings.Find(ctx, b)
 }
 
-func (h GetBookingsHandler) GetAllBooking(ctx context.Context) ([]domain.BookingResponse, error) {
+func (h GetBookingsHandler) GetAllBooking(ctx context.Context) ([]extdomain.BookingResponse, error) {
 	return h.Bookings.FindAll(ctx)
 }

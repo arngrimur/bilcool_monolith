@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,40 +17,42 @@ import (
 	"github.com/swaggo/files"
 	"github.com/swaggo/gin-swagger"
 
+	extdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 	_ "github.com/arngrimur/bilcool_monolith/docs"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
 )
 
-// @title          BilCool REST API
-// @version         1.0
-// @description     The REST API for BilCool to book and view bookings and other stuff.
-// @termsOfService  http://swagger.io/terms/
+// @title BilCool REST API
+// @version 1.0
+// @description The REST API for BilCool to book and view bookings and other stuff.
+// @termsOfService http://swagger.io/terms/
 
-// @contact.name   API Support
-// @contact.url    http://www.swagger.io/support
-// @contact.email  support@swagger.io
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
 
-// @license.name  Apache 2.0
-// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
 // @host localhost:8080
-// @BasePath  /api/v1
+// @BasePath /api/v1
 
-// @securityDefinitions.basic  None
+// @securityDefinitions.basic None
 
-// @externalDocs.description  OpenAPI
-// @externalDocs.url          https://swagger.io/resources/open-api/
-type httpRouter struct {
+// HttpRouter
+// @externalDocs.description OpenAPI
+// @externalDocs.url https://swagger.io/resources/open-api/
+type HttpRouter struct {
 	router   *gin.Engine
 	queries  application.Queries
 	commands application.Commands
 }
 
-func NewRouter(q application.Queries, c application.Commands) *httpRouter {
+func NewRouter(q application.Queries, c application.Commands) *HttpRouter {
 	engine := gin.Default()
-	h := &httpRouter{
+	h := &HttpRouter{
 		queries:  q,
 		commands: c,
 		router:   engine,
@@ -61,7 +64,7 @@ func NewRouter(q application.Queries, c application.Commands) *httpRouter {
 	return h
 }
 
-func internalRoutes(h *httpRouter) {
+func internalRoutes(h *HttpRouter) {
 	h.router.GET("/ping", func(c *gin.Context) {
 		c.String(http.StatusOK, "pong")
 	})
@@ -69,18 +72,18 @@ func internalRoutes(h *httpRouter) {
 	h.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }
 
-func queryRoutes(h *httpRouter) {
+func queryRoutes(h *HttpRouter) {
 	h.router.GET("/api/v1/bookings", h.getAllBookings)
 	h.router.GET("/api/v1/bookings/:id", h.getBooking)
 }
 
-func commandRoutes(h *httpRouter) {
+func commandRoutes(h *HttpRouter) {
 	h.router.PUT("/api/v1/bookings", h.updateBooking)
 	h.router.DELETE("/api/v1/bookings/:id", h.deleteBooking)
 	h.router.POST("/api/v1/bookings/:id/end", h.endBooking)
 }
 
-func (h *httpRouter) StartRouter(addr string) error {
+func (h *HttpRouter) StartRouter(addr string) error {
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      h.router,
@@ -89,14 +92,13 @@ func (h *httpRouter) StartRouter(addr string) error {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// Start server in a goroutine
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Err(err).Msg("failed to start server")
 		}
 	}()
 
-	// Wait for interrupt signal for graceful shutdown
+	// Wait for the interrupt signal for graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -110,17 +112,17 @@ func (h *httpRouter) StartRouter(addr string) error {
 
 // GetBooking godoc
 // @Summary Show a booking
-// @Description  get booking by booking reference
-// @Tags         bookings
-// @Accept       json
-// @Produce json
+// @Description get booking by booking reference
+// @Tags bookings
+// @Accept JSON
+// @Produce JSON
 // @Param id path uuid.UUID true "Booking reference"
-// @Success 200  {object}  domain.BookingResponse
-// @Failure 400  {object}  HTTPError
-// @Failure 404  {object}  HTTPError
-// @Failure 500  {object}  HTTPError
-// @Router       /bookings/{id} [get]
-func (h *httpRouter) getBooking(c *gin.Context) {
+// @Success 200 {object} domain.BookingResponse
+// @Failure 400 {object} HTTPError
+// @Failure 404 {object} HTTPError
+// @Failure 500 {object} HTTPError
+// @Router /bookings/{id} [get]
+func (h *HttpRouter) getBooking(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
@@ -138,16 +140,16 @@ func (h *httpRouter) getBooking(c *gin.Context) {
 
 // GetAllBookings godoc
 // @Summary List all bookings
-// @Description  get all booking
-// @Tags         bookings
-// @Accept       json
-// @Produce json
-// @Success 200  {array}   domain.BookingResponse
-// @Failure 400  {object}  HTTPError
-// @Failure 404  {object}  HTTPError
-// @Failure 500  {object}  HTTPError
-// @Router       /bookings [get]
-func (h *httpRouter) getAllBookings(c *gin.Context) {
+// @Description get all booking
+// @Tags bookings
+// @Accept JSON
+// @Produce JSON
+// @Success 200 {array} domain.BookingResponse
+// @Failure 400 {object} HTTPError
+// @Failure 404 {object} HTTPError
+// @Failure 500 {object} HTTPError
+// @Router /bookings [get]
+func (h *HttpRouter) getAllBookings(c *gin.Context) {
 	bookings, err := h.queries.GetAllBooking(c.Request.Context())
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get all bookings")
@@ -159,17 +161,17 @@ func (h *httpRouter) getAllBookings(c *gin.Context) {
 }
 
 // updateBooking godoc
-// @Description  Update or add a new booking
-// @Tags         bookings
-// @Accept       json
-// @Produce json
-// @BParam   body   domain.UpdateBookingRequest  true  "Booking to update"
+// @Description Update or add a new booking
+// @Tags bookings
+// @Accept JSON
+// @Produce JSON
+// @BParam body domain.UpdateBookingRequest true "Booking to update"
 // @Success 202
-// @Failure 400  {object}  HTTPError
-// @Failure 404  {object}  HTTPError
-// @Failure 500  {object}  HTTPError
-// @Router       /bookings [post]
-func (h *httpRouter) updateBooking(c *gin.Context) {
+// @Failure 400 {object} HTTPError
+// @Failure 404 {object} HTTPError
+// @Failure 500 {object} HTTPError
+// @Router /bookings [post]
+func (h *HttpRouter) updateBooking(c *gin.Context) {
 	request := domain.UpdateBookingRequest{}
 	err := c.ShouldBindBodyWithJSON(&request)
 	if err != nil {
@@ -187,18 +189,18 @@ func (h *httpRouter) updateBooking(c *gin.Context) {
 
 // deleteooking godoc
 // @Summary Delete a booking
-// @Description  delete booking by booking reference
-// @Tags         bookings
-// @Accept       json
-// @Produce json
+// @Description delete booking by booking reference
+// @Tags bookings
+// @Accept JSON
+// @Produce JSON
 // @Param id path uuid.UUID true "Booking reference"
 // @Success 202
-// @Failure 400  {object}  HTTPError
-// @Failure 404  {object}  HTTPError
-// @Failure 500  {object}  HTTPError
-// @Router       /bookings/{id} [delete]
+// @Failure 400 {object} HTTPError
+// @Failure 404 {object} HTTPError
+// @Failure 500 {object} HTTPError
+// @Router /bookings/{id} [delete]
 
-func (h *httpRouter) deleteBooking(c *gin.Context) {
+func (h *HttpRouter) deleteBooking(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
@@ -214,13 +216,13 @@ func (h *httpRouter) deleteBooking(c *gin.Context) {
 	c.Status(http.StatusAccepted)
 }
 
-func (h *httpRouter) endBooking(c *gin.Context) {
+func (h *HttpRouter) endBooking(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
 		return
 	}
-	distance := domain.Distance{}
+	distance := extdomain.Distance{}
 	err = c.ShouldBindBodyWithJSON(&distance)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})

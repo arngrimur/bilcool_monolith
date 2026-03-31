@@ -18,8 +18,8 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/migrations"
-	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
-	outbox_domain "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
+	extdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
+	outboxdomain "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 	"github.com/arngrimur/bilcool_monolith/testing/aws"
@@ -77,14 +77,14 @@ func (suite *snsDispatcherTestSuite) TestSendBatchMessages() {
 	events := []postgres.Event{}
 	eventIds := []string{}
 	for i := 0; i < 11; i++ {
-		b := domain.CompletedBooking{
-			Booking: domain.BookingResponse{
+		b := extdomain.CompletedBooking{
+			Booking: extdomain.BookingResponse{
 				UserRef:          uuid.New(),
 				BookingReference: uuid.New(),
 				StartDate:        time.Now().Add(time.Duration(-(i + 1)) * time.Hour),
 				EndDate:          time.Now(),
 			},
-			Distance: domain.Distance{
+			Distance: extdomain.Distance{
 				StartDistance: 100,
 				EndDistance:   200,
 			},
@@ -148,7 +148,7 @@ func (suite *snsDispatcherTestSuite) TestExecuteSendOnlySuccessful() {
 	snsMock.EXPECT().SendBatchMessages(gomock.Any(), gomock.Any(), gomock.Any()).Return(&out, nil).Times(1)
 	dispatcher.Publisher = snsMock
 
-	err = dispatcher.Execute(context.Background(), outbox_domain.Table{TableName: "outbox"})
+	err = dispatcher.Execute(context.Background(), outboxdomain.Table{TableName: "outbox"})
 	suite.Require().NoError(err)
 	cnt := -1
 	q := "select count(*) from outbox where emitted_at IS NULL"

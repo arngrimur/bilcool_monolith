@@ -6,6 +6,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application/commands"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application/queries"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
+	extdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 )
 
 // The interfaces supported by the application
@@ -22,8 +23,8 @@ type (
 	}
 
 	Queries interface {
-		GetBooking(ctx context.Context, request domain.BookingRequest) (domain.BookingResponse, error)
-		GetAllBooking(ctx context.Context) ([]domain.BookingResponse, error)
+		GetBooking(ctx context.Context, request domain.BookingRequest) (extdomain.BookingResponse, error)
+		GetAllBooking(ctx context.Context) ([]extdomain.BookingResponse, error)
 	}
 )
 
