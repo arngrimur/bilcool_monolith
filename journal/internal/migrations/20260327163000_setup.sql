@@ -11,7 +11,7 @@ CREATE TABLE inbox (
     emitted_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE UNIQUE INDEX idx_inbox_event_id ON inbox (event_id);
+CREATE UNIQUE INDEX idx_inbox_event_id ON inbox (event_id); --  UNIQUE stops duplicate events from being inserted
 
 CREATE TABLE users(
                       id SERIAL PRIMARY KEY ,

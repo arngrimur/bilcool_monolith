@@ -14,6 +14,7 @@ import (
 	aws_sqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
@@ -88,47 +89,14 @@ func (suite *sqsSubscriberTestSuite) TearDownSuite() {
 	suite.cloud.TearDown(suite.T())
 }
 func (suite *sqsSubscriberTestSuite) BeforeTest(suiteName, testName string) {
-	for i := 0; i < 300; i++ {
-		suite.addEvent()
-	}
-}
-func (suite *sqsSubscriberTestSuite) addEvent() {
-	now := time.Now()
-	cb := domain.CompletedBooking{
-		Booking: domain.BookingResponse{
-			UserRef:          suite.userRef,
-			BookingReference: uuid.New(),
-			StartDate:        now.Add(time.Hour * -4),
-			EndDate:          now,
-		},
-		Distance: domain.Distance{
-			StartDistance: 1,
-			EndDistance:   200,
-		},
-	}
-	bytes, err := json.Marshal(cb)
-	event := postgres.Event{
-		EventId:       uuid.New(),
-		Type:          "test",
-		CorrelationId: uuid.New(),
-		Producer:      "test",
-		EmittedAt:     new(time.Now()),
-		Payload:       bytes,
-	}
-	message, err := json.Marshal(event)
-	suite.Require().NoError(err)
-	// send sns message that gets picked up by queue
-	_, err = suite.snsClient.Publish(context.Background(), &aws_sns.PublishInput{
-		Message:  new(string(message)),
-		TopicArn: suite.topic.TopicArn,
-	})
-	suite.Require().NoError(err)
+
 }
 
 func (suite *sqsSubscriberTestSuite) AfterTest(suiteName, testName string) {
 	suite.consumer.Stop()
-	//suite.consumer.PurgeQueue(suite.cloud.Ctx, &sqs.PurgeQueueInput{})
+	zerolog.SetGlobalLevel(zerolog.NoLevel)
 }
+
 func (suite *sqsSubscriberTestSuite) HandleStats(suiteName string, stats *suite.SuiteInformation) {
 	if !stats.Passed() {
 		buf := strings.Builder{}
@@ -147,6 +115,9 @@ func TestRunSuitesqsSubscriber(t *testing.T) {
 // endregion setup
 // region tests
 func (suite *sqsSubscriberTestSuite) TestReadMessages() {
+	for i := 0; i < 300; i++ {
+		suite.addEvent(nil)
+	}
 	suite.consumer.Start(context.Background())
 	var inboxCount int
 	suite.Require().Eventuallyf(func() bool {
@@ -167,4 +138,66 @@ func (suite *sqsSubscriberTestSuite) TestReadMessages() {
 	}, 5*time.Second, time.Millisecond, fmt.Sprintf("failed to read events from queue. got %d events, WANTED 300", eventCount))
 }
 
+func (suite *sqsSubscriberTestSuite) TestDuplicateEventsAreStopped() {
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	id := uuid.New()
+	for i := 0; i < 2; i++ {
+		suite.addEvent(&id)
+	}
+	suite.consumer.Start(context.Background())
+	var inboxCount int
+	suite.Require().Eventuallyf(func() bool {
+		row := suite.dbIntegration.Db.QueryRow(`select count(*) from inbox`)
+		if err := row.Scan(&inboxCount); err != nil {
+			return false
+		}
+		return inboxCount == 1
+	}, 1*time.Second, time.Millisecond, fmt.Sprintf("failed to read messages from queue. got %d messages, WANTED 300", inboxCount))
+
+	var eventCount int
+	suite.Require().Eventuallyf(func() bool {
+		row := suite.dbIntegration.Db.QueryRow(`select count(*) from booking_ended_events`)
+		if err := row.Scan(&eventCount); err != nil {
+			return false
+		}
+		return eventCount == 1
+	}, 1*time.Second, time.Millisecond, fmt.Sprintf("failed to read events from queue. got %d events, WANTED 300", eventCount))
+}
+
 // endregion tests
+
+func (suite *sqsSubscriberTestSuite) addEvent(id *uuid.UUID) {
+	now := time.Now()
+	cb := domain.CompletedBooking{
+		Booking: domain.BookingResponse{
+			UserRef:          suite.userRef,
+			BookingReference: uuid.New(),
+			StartDate:        now.Add(time.Hour * -4),
+			EndDate:          now,
+		},
+		Distance: domain.Distance{
+			StartDistance: 1,
+			EndDistance:   200,
+		},
+	}
+	bytes, err := json.Marshal(cb)
+	if id == nil {
+		id = new(uuid.New())
+	}
+	event := postgres.Event{
+		EventId:       *id,
+		Type:          "test",
+		CorrelationId: uuid.New(),
+		Producer:      "test",
+		EmittedAt:     new(time.Now()),
+		Payload:       bytes,
+	}
+	message, err := json.Marshal(event)
+	suite.Require().NoError(err)
+	// send sns message that gets picked up by queue
+	_, err = suite.snsClient.Publish(context.Background(), &aws_sns.PublishInput{
+		Message:  new(string(message)),
+		TopicArn: suite.topic.TopicArn,
+	})
+	suite.Require().NoError(err)
+}

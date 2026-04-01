@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
@@ -24,20 +26,23 @@ func (r EventRepository) SaveMessage(ctx context.Context, e postgres.Message) er
 		return err
 	}
 	defer tx.Rollback()
+
 	q := `INSERT INTO inbox (event_id, type, correlation_id, producer, emitted_at) VALUES ($1, $2, $3, $4, $5)`
 	_, err = txr.ExecContext(
 		ctx,
 		q,
-		e.MessageId,
+		e.Message.EventId.String(),
 		e.Type,
 		e.Message.CorrelationId,
 		e.Message.Producer,
 		e.Message.EmittedAt,
 	)
 	if err != nil {
+		log.Ctx(ctx).Debug().Err(err).Msg("failed to save message")
 		return err
 	}
 
+	// TODO: Break the handling of specific events by looking at e.Message.Type
 	completedBooking := domain.CompletedBooking{}
 	err = json.Unmarshal(e.Message.Payload, &completedBooking)
 	if err != nil {
