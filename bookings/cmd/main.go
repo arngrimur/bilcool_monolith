@@ -72,7 +72,10 @@ func main() {
 	// Create Application
 	app := application.New(postgresql.NewBookingsRepository(psqlDb))
 	webService := web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler)
-	webService.StartRouter(":8080")
+	err = webService.StartRouter(":8080")
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error starting web service")
+	}
 }
 
 func setupPostgresDatabase(c config.Config) *sql.DB {

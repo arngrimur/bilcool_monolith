@@ -8,11 +8,11 @@ import (
 )
 
 type Event struct {
-	EventId       uuid.UUID  `json:"event_id"`
-	Type          string     `json:"type"`
-	CorrelationId uuid.UUID  `json:"correlation_id"`
-	Producer      string     `json:"producer"`
-	EmittedAt     *time.Time `json:"emitted_at"`
+	EventId       uuid.UUID       `json:"event_id"`
+	Type          string          `json:"type"`
+	CorrelationId uuid.UUID       `json:"correlation_id"`
+	Producer      string          `json:"producer"`
+	EmittedAt     *time.Time      `json:"emitted_at"`
 	Payload       json.RawMessage `json:"payload"`
 }
 
@@ -26,6 +26,11 @@ type MessageBody struct {
 	SignatureVersion string    `json:"SignatureVersion"`
 	Signature        string    `json:"Signature"`
 	SigningCertURL   string    `json:"SigningCertURL"`
+}
+
+type Message struct {
+	ReceiptHandle string `json:"receipt_handle"`
+	MessageBody   `json:"message_body"`
 }
 
 func (m *MessageBody) UnmarshalJSON(data []byte) error {

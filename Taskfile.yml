@@ -41,9 +41,6 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
       - test -f go.mod
-    env:
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
     cmds:
       - go generate ./...
       - go test -tags=integration ./...
@@ -75,9 +72,6 @@ tasks:
 
   message_broker:integration-test:
     dir: message_broker
-    env:
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
     cmds:
       - go generate ./...
       - go test -tags=integration ./...
@@ -89,9 +83,6 @@ tasks:
 
   bookings:integration-test:
     dir: bookings
-    env:
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
     cmds:
       - go generate ./...
       - go generate ../message_broker/...
@@ -111,9 +102,6 @@ tasks:
 
   coverage-all:
     dir: '{{.USER_WORKING_DIR}}'
-    env:
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
     vars:
       MB_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_unit.out"
       MB_INT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_int.out"

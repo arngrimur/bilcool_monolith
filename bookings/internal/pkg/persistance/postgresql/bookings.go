@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
+	extdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 	outbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
@@ -23,7 +24,7 @@ func NewBookingsRepository(a *sql.DB) BookingRepository {
 	return BookingRepository{DbActions: a, Transactioner: a}
 }
 
-func (bdb BookingRepository) Find(ctx context.Context, request domain.BookingRequest) (domain.BookingResponse, error) {
+func (bdb BookingRepository) Find(ctx context.Context, request domain.BookingRequest) (extdomain.BookingResponse, error) {
 	const query = `SELECT  start_date, end_date, user_ref 
 FROM bookings 
 WHERE booking_reference = $1`
@@ -36,7 +37,7 @@ WHERE booking_reference = $1`
 
 	err := bdb.QueryRowContext(ctx, query, request.BookingReference).Scan(&sTime, &eTime, &uRef)
 	if err != nil {
-		return domain.BookingResponse{}, err
+		return extdomain.BookingResponse{}, err
 	}
 
 	response := domain.NewBookingResponse(request.BookingReference, sTime, eTime, uRef)
@@ -44,11 +45,11 @@ WHERE booking_reference = $1`
 	return response, err
 }
 
-func (bdb BookingRepository) FindAll(ctx context.Context) ([]domain.BookingResponse, error) {
+func (bdb BookingRepository) FindAll(ctx context.Context) ([]extdomain.BookingResponse, error) {
 	const query = `SELECT booking_reference, start_date, end_date, user_ref 
 FROM bookings`
 	var (
-		bookings   = []domain.BookingResponse{}
+		bookings   = []extdomain.BookingResponse{}
 		sTime      time.Time
 		eTime      time.Time
 		uRef       uuid.UUID
@@ -59,7 +60,9 @@ FROM bookings`
 	if err != nil {
 		return bookings, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 	for rows.Next() {
 		err = rows.Scan(&bookingRef, &sTime, &eTime, &uRef)
 		if err != nil {
@@ -125,10 +128,12 @@ func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndB
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	type tmpData struct {
 		id        int
-		completed domain.CompletedBooking
+		completed extdomain.CompletedBooking
 	} // Get booking
 	booking := &tmpData{}
 	err = local_bdb.QueryRowContext(ctx, "SELECT id, booking_reference, user_ref, start_date, end_date FROM bookings WHERE booking_reference = $1", request.BookingReference).

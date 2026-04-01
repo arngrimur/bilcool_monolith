@@ -23,14 +23,13 @@ import (
 
 type subscriberTestSuite struct {
 	suite.Suite
+
+	// region variables
 	sqsSubscriber *SqsSubscriber
 	cloud         *aws.AwsLocalCloud
 	snsClient     *aws_sns.Client
 	topic         *aws_sns.CreateTopicOutput
 	event         postgres.Event
-
-	// region variables
-
 	//endregion variables
 }
 
@@ -48,9 +47,8 @@ func (suite *subscriberTestSuite) SetupSuite() {
 	})
 	suite.Require().NoError(err)
 
-	suite.sqsSubscriber = NewSubscriber(context.Background(), awsCfg)
-	suite.Require().NotNil(suite.sqsSubscriber)
-	q, err := suite.sqsSubscriber.sqsClient.CreateQueue(suite.cloud.Ctx, &sqs.CreateQueueInput{
+	sqsClient := sqs.NewFromConfig(awsCfg)
+	q, err := sqsClient.CreateQueue(suite.cloud.Ctx, &sqs.CreateQueueInput{
 		QueueName: new("test_queue"),
 		Attributes: map[string]string{
 			"VisibilityTimeout":             "1",
@@ -58,12 +56,16 @@ func (suite *subscriberTestSuite) SetupSuite() {
 		},
 	})
 	suite.Require().NoError(err)
-
-	attributes, err := suite.sqsSubscriber.sqsClient.GetQueueAttributes(suite.cloud.Ctx, &sqs.GetQueueAttributesInput{
+	attributes, err := sqsClient.GetQueueAttributes(suite.cloud.Ctx, &sqs.GetQueueAttributesInput{
 		QueueUrl:       q.QueueUrl,
 		AttributeNames: []types.QueueAttributeName{"QueueArn"},
 	})
 	suite.Require().NoError(err)
+
+	suite.sqsSubscriber, err = NewSubscriber(context.Background(), awsCfg, "test_queue")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(suite.sqsSubscriber)
+
 	_, err = suite.snsClient.Subscribe(suite.cloud.Ctx, &aws_sns.SubscribeInput{
 		Protocol: new("sqs"),
 		TopicArn: suite.topic.TopicArn,
@@ -71,6 +73,7 @@ func (suite *subscriberTestSuite) SetupSuite() {
 	})
 	suite.Require().NoError(err)
 }
+
 func (suite *subscriberTestSuite) TearDownSuite() {
 	suite.cloud.TearDown(suite.T())
 }
@@ -96,6 +99,7 @@ func (suite *subscriberTestSuite) addEvent() {
 	})
 	suite.Require().NoError(err)
 }
+
 func (suite *subscriberTestSuite) AfterTest(suiteName, testName string) {
 	suite.sqsSubscriber.sqsClient.PurgeQueue(suite.cloud.Ctx, &sqs.PurgeQueueInput{})
 	//var (
@@ -128,7 +132,7 @@ func TestRunSuitepublisher(t *testing.T) {
 // endregion setup
 
 func (suite *subscriberTestSuite) TestReadMessages() {
-	messages, err := suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
+	messages, err := suite.sqsSubscriber.RetrieveMessages(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(messages, 1)
 
@@ -138,43 +142,46 @@ func (suite *subscriberTestSuite) TestReadMessages() {
 }
 
 func (suite *subscriberTestSuite) TestMessagesAreHidden() {
-	messages, err := suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
+	messages, err := suite.sqsSubscriber.RetrieveMessages(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(messages, 1)
 
 	// Read messages are hidden for a while
-	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
+	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(messages, 0)
 
 	// Now we can the message again
 	time.Sleep(1 * time.Second)
-	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
+	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(messages, 1)
 }
 
 func (suite *subscriberTestSuite) TestDeleteMessage() {
-	messages, err := suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
+	messages, err := suite.sqsSubscriber.RetrieveMessages(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(messages, 1)
 
 	time.Sleep(3 * time.Second)
-	suite.sqsSubscriber.DeleteMessages(context.Background(), messages, "test_queue")
-	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
+	suite.sqsSubscriber.DeleteMessages(context.Background(), messages)
+	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(messages, 0)
 }
 
 func (suite *subscriberTestSuite) TestTooManyDeleteMessages() {
-	messages := make(map[string]postgres.MessageBody)
+	messages := make([]postgres.Message, 11)
 	for i := 0; i < 11; i++ {
-		messages[fmt.Sprintf("%d", i)] = postgres.MessageBody{}
-	}
+		messages[i] = postgres.Message{
+			ReceiptHandle: fmt.Sprintf("%d", i),
+			MessageBody:   postgres.MessageBody{},
+		}
 
-	n, err := suite.sqsSubscriber.DeleteMessages(context.Background(), messages, "test_queue")
-	suite.Require().Error(err)
-	suite.Require().Equal(0, n)
+		n, err := suite.sqsSubscriber.DeleteMessages(context.Background(), messages)
+		suite.Require().Error(err)
+		suite.Require().Equal(0, n)
+	}
 }
 
 func (suite *subscriberTestSuite) TestDeleteManyMessages() {
@@ -182,23 +189,23 @@ func (suite *subscriberTestSuite) TestDeleteManyMessages() {
 		suite.addEvent()
 	}
 	time.Sleep(3 * time.Second)
-	messages, err := suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
+	messages, err := suite.sqsSubscriber.RetrieveMessages(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(messages, 10)
-	n, err := suite.sqsSubscriber.DeleteMessages(context.Background(), messages, "test_queue")
+	n, err := suite.sqsSubscriber.DeleteMessages(context.Background(), messages)
 	suite.Require().Equal(10, n)
 
-	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
+	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(messages, 1)
-	n, err = suite.sqsSubscriber.DeleteMessages(context.Background(), messages, "test_queue")
+	n, err = suite.sqsSubscriber.DeleteMessages(context.Background(), messages)
 	suite.Require().NoError(err)
 	suite.Require().Equal(1, n)
 
-	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background(), "test_queue")
+	messages, err = suite.sqsSubscriber.RetrieveMessages(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(messages, 0)
-	_, err = suite.sqsSubscriber.DeleteMessages(context.Background(), messages, "test_queue")
+	_, err = suite.sqsSubscriber.DeleteMessages(context.Background(), messages)
 	suite.Require().NoError(err)
 
 }
