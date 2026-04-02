@@ -7,15 +7,16 @@ import (
 	"time"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/go-webauthn/webauthn/webauthn"
+	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 
-	_ "github.com/lib/pq"
-
-	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application"
-	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/config"
-	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/event_dispatcher"
-	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance/postgresql"
-	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/web"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/application"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/config"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/event_dispatcher"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail/ses"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/persistance/postgresql"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/web"
 	soutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
 	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
@@ -23,38 +24,43 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	log.Info().Msg("starting application")
-	// Read Config
+
 	c, err := config.Init()
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error reading config")
+		log.Fatal().Err(err).Msg("error reading config")
 	}
-	// Create Db Connection
+
 	psqlDb := setupPostgresDatabase(c)
+
 	err = coutbox.CreateTable(psqlDb)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating outbox table")
+		log.Fatal().Err(err).Msg("error creating outbox table")
 	}
+
 	dbUrl, err := url.Parse(c.DatabaseUrl())
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error parsing database url")
+		log.Fatal().Err(err).Msg("error parsing database url")
 	}
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error loading AWS config")
+		log.Fatal().Err(err).Msg("error loading AWS config")
 	}
+
 	dispatcher, err := event_dispatcher.NewSnsDispatcher[*sql.DB](ctx, psqlDb, awsCfg)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating SNS dispatcher")
+		log.Fatal().Err(err).Msg("error creating SNS dispatcher")
 	}
+
 	outbox, err := soutbox.NewOutbox(
 		ctx,
 		dbUrl,
 		soutbox.PgOutputPlugin,
 		soutbox.NewCreatePublications(
-			"bookings_pub",
-			"bookings",
+			"authentication_pub",
+			"authentication",
 			[]string{coutbox.OutboxTableName},
 			map[soutbox.ActionName]soutbox.Action{
 				soutbox.ActionCommit: dispatcher,
@@ -62,19 +68,33 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating outbox")
+		log.Fatal().Err(err).Msg("error creating outbox")
 	}
+
 	closer, err := outbox.StartReplication(ctx)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error starting replication")
+		log.Fatal().Err(err).Msg("error starting replication")
 	}
 	defer close(closer)
-	// Create Application
-	app := application.New(postgresql.NewBookingsRepository(psqlDb))
-	webService := web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler)
+
+	mailSender := ses.NewSeSender(awsCfg, c.SESFromEmail())
+
+	wauthn, err := webauthn.New(&webauthn.Config{
+		RPDisplayName: c.WebAuthnDisplayName(),
+		RPID:          c.WebAuthnRPID(),
+		RPOrigins:     c.WebAuthnRPOrigins(),
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("error creating webauthn instance")
+	}
+
+	repo := postgresql.NewUsersRepository(psqlDb)
+	app := application.New(repo, mailSender, wauthn, c.JWTSecret())
+	webService := web.NewRouter(app, app)
+
 	err = webService.StartRouter(":8080")
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error starting web service")
+		log.Fatal().Err(err).Msg("error starting web service")
 	}
 }
 
@@ -93,6 +113,6 @@ func setupPostgresDatabase(c config.Config) *sql.DB {
 			return psqlDb
 		}
 	}
-	log.Fatal().Msgf("Error pinging database, gave up after %d attempts", maxTries)
+	log.Fatal().Msgf("error pinging database, gave up after %d attempts", maxTries)
 	return nil
 }

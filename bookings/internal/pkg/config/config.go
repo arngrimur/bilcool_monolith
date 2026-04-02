@@ -6,13 +6,17 @@ import (
 )
 
 type Config struct {
-	DatabaseUrl string
+	databaseUrl string
+}
+
+func (c Config) DatabaseUrl() string {
+	return c.databaseUrl
 }
 
 func Init() (Config, error) {
 	ok := true
 	c := Config{}
-	c.DatabaseUrl, ok = os.LookupEnv("DATABASE_URL")
+	c.databaseUrl, ok = os.LookupEnv("DATABASE_URL")
 	if !ok {
 		return c, fmt.Errorf("DATABASE_URL not set")
 	}
