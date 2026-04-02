@@ -59,6 +59,24 @@ tasks:
       - go generate ./...
       - go build ./...
 
+
+  authentication:build:
+    dir: authentication
+    cmds:
+      - go build ./...
+      
+  authentication:test:
+    dir: authentication
+    cmds:
+      - go generate ./...
+      - go test ./...
+
+  authentication:integration-test:
+    dir: authentication
+    cmds:
+      - go generate ./...
+      - go test -tags=integration ./...
+
   message_broker:build:
     dir: message_broker
     cmds:
@@ -81,6 +99,13 @@ tasks:
     cmds:
       - go build ./...
 
+  bookings:test:
+    dir: bookings
+    cmds:
+      - go generate ./...
+      - go generate ../message_broker/...
+      - go test ./...
+
   bookings:integration-test:
     dir: bookings
     cmds:
@@ -94,10 +119,12 @@ tasks:
       - task: message_broker:test
       - task: message_broker:integration-test
       - task: bookings:integration-test
+      - task: authentication:test
+      - task: authentication:integration-test
 
   vendor:
     cmds:
-      - go work init . ./bookings ./message_broker ./testing
+      - go work init . ./bookings ./message_broker ./testing ./authentication
       - go work vendor
 
   coverage-all:
@@ -106,6 +133,8 @@ tasks:
       MB_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_unit.out"
       MB_INT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_int.out"
       BK_INT: "{{.COVERAGE_OUTPUT_DIR}}/bookings_int.out"
+      AUTH_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/authentication_unit.out"
+      AUTH_INT: "{{.COVERAGE_OUTPUT_DIR}}/authentication_int.out"
       MERGED: "{{.COVERAGE_OUTPUT_DIR}}/{{.COVERAGE_OUTPUT_FILE}}"
       HTML: "{{.COVERAGE_OUTPUT_DIR}}/{{.COVERAGE_OUTPUT_HTML}}"
     cmds:
@@ -113,10 +142,14 @@ tasks:
       - cd message_broker && go generate ./... && go test -coverprofile={{.MB_UNIT}} -covermode=atomic -coverpkg=./... ./...
       - cd message_broker && go test -tags=integration -coverprofile={{.MB_INT}} -covermode=atomic -coverpkg=./... ./...
       - cd bookings && go generate ./... && go test -tags=integration -coverprofile={{.BK_INT}} -covermode=atomic -coverpkg=./... ./...
+      - cd authentication && go generate ./... && go test -coverprofile={{.AUTH_UNIT}} -covermode=atomic -coverpkg=./... ./...
+      - cd authentication && go generate ./... && go test -tags=integration -coverprofile={{.AUTH_INT}} -covermode=atomic -coverpkg=./... ./...
       - "printf 'mode: atomic\\n' > {{.MERGED}}"
       - "tail -n +2 {{.MB_UNIT}} >> {{.MERGED}}"
       - "tail -n +2 {{.MB_INT}} >> {{.MERGED}}"
       - "tail -n +2 {{.BK_INT}} >> {{.MERGED}}"
+      - "tail -n +2 {{.AUTH_UNIT}} >> {{.MERGED}}"
+      - "tail -n +2 {{.AUTH_INT}} >> {{.MERGED}}"
       - go tool cover -html={{.MERGED}} -o {{.HTML}}
       - echo "Coverage profile -> {{.MERGED}}"
       - echo "HTML report      -> {{.HTML}}"

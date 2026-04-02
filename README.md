@@ -1,3 +1,5 @@
+[![Build](https://github.com/arngrimur/bilcool_monolith/actions/workflows/build.yml/badge.svg)](https://github.com/arngrimur/bilcool_monolith/actions/workflows/build.yml)
+
 # BilCool 
 A first try to create a booking application for BilCool.
 
