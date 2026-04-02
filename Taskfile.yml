@@ -12,7 +12,7 @@ tasks:
       - test -f docker-compose.yaml
     cmds:
       - docker-compose up -d
-  down:
+  down:Ta
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
       - test -f docker-compose.yaml
@@ -124,7 +124,7 @@ tasks:
 
   vendor:
     cmds:
-      - go work init . ./bookings ./message_broker ./testing
+      - go work init . ./bookings ./message_broker ./testing ./authentication
       - go work vendor
 
   coverage-all:
