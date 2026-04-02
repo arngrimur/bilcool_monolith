@@ -46,9 +46,7 @@ jobs:
           path: vendor
           key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
       - name: Initialize workspace
-        run: go work init . ./bookings ./message_broker ./testing
-      -  run: go work tidy
-      - run: go work vendor
+        run: go work init . ./testing
       - run: task testing:build
 
   build-message-broker:
@@ -71,7 +69,7 @@ jobs:
           path: vendor
           key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
       - name: Initialize workspace
-        run: go work init . ./bookings ./message_broker ./testing
+        run: go work init . ./message_broker ./testing
       - run: task message_broker:build
       - run: task message_broker:test
       - run: task message_broker:integration-test
