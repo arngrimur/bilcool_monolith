@@ -47,9 +47,9 @@ jobs:
           key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
       - name: Initialize workspace
         run: go work init . ./bookings ./message_broker ./testing
-          - run: go work tidy
-          - run: go work vendor
-          - run: task testing:build
+      -  run: go work tidy
+      - run: go work vendor
+      - run: task testing:build
 
   build-message-broker:
     name: message_broker
@@ -72,9 +72,9 @@ jobs:
           key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
       - name: Initialize workspace
         run: go work init . ./bookings ./message_broker ./testing
-          - run: task message_broker:build
-          - run: task message_broker:test
-          - run: task message_broker:integration-test
+      - run: task message_broker:build
+      - run: task message_broker:test
+      - run: task message_broker:integration-test
 
   build-bookings:
     name: bookings
@@ -97,8 +97,8 @@ jobs:
           key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
       - name: Initialize workspace
         run: go work init . ./bookings ./message_broker ./testing ./authentication
-          - run: task bookings:build
-          - run: task bookings:integration-test
+      - run: task bookings:build
+      - run: task bookings:integration-test
 
   build-authentication:
     name: authentication
@@ -121,5 +121,5 @@ jobs:
           key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
       - name: Initialize workspace
         run: go work init . ./authentication ./message_broker ./testing
-          - run: task authentication:build
-          - run: task authentication:integration-test
+      - run: task authentication:build
+      - run: task authentication:integration-test
