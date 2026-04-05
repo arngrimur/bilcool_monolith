@@ -148,6 +148,27 @@ tasks:
       - task: event_ledger:test
       - task: event_ledger:integration-test
 
+  ui:build:
+    dir: ui/bilcool-ui
+    preconditions:
+      - test -f package.json
+    cmds:
+      - npm run build
+
+  ui:test:
+    dir: ui/bilcool-ui
+    preconditions:
+      - test -f package.json
+    cmds:
+      - npm test
+
+  ui:dev:
+    dir: ui/bilcool-ui
+    preconditions:
+      - test -f package.json
+    cmds:
+      - npm run dev
+
   vendor:
     cmds:
       - go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal
