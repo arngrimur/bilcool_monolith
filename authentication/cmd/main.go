@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"net/url"
-	"time"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -27,19 +26,19 @@ func main() {
 
 	log.Info().Msg("starting application")
 
-	c, err := config.Init()
+	err := config.Init()
 	if err != nil {
 		log.Fatal().Err(err).Msg("error reading config")
 	}
 
-	psqlDb := setupPostgresDatabase(c)
+	psqlDb := postgresql.SetupPostgresDatabase()
 
 	err = coutbox.CreateTable(psqlDb)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error creating outbox table")
 	}
 
-	dbUrl, err := url.Parse(c.DatabaseUrl())
+	dbUrl, err := url.Parse(config.DatabaseUrl())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error parsing database url")
 	}
@@ -77,42 +76,23 @@ func main() {
 	}
 	defer close(closer)
 
-	mailSender := ses.NewSeSender(awsCfg, c.SESFromEmail())
+	mailSender := ses.NewSeSender(awsCfg, config.SESFromEmail())
 
 	wauthn, err := webauthn.New(&webauthn.Config{
-		RPDisplayName: c.WebAuthnDisplayName(),
-		RPID:          c.WebAuthnRPID(),
-		RPOrigins:     c.WebAuthnRPOrigins(),
+		RPDisplayName: config.WebAuthnDisplayName(),
+		RPID:          config.WebAuthnRPID(),
+		RPOrigins:     config.WebAuthnRPOrigins(),
 	})
 	if err != nil {
 		log.Fatal().Err(err).Msg("error creating webauthn instance")
 	}
 
 	repo := postgresql.NewUsersRepository(psqlDb)
-	app := application.New(repo, mailSender, wauthn, c.JWTSecret())
+	app := application.New(repo, mailSender, wauthn, config.JWTSecret())
 	webService := web.NewRouter(app, app)
 
 	err = webService.StartRouter(":8080")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error starting web service")
 	}
-}
-
-func setupPostgresDatabase(c config.Config) *sql.DB {
-	psqlDb, err := sql.Open("postgres", c.DatabaseUrl())
-	if err != nil {
-		log.Fatal().Err(err).Msg("error opening database connection")
-	}
-	maxTries := 10
-	for i := 1; i <= maxTries; i++ {
-		if err := psqlDb.Ping(); err != nil {
-			time.Sleep(1 * time.Second)
-			log.Err(err).Msgf("error pinging database, attempt: %d", i)
-		} else {
-			log.Info().Msg("database connection successful")
-			return psqlDb
-		}
-	}
-	log.Fatal().Msgf("error pinging database, gave up after %d attempts", maxTries)
-	return nil
 }

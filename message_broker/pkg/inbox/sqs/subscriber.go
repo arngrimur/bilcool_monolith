@@ -29,7 +29,12 @@ func NewSubscriber(ctx context.Context, c aws.Config, queueName string) (*SqsSub
 	}
 	url, err := s.sqsClient.GetQueueUrl(ctx, &aws_sqs.GetQueueUrlInput{QueueName: &queueName})
 	if err != nil {
-		return nil, err
+		created, err := s.sqsClient.CreateQueue(ctx, &aws_sqs.CreateQueueInput{QueueName: &queueName})
+		if err != nil {
+			return nil, err
+		}
+		s.queueUrl = &aws_sqs.GetQueueUrlOutput{QueueUrl: created.QueueUrl}
+		return s, nil
 	}
 	s.queueUrl = url
 	return s, nil

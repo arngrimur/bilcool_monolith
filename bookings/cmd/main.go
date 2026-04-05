@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"net/url"
-	"time"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/rs/zerolog/log"
@@ -23,19 +22,19 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	log.Info().Msg("starting application")
+	log.Ctx(ctx).Info().Msg("starting application")
 	// Read Config
-	c, err := config.Init()
+	err := config.Init()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error reading config")
 	}
 	// Create Db Connection
-	psqlDb := setupPostgresDatabase(c)
+	psqlDb := postgresql.SetupPostgresDatabase()
 	err = coutbox.CreateTable(psqlDb)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating outbox table")
 	}
-	dbUrl, err := url.Parse(c.DatabaseUrl())
+	dbUrl, err := url.Parse(config.DatabaseUrl())
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error parsing database url")
 	}
@@ -76,23 +75,4 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error starting web service")
 	}
-}
-
-func setupPostgresDatabase(c config.Config) *sql.DB {
-	psqlDb, err := sql.Open("postgres", c.DatabaseUrl())
-	if err != nil {
-		log.Fatal().Err(err).Msg("error opening database connection")
-	}
-	maxTries := 10
-	for i := 1; i <= maxTries; i++ {
-		if err := psqlDb.Ping(); err != nil {
-			time.Sleep(1 * time.Second)
-			log.Err(err).Msgf("error pinging database, attempt: %d", i)
-		} else {
-			log.Info().Msg("database connection successful")
-			return psqlDb
-		}
-	}
-	log.Fatal().Msgf("Error pinging database, gave up after %d attempts", maxTries)
-	return nil
 }

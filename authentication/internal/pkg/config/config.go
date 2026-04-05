@@ -6,75 +6,74 @@ import (
 	"strings"
 )
 
-type Config struct {
+var (
 	databaseUrl         string
 	jwtSecret           string
 	webAuthnRPID        string
 	webAuthnRPOrigins   []string
 	webAuthnDisplayName string
 	sesFromEmail        string
+)
+
+func DatabaseUrl() string {
+	return databaseUrl
 }
 
-func (c Config) DatabaseUrl() string {
-	return c.databaseUrl
+func JWTSecret() string {
+	return jwtSecret
 }
 
-func (c Config) JWTSecret() string {
-	return c.jwtSecret
+func WebAuthnRPID() string {
+	return webAuthnRPID
 }
 
-func (c Config) WebAuthnRPID() string {
-	return c.webAuthnRPID
+func WebAuthnRPOrigins() []string {
+	return webAuthnRPOrigins
 }
 
-func (c Config) WebAuthnRPOrigins() []string {
-	return c.webAuthnRPOrigins
+func WebAuthnDisplayName() string {
+	return webAuthnDisplayName
 }
 
-func (c Config) WebAuthnDisplayName() string {
-	return c.webAuthnDisplayName
+func SESFromEmail() string {
+	return sesFromEmail
 }
 
-func (c Config) SESFromEmail() string {
-	return c.sesFromEmail
-}
-
-func Init() (Config, error) {
-	c := Config{}
+func Init() error {
 	var missing []string
 
 	if v, ok := os.LookupEnv("DATABASE_URL"); ok {
-		c.databaseUrl = v
+		databaseUrl = v
 	} else {
 		missing = append(missing, "DATABASE_URL")
 	}
 	if v, ok := os.LookupEnv("JWT_SECRET"); ok {
-		c.jwtSecret = v
+		jwtSecret = v
 	} else {
 		missing = append(missing, "JWT_SECRET")
 	}
 	if v, ok := os.LookupEnv("WEBAUTHN_RP_ID"); ok {
-		c.webAuthnRPID = v
+		webAuthnRPID = v
 	} else {
 		missing = append(missing, "WEBAUTHN_RP_ID")
 	}
 	if v, ok := os.LookupEnv("WEBAUTHN_RP_ORIGINS"); ok {
-		c.webAuthnRPOrigins = strings.Split(v, ",")
+		webAuthnRPOrigins = strings.Split(v, ",")
 	} else {
 		missing = append(missing, "WEBAUTHN_RP_ORIGINS")
 	}
 	if v, ok := os.LookupEnv("WEBAUTHN_DISPLAY_NAME"); ok {
-		c.webAuthnDisplayName = v
+		webAuthnDisplayName = v
 	} else {
-		c.webAuthnDisplayName = "BilCool"
+		webAuthnDisplayName = "BilCool"
 	}
 	if v, ok := os.LookupEnv("SES_FROM_EMAIL"); ok {
-		c.sesFromEmail = v
+		sesFromEmail = v
 	} else {
 		missing = append(missing, "SES_FROM_EMAIL")
 	}
 	if len(missing) > 0 {
-		return c, fmt.Errorf("missing required env vars: %s", strings.Join(missing, ", "))
+		return fmt.Errorf("missing required env vars: %s", strings.Join(missing, ", "))
 	}
-	return c, nil
+	return nil
 }

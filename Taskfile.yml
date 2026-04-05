@@ -10,8 +10,12 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
       - test -f docker-compose.yaml
+    env:
+      AWS_ACCESS_KEY_ID: "test"
+      AWS_SECRET_ACCESS_KEY: "test"
+      SES_FROM_EMAIL: "arngrimurbjarnason@gmail.com"
     cmds:
-      - docker-compose up -d
+      - docker-compose up -d --remove-orphans --build journal event-ledger bookings authentication
   down:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
@@ -27,7 +31,7 @@ tasks:
     preconditions:
       - test -d bookings
       - go install github.com/swaggo/swag/cmd/swag@latest
-    cmd: swag init -g router.go -o docs -d bookings/internal/pkg/web,bookings/internal/pkg/domain --generatedTime
+    cmd: swag init -g router.go -o docs -d bookings/internal/pkg/web,bookings/internal/pkg/domain,event_ledger/internal/pkg/web,event_ledger/internal/pkg/domain --generatedTime
 
   test:
     dir: '{{.USER_WORKING_DIR}}'
@@ -113,6 +117,26 @@ tasks:
       - go generate ../message_broker/...
       - go test -tags=integration ./...
 
+
+  event_ledger:build:
+    dir: event_ledger
+    cmds:
+      - go build ./...
+
+  event_ledger:test:
+    dir: event_ledger
+    cmds:
+      - go generate ./...
+      - go generate ../message_broker/...
+      - go test ./...
+
+  event_ledger:integration-test:
+    dir: event_ledger
+    cmds:
+      - go generate ./...
+      - go generate ../message_broker/...
+      - go test -tags=integration ./...
+
   test-all:
     cmds:
       - task: testing:build
@@ -121,10 +145,12 @@ tasks:
       - task: bookings:integration-test
       - task: authentication:test
       - task: authentication:integration-test
+      - task: event_ledger:test
+      - task: event_ledger:integration-test
 
   vendor:
     cmds:
-      - go work init . ./bookings ./message_broker ./testing ./authentication
+      - go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal
       - go work vendor
 
   coverage-all:
@@ -132,6 +158,8 @@ tasks:
     vars:
       MB_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_unit.out"
       MB_INT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_int.out"
+      EL_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/event_ledger_unit.out"
+      EL_INT: "{{.COVERAGE_OUTPUT_DIR}}/event_ledger_int.out"
       BK_INT: "{{.COVERAGE_OUTPUT_DIR}}/bookings_int.out"
       AUTH_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/authentication_unit.out"
       AUTH_INT: "{{.COVERAGE_OUTPUT_DIR}}/authentication_int.out"
@@ -141,6 +169,8 @@ tasks:
       - mkdir -p {{.COVERAGE_OUTPUT_DIR}}
       - cd message_broker && go generate ./... && go test -coverprofile={{.MB_UNIT}} -covermode=atomic -coverpkg=./... ./...
       - cd message_broker && go test -tags=integration -coverprofile={{.MB_INT}} -covermode=atomic -coverpkg=./... ./...
+      - cd event_ledger && go generate ./... && go test -coverprofile={{.MB_UNIT}} -covermode=atomic -coverpkg=./... ./...
+      - cd event_ledger && go test -tags=integration -coverprofile={{.MB_INT}} -covermode=atomic -coverpkg=./... ./...
       - cd bookings && go generate ./... && go test -tags=integration -coverprofile={{.BK_INT}} -covermode=atomic -coverpkg=./... ./...
       - cd authentication && go generate ./... && go test -coverprofile={{.AUTH_UNIT}} -covermode=atomic -coverpkg=./... ./...
       - cd authentication && go generate ./... && go test -tags=integration -coverprofile={{.AUTH_INT}} -covermode=atomic -coverpkg=./... ./...
