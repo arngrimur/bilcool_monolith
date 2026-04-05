@@ -1,0 +1,176 @@
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports: ["4566:4566"]
+    restart: unless-stopped
+    environment:
+      SERVICES: sns,sqs,s3,dynamodb
+      DEFAULT_REGION: ${AWS_REGION:-eu-north-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bilcool
+
+  bookings-database:
+    image: postgres:18
+    container_name: bookings-db
+    ports: ["54321:5432"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: bookings
+      POSTGRES_INITDB_ARGS: "-c wal_level=logical -c max_wal_senders=5 -c max_replication_slots=5"
+    networks:
+      - bilcool
+
+  authentication-database:
+    image: postgres:18
+    container_name: authentication-db
+    ports: ["54322:5432"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: authentication
+      POSTGRES_INITDB_ARGS: "-c wal_level=logical -c max_wal_senders=5 -c max_replication_slots=5"
+    networks:
+      - bilcool
+
+  db-migration-bookings:
+    image: amacneil/dbmate
+    entrypoint: ["/bin/sh", "-c", "dbmate --wait --migrations-dir /migrations migrate"]
+    volumes:
+      - "./bookings/internal/migrations:/migrations"
+    depends_on:
+      - bookings-database
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@bookings-db:5432/bookings?sslmode=disable
+    networks:
+      - bilcool
+
+  db-migration-authentication:
+    image: amacneil/dbmate
+    entrypoint: ["/bin/sh", "-c", "dbmate --wait --migrations-dir /migrations migrate"]
+    volumes:
+      - "./authentication/internal/migrations:/migrations"
+    depends_on:
+      - authentication-database
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@authentication-db:5432/authentication?sslmode=disable
+    networks:
+      - bilcool
+
+  bookings:
+    build:
+      context: .
+      dockerfile: bookings/Dockerfile
+    depends_on:
+      db-migration-bookings:
+        condition: service_completed_successfully
+      localstack:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@bookings-db:5432/bookings?sslmode=disable
+      AWS_REGION: ${AWS_REGION:-eu-north-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_ENDPOINT_URL: http://localstack:4566
+    ports: ["8081:8080"]
+    networks:
+      - bilcool
+
+  authentication:
+    build:
+      context: .
+      dockerfile: authentication/Dockerfile
+    depends_on:
+      db-migration-authentication:
+        condition: service_completed_successfully
+      localstack:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@authentication-db:5432/authentication?sslmode=disable
+      AWS_REGION: ${AWS_REGION:-eu-north-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_ENDPOINT_URL: http://localstack:4566
+      JWT_SECRET: ${JWT_SECRET:-changeme}
+      SES_FROM_EMAIL: ${SES_FROM_EMAIL}
+      WEBAUTHN_DISPLAY_NAME: ${WEBAUTHN_DISPLAY_NAME:-BilCool}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RPID:-localhost}
+      WEBAUTHN_RP_ORIGINS: ${WEBAUTHN_RP_ORIGINS:-http://localhost:3000}
+    ports: ["8082:8080"]
+    networks:
+      - bilcool
+
+  journal-database:
+    image: postgres:18
+    container_name: journal-db
+    ports: ["54323:5432"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: journal
+      POSTGRES_INITDB_ARGS: "-c wal_level=logical -c max_wal_senders=5 -c max_replication_slots=5"
+    networks:
+      - bilcool
+
+  db-migration-journal:
+    image: amacneil/dbmate
+    entrypoint: ["/bin/sh", "-c", "dbmate --wait --migrations-dir /migrations migrate"]
+    volumes:
+      - "./journal/internal/migrations:/migrations"
+    depends_on:
+      - journal-database
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@journal-db:5432/journal?sslmode=disable
+    networks:
+      - bilcool
+
+  journal:
+    build:
+      context: .
+      dockerfile: journal/Dockerfile
+    depends_on:
+      db-migration-journal:
+        condition: service_completed_successfully
+      localstack:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@journal-db:5432/journal?sslmode=disable
+      AWS_REGION: ${AWS_REGION:-eu-north-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_ENDPOINT_URL: http://localstack:4566
+    networks:
+      - bilcool
+
+  event-ledger:
+    build:
+      context: .
+      dockerfile: event_ledger/Dockerfile
+    depends_on:
+      localstack:
+        condition: service_healthy
+    environment:
+      DYNAMO_TABLE_NAME: ${DYNAMO_TABLE_NAME:-event-ledger}
+      AWS_REGION: ${AWS_REGION:-eu-north-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_ENDPOINT_URL: http://localstack:4566
+    ports: ["8083:8080"]
+    networks:
+      - bilcool
+
+
+
+networks:
+  bilcool:

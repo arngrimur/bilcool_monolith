@@ -25,7 +25,6 @@ func SetupLocalCloud(t *testing.T, services string) *AwsLocalCloud {
 	t.Setenv("AWS_ACCESS_KEY_ID", "test")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
 	t.Setenv("AWS_DEFAULT_REGION", "eu-north-1")
-	t.Setenv("LOCALSTACK_AUTH_TOKEN", "ls-xOrAmABu-TIYo-Lodo-VaCi-55893783070e")
 	localCloud := &AwsLocalCloud{}
 	localCloud.Ctx, localCloud.CancelFunc = context.WithCancel(context.Background())
 	var err error = nil

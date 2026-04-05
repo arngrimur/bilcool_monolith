@@ -39,9 +39,11 @@ func (r UsersRepository) CreateUser(ctx context.Context, req domain.CreateUserRe
 
 	var resp extdomain.UserResponse
 	err = local_r.QueryRowContext(ctx,
-		`INSERT INTO users (username, email) VALUES ($1, $2) RETURNING user_ref, username, email`,
+		`INSERT INTO users (username, email)
+		 VALUES ($1, $2)
+		 RETURNING user_ref, username, email, (SELECT name FROM roles WHERE id = role_id)`,
 		req.Username, req.Email,
-	).Scan(&resp.UserRef, &resp.Username, &resp.Email)
+	).Scan(&resp.UserRef, &resp.Username, &resp.Email, &resp.Role)
 	if err != nil {
 		return extdomain.UserResponse{}, err
 	}
@@ -101,9 +103,11 @@ func (r UsersRepository) DeleteUser(ctx context.Context, userRef uuid.UUID) erro
 func (r UsersRepository) FindByEmail(ctx context.Context, email string) (extdomain.UserResponse, error) {
 	var resp extdomain.UserResponse
 	err := r.QueryRowContext(ctx,
-		`SELECT user_ref, username, email FROM users WHERE email = $1 AND deleted_at IS NULL`,
+		`SELECT u.user_ref, u.username, u.email, r.name
+		 FROM users u JOIN roles r ON r.id = u.role_id
+		 WHERE u.email = $1 AND u.deleted_at IS NULL`,
 		email,
-	).Scan(&resp.UserRef, &resp.Username, &resp.Email)
+	).Scan(&resp.UserRef, &resp.Username, &resp.Email, &resp.Role)
 	if err != nil {
 		return extdomain.UserResponse{}, err
 	}
@@ -113,9 +117,11 @@ func (r UsersRepository) FindByEmail(ctx context.Context, email string) (extdoma
 func (r UsersRepository) FindByRef(ctx context.Context, userRef uuid.UUID) (extdomain.UserResponse, error) {
 	var resp extdomain.UserResponse
 	err := r.QueryRowContext(ctx,
-		`SELECT user_ref, username, email FROM users WHERE user_ref = $1 AND deleted_at IS NULL`,
+		`SELECT u.user_ref, u.username, u.email, r.name
+		 FROM users u JOIN roles r ON r.id = u.role_id
+		 WHERE u.user_ref = $1 AND u.deleted_at IS NULL`,
 		userRef,
-	).Scan(&resp.UserRef, &resp.Username, &resp.Email)
+	).Scan(&resp.UserRef, &resp.Username, &resp.Email, &resp.Role)
 	if err != nil {
 		return extdomain.UserResponse{}, err
 	}
