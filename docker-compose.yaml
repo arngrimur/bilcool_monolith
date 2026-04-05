@@ -171,6 +171,17 @@ services:
       - bilcool
 
 
+  bilcool-ui:
+    build:
+      context: ui/bilcool-ui
+      dockerfile: Dockerfile
+    depends_on:
+      - authentication
+      - bookings
+      - event-ledger
+    ports: ["3000:80"]
+    networks:
+      - bilcool
 
 networks:
   bilcool:
