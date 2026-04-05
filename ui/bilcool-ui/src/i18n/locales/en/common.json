@@ -1,0 +1,51 @@
+{
+  "app_name": "BilCool",
+  "nav": {
+    "calendar": "Calendar",
+    "bookings": "Bookings",
+    "profile": "Profile",
+    "admin_users": "Users",
+    "sign_out": "Sign out"
+  },
+  "theme": { "light": "Light", "dark": "Dark", "system": "System" },
+  "language": { "en": "English", "sv": "Swedish" },
+  "auth": {
+    "email_label": "Email address",
+    "email_placeholder": "you@example.com",
+    "sign_in": "Sign in",
+    "otp_title": "Check your email",
+    "otp_description": "We sent a 6-digit code to {{email}}",
+    "otp_label": "One-time code",
+    "verify": "Verify",
+    "back_to_login": "Back",
+    "error_user_not_found": "No account found with that email address",
+    "error_invalid_token": "The code is invalid or has expired",
+    "error_passkey_failed": "Passkey authentication failed",
+    "error_generic": "Something went wrong. Please try again."
+  },
+  "profile": {
+    "title": "Profile",
+    "username": "Username",
+    "email": "Email",
+    "role": "Role",
+    "passkeys": "Passkeys",
+    "passkeys_registered_one": "{{count}} passkey registered",
+    "passkeys_registered_other": "{{count}} passkeys registered"
+  },
+  "admin": {
+    "title": "User Management",
+    "create_user": "Create User",
+    "username_label": "Username",
+    "email_label": "Email",
+    "col_username": "Username",
+    "col_email": "Email",
+    "col_role": "Role",
+    "col_actions": "Actions",
+    "delete_user": "Delete",
+    "delete_confirm": "Are you sure you want to delete {{username}}?",
+    "user_created": "User {{username}} created successfully",
+    "user_deleted": "User deleted",
+    "no_users": "No users with bookings found"
+  },
+  "errors": { "unexpected": "An unexpected error occurred" }
+}
