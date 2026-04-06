@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	localconfig "github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/config"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -30,7 +31,7 @@ func (suite *sesTestSuite) SetupSuite() {
 	cfg, err := config.LoadDefaultConfig(
 		context.Background(),
 		config.WithRegion("eu-north-1"),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("", "", "")))
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(localconfig.AwsKey(), localconfig.AwsSecret(), "")))
 	suite.Require().NoError(err)
 	suite.awsConfig = cfg
 }

@@ -87,3 +87,11 @@ func FromSenderEmail() string {
 func BrevoAPIKey() string {
 	return brevoAPIKey
 }
+
+func AwsSecret() string {
+	panic("not implemented")
+}
+
+func AwsKey() string {
+	panic("not implemented")
+}
