@@ -8,7 +8,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/application/commands"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/application/queries"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/domain"
-	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail/ses"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail"
 	extdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
 )
 
@@ -52,7 +52,7 @@ var _ App = (*Application)(nil)
 
 func New(
 	usersRepo domain.UsersRepository,
-	mailSender ses.MailSender,
+	mailSender mail.MailSender,
 	webAuthn domain.WebAuthnProvider,
 	jwtSecret string,
 ) *Application {

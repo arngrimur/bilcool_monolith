@@ -11,7 +11,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/domain"
-	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail/ses"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail"
 	extdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
 )
 
@@ -19,13 +19,13 @@ func TestCreateUser(t *testing.T) {
 	cases := []struct {
 		name    string
 		req     domain.CreateUserRequest
-		setup   func(*domain.MockUsersRepository, *ses.MockMailSender)
+		setup   func(*domain.MockUsersRepository, *mail.MockMailSender)
 		wantErr bool
 	}{
 		{
 			name: "success",
 			req:  domain.CreateUserRequest{Username: "alice", Email: "alice@example.com"},
-			setup: func(repo *domain.MockUsersRepository, mail *ses.MockMailSender) {
+			setup: func(repo *domain.MockUsersRepository, mail *mail.MockMailSender) {
 				repo.EXPECT().CreateUser(gomock.Any(), domain.CreateUserRequest{Username: "alice", Email: "alice@example.com"}).
 					Return(extdomain.UserResponse{UserRef: uuid.New(), Username: "alice", Email: "alice@example.com"}, nil).Times(1)
 			},
@@ -34,7 +34,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			name: "repository error",
 			req:  domain.CreateUserRequest{Username: "alice", Email: "alice@example.com"},
-			setup: func(repo *domain.MockUsersRepository, mail *ses.MockMailSender) {
+			setup: func(repo *domain.MockUsersRepository, mail *mail.MockMailSender) {
 				repo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(extdomain.UserResponse{}, errors.New("db error")).Times(1)
 			},
 			wantErr: true,
@@ -44,7 +44,7 @@ func TestCreateUser(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			repo := domain.NewMockUsersRepository(ctrl)
-			mail := ses.NewMockMailSender(ctrl)
+			mail := mail.NewMockMailSender(ctrl)
 			tc.setup(repo, mail)
 			app := New(repo, mail, nil, "secret")
 			resp, err := app.CreateUser(context.Background(), tc.req)
@@ -61,7 +61,7 @@ func TestCreateUser(t *testing.T) {
 func TestLoginBegin_NoPasskeys_SendsToken(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := domain.NewMockUsersRepository(ctrl)
-	mail := ses.NewMockMailSender(ctrl)
+	mail := mail.NewMockMailSender(ctrl)
 
 	userRef := uuid.New()
 	repo.EXPECT().FindByEmail(gomock.Any(), "alice@example.com").
@@ -80,7 +80,7 @@ func TestLoginBegin_NoPasskeys_SendsToken(t *testing.T) {
 func TestLoginBegin_UserNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := domain.NewMockUsersRepository(ctrl)
-	mail := ses.NewMockMailSender(ctrl)
+	mail := mail.NewMockMailSender(ctrl)
 
 	repo.EXPECT().FindByEmail(gomock.Any(), "unknown@example.com").
 		Return(extdomain.UserResponse{}, domain.ErrUserNotFound).Times(1)
@@ -93,7 +93,7 @@ func TestLoginBegin_UserNotFound(t *testing.T) {
 func TestVerifyToken_InvalidToken(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := domain.NewMockUsersRepository(ctrl)
-	mail := ses.NewMockMailSender(ctrl)
+	mail := mail.NewMockMailSender(ctrl)
 
 	userRef := uuid.New()
 	repo.EXPECT().FindByEmail(gomock.Any(), "alice@example.com").
@@ -111,7 +111,7 @@ func TestVerifyToken_InvalidToken(t *testing.T) {
 func TestDeleteUser(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := domain.NewMockUsersRepository(ctrl)
-	mail := ses.NewMockMailSender(ctrl)
+	mail := mail.NewMockMailSender(ctrl)
 
 	userRef := uuid.New()
 	repo.EXPECT().DeleteUser(gomock.Any(), userRef).Return(nil).Times(1)

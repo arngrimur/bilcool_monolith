@@ -12,7 +12,7 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 
-	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail/ses"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail"
 	extdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
 )
 
@@ -94,10 +94,10 @@ type WebAuthnProvider interface {
 
 type Users struct {
 	r UsersRepository
-	m ses.MailSender
+	m mail.MailSender
 }
 
-func NewUsers(r UsersRepository, m ses.MailSender) *Users {
+func NewUsers(r UsersRepository, m mail.MailSender) *Users {
 	return &Users{r: r, m: m}
 }
 

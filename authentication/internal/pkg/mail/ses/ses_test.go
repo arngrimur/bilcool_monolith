@@ -3,13 +3,15 @@
 package ses
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/stretchr/testify/suite"
-
-	test_aws "github.com/arngrimur/bilcool_monolith/testing/aws"
 )
 
 // sesTestSuite We need a licences for AWS SES in LocalStack to run this test
@@ -18,18 +20,21 @@ type sesTestSuite struct {
 	suite.Suite
 
 	// region variables.
-	cloud *test_aws.AwsLocalCloud
+	awsConfig aws.Config
 
 	//endregion variables
 }
 
 // region setup
 func (suite *sesTestSuite) SetupSuite() {
-	//suite.cloud = test_aws.SetupLocalCloud(suite.T(), "ses")
+	cfg, err := config.LoadDefaultConfig(
+		context.Background(),
+		config.WithRegion("eu-north-1"),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("", "", "")))
+	suite.Require().NoError(err)
+	suite.awsConfig = cfg
 }
-func (suite *sesTestSuite) TearDownSuite() {
-	//suite.cloud.TearDown(suite.T())
-}
+func (suite *sesTestSuite) TearDownSuite()                        {}
 func (suite *sesTestSuite) BeforeTest(suiteName, testName string) {}
 func (suite *sesTestSuite) AfterTest(suiteName, testName string)  {}
 func (suite *sesTestSuite) HandleStats(suiteName string, stats *suite.SuiteInformation) {
@@ -49,17 +54,18 @@ func TestRunSuiteses(t *testing.T) {
 
 // endregion setup
 // region tests
-//func (suite *sesTestSuite) TestSendMail() {
-//	NewSeSender(suite.cloud.CreateConfig(suite.T()), "bilcool.branno@gmail.com").SendSecurityToken(
-//		suite.T().Context(),
-//		"arngrimurbjarnason@gmail.com",
-//		"123456",
-//	)
-//	suite.T().Log(
-//		"Check your inbox for a message from  with the subject 'Your BilCool security code'",
-//		"and the body 'Your security code is: 123456\n\nThis code is valid for 10 minutes.'",
-//		"and make sure to check your spam folder.",
-//	)
-//}
+func (suite *sesTestSuite) TestSendMail() {
+	err := NewSeSender(suite.awsConfig, "bilcool.branno@gmail.com").SendSecurityToken(
+		suite.T().Context(),
+		"arngrimurbjarnason@gmail.com",
+		"123456",
+	)
+	suite.Require().NoError(err)
+	suite.T().Log(
+		"Check your inbox for a message from  with the subject 'Your BilCool security code'",
+		"and the body 'Your security code is: 123456\n\nThis code is valid for 10 minutes.'",
+		"and make sure to check your spam folder.",
+	)
+}
 
 // endregion tests

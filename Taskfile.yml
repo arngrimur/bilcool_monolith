@@ -13,7 +13,8 @@ tasks:
     env:
       AWS_ACCESS_KEY_ID: "test"
       AWS_SECRET_ACCESS_KEY: "test"
-      SES_FROM_EMAIL: "arngrimurbjarnason@gmail.com"
+      FROM_EMAIL: "security@areskiftet44.se"
+      BREVO_API_KEY: "test"
     cmds:
       - docker-compose up -d --remove-orphans --build journal event-ledger bookings authentication
   down:

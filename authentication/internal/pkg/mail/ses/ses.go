@@ -15,8 +15,9 @@ type SesSender struct {
 }
 
 func NewSeSender(cfg aws.Config, fromEmail string) *SesSender {
+	sesClient := awsses.NewFromConfig(cfg)
 	return &SesSender{
-		client:    awsses.NewFromConfig(cfg),
+		client:    sesClient,
 		fromEmail: fromEmail,
 	}
 }
