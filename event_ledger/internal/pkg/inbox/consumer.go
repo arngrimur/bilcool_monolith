@@ -42,10 +42,10 @@ func (c *Consumer) Start(ctx context.Context) {
 		})
 	}
 
-	go func() {
+	c.wg.Go(func() {
 		c.poll(ctx, msgChan)
 		close(msgChan)
-	}()
+	})
 }
 
 func (c *Consumer) Stop() {
