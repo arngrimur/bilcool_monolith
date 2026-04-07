@@ -9,6 +9,7 @@ services:
       DEFAULT_REGION: ${AWS_REGION:-eu-north-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-test}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
       interval: 5s
@@ -102,7 +103,8 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
       AWS_ENDPOINT_URL: http://localstack:4566
       JWT_SECRET: ${JWT_SECRET:-changeme}
-      SES_FROM_EMAIL: ${SES_FROM_EMAIL}
+      FROM_EMAIL: ${FROM_EMAIL}
+      BREVO_API_KEY: ${BREVO_API_KEY}
       WEBAUTHN_DISPLAY_NAME: ${WEBAUTHN_DISPLAY_NAME:-BilCool}
       WEBAUTHN_RP_ID: ${WEBAUTHN_RPID:-localhost}
       WEBAUTHN_RP_ORIGINS: ${WEBAUTHN_RP_ORIGINS:-http://localhost:3000}
@@ -171,6 +173,17 @@ services:
       - bilcool
 
 
+  bilcool-ui:
+    build:
+      context: ui/bilcool-ui
+      dockerfile: Dockerfile
+    depends_on:
+      - authentication
+      - bookings
+      - event-ledger
+    ports: ["3000:80"]
+    networks:
+      - bilcool
 
 networks:
   bilcool:

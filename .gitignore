@@ -3,3 +3,4 @@ vendor
 go.work*
 **/*_mock.go
 .ai
+.envrc

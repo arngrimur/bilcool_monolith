@@ -1,0 +1,51 @@
+{
+  "app_name": "BilCool",
+  "nav": {
+    "calendar": "Kalender",
+    "bookings": "Bokningar",
+    "profile": "Profil",
+    "admin_users": "Användare",
+    "sign_out": "Logga ut"
+  },
+  "theme": { "light": "Ljust", "dark": "Mörkt", "system": "System" },
+  "language": { "en": "Engelska", "sv": "Svenska" },
+  "auth": {
+    "email_label": "E-postadress",
+    "email_placeholder": "du@exempel.se",
+    "sign_in": "Logga in",
+    "otp_title": "Kontrollera din e-post",
+    "otp_description": "Vi skickade en 6-siffrig kod till {{email}}",
+    "otp_label": "Engångskod",
+    "verify": "Verifiera",
+    "back_to_login": "Tillbaka",
+    "error_user_not_found": "Inget konto hittades med den e-postadressen",
+    "error_invalid_token": "Koden är ogiltig eller har gått ut",
+    "error_passkey_failed": "Autentisering med nyckel misslyckades",
+    "error_generic": "Något gick fel. Försök igen."
+  },
+  "profile": {
+    "title": "Profil",
+    "username": "Användarnamn",
+    "email": "E-post",
+    "role": "Roll",
+    "passkeys": "Passnycklar",
+    "passkeys_registered_one": "{{count}} passnyckel registrerad",
+    "passkeys_registered_other": "{{count}} passnycklar registrerade"
+  },
+  "admin": {
+    "title": "Användarhantering",
+    "create_user": "Skapa användare",
+    "username_label": "Användarnamn",
+    "email_label": "E-post",
+    "col_username": "Användarnamn",
+    "col_email": "E-post",
+    "col_role": "Roll",
+    "col_actions": "Åtgärder",
+    "delete_user": "Radera",
+    "delete_confirm": "Vill du verkligen radera {{username}}?",
+    "user_created": "Användare {{username}} skapades",
+    "user_deleted": "Användare raderad",
+    "no_users": "Inga användare hittades"
+  },
+  "errors": { "unexpected": "Ett oväntat fel uppstod" }
+}

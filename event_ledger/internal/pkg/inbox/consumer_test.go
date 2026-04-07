@@ -41,7 +41,7 @@ func (suite *consumerTestSuite) SetupSuite() {
 
 	sqsClient := aws_sqs.NewFromConfig(awsCfg)
 	q, err := sqsClient.CreateQueue(suite.cloud.Ctx, &aws_sqs.CreateQueueInput{
-		QueueName: strPtr("event_ledger_test"),
+		QueueName: new("event_ledger_test"),
 		Attributes: map[string]string{
 			"VisibilityTimeout":             "10",
 			"ReceiveMessageWaitTimeSeconds": "1",
@@ -51,7 +51,7 @@ func (suite *consumerTestSuite) SetupSuite() {
 
 	suite.snsClient = aws_sns.NewFromConfig(awsCfg)
 	suite.topic, err = suite.snsClient.CreateTopic(suite.cloud.Ctx, &aws_sns.CreateTopicInput{
-		Name:       strPtr("test_topic"),
+		Name:       new("test_topic"),
 		Attributes: map[string]string{"DisplayName": "test_topic", "FifoEndpointResolver": "false"},
 	})
 	suite.Require().NoError(err)
@@ -63,9 +63,9 @@ func (suite *consumerTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 
 	_, err = suite.snsClient.Subscribe(suite.cloud.Ctx, &aws_sns.SubscribeInput{
-		Protocol: strPtr("sqs"),
+		Protocol: new("sqs"),
 		TopicArn: suite.topic.TopicArn,
-		Endpoint: strPtr(attrs.Attributes["QueueArn"]),
+		Endpoint: new(attrs.Attributes["QueueArn"]),
 	})
 	suite.Require().NoError(err)
 
@@ -101,7 +101,7 @@ func (suite *consumerTestSuite) HandleStats(suiteName string, stats *suite.Suite
 }
 
 func (suite *consumerTestSuite) TestConsumeMessages() {
-	producer := fmt.Sprintf("bookings_%s", uuid.New().String())
+	producer := fmt.Sprintf("event_ledger_%s", uuid.New().String())
 	for i := 0; i < 5; i++ {
 		suite.publishEvent(producer)
 	}
@@ -121,14 +121,15 @@ func (suite *consumerTestSuite) TestConsumeMessages() {
 }
 
 func (suite *consumerTestSuite) TestDuplicateEventsAreIdempotent() {
-	producer := fmt.Sprintf("dup_%s", uuid.New().String())
+	producer := fmt.Sprintf("event_ledger_%s", uuid.New().String())
 	id := uuid.New()
+	fixedTime := time.Now()
 	for i := 0; i < 3; i++ {
-		suite.publishEventWithId(producer, &id)
+		suite.publishEventWithId(producer, &id, &fixedTime)
 	}
 
 	suite.consumer.Start(context.Background())
-
+	results := []domain.EventItem{}
 	suite.Require().Eventuallyf(func() bool {
 		results, err := suite.repo.QueryEvents(suite.cloud.Ctx, domain.QueryParams{
 			Producer: &producer,
@@ -138,15 +139,18 @@ func (suite *consumerTestSuite) TestDuplicateEventsAreIdempotent() {
 			return false
 		}
 		return len(results) == 1
-	}, 10*time.Second, 100*time.Millisecond, "expected exactly 1 deduplicated event")
+	}, 10*time.Second, 100*time.Millisecond, "expected exactly 1 deduplicated event: got", len(results))
 }
 
 func (suite *consumerTestSuite) publishEvent(producer string) {
-	suite.publishEventWithId(producer, nil)
+	suite.publishEventWithId(producer, nil, nil)
 }
 
-func (suite *consumerTestSuite) publishEventWithId(producer string, id *uuid.UUID) {
+func (suite *consumerTestSuite) publishEventWithId(producer string, id *uuid.UUID, emittedAt *time.Time) {
 	now := time.Now()
+	if emittedAt != nil {
+		now = *emittedAt
+	}
 	eventId := uuid.New()
 	if id != nil {
 		eventId = *id
@@ -163,7 +167,7 @@ func (suite *consumerTestSuite) publishEventWithId(producer string, id *uuid.UUI
 	suite.Require().NoError(err)
 
 	_, err = suite.snsClient.Publish(context.Background(), &aws_sns.PublishInput{
-		Message:  strPtr(string(msg)),
+		Message:  new(string(msg)),
 		TopicArn: suite.topic.TopicArn,
 	})
 	suite.Require().NoError(err)
@@ -172,5 +176,3 @@ func (suite *consumerTestSuite) publishEventWithId(producer string, id *uuid.UUI
 func TestRunConsumerSuite(t *testing.T) {
 	suite.Run(t, new(consumerTestSuite))
 }
-
-func strPtr(s string) *string { return &s }

@@ -12,7 +12,8 @@ var (
 	webAuthnRPID        string
 	webAuthnRPOrigins   []string
 	webAuthnDisplayName string
-	sesFromEmail        string
+	fromEmail           string
+	brevoAPIKey         string
 )
 
 func DatabaseUrl() string {
@@ -33,10 +34,6 @@ func WebAuthnRPOrigins() []string {
 
 func WebAuthnDisplayName() string {
 	return webAuthnDisplayName
-}
-
-func SESFromEmail() string {
-	return sesFromEmail
 }
 
 func Init() error {
@@ -67,13 +64,34 @@ func Init() error {
 	} else {
 		webAuthnDisplayName = "BilCool"
 	}
-	if v, ok := os.LookupEnv("SES_FROM_EMAIL"); ok {
-		sesFromEmail = v
+	if v, ok := os.LookupEnv("FROM_EMAIL"); ok {
+		fromEmail = v
 	} else {
-		missing = append(missing, "SES_FROM_EMAIL")
+		missing = append(missing, "FROM_EMAIL")
+	}
+	if v, ok := os.LookupEnv("BREVO_API_KEY"); ok {
+		brevoAPIKey = v
+	} else {
+		missing = append(missing, "BREVO_API_KEY")
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required env vars: %s", strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+func FromSenderEmail() string {
+	return fromEmail
+}
+
+func BrevoAPIKey() string {
+	return brevoAPIKey
+}
+
+func AwsSecret() string {
+	panic("not implemented")
+}
+
+func AwsKey() string {
+	panic("not implemented")
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 
-	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail/ses"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail"
 	extdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
 )
 
@@ -94,10 +94,10 @@ type WebAuthnProvider interface {
 
 type Users struct {
 	r UsersRepository
-	m ses.MailSender
+	m mail.MailSender
 }
 
-func NewUsers(r UsersRepository, m ses.MailSender) *Users {
+func NewUsers(r UsersRepository, m mail.MailSender) *Users {
 	return &Users{r: r, m: m}
 }
 
@@ -107,6 +107,10 @@ func (u *Users) CreateUser(ctx context.Context, req CreateUserRequest) (extdomai
 
 func (u *Users) DeleteUser(ctx context.Context, userRef uuid.UUID) error {
 	return u.r.DeleteUser(ctx, userRef)
+}
+
+func (u *Users) FindAll(ctx context.Context) ([]extdomain.UserResponse, error) {
+	return u.r.FindAll(ctx)
 }
 
 func (u *Users) FindByEmail(ctx context.Context, email string) (extdomain.UserResponse, error) {

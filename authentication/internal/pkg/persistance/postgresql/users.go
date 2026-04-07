@@ -100,6 +100,31 @@ func (r UsersRepository) DeleteUser(ctx context.Context, userRef uuid.UUID) erro
 	return tx.Commit()
 }
 
+func (r UsersRepository) FindAll(ctx context.Context) ([]extdomain.UserResponse, error) {
+	rows, err := r.QueryContext(ctx,
+		`SELECT u.user_ref, u.username, u.email, r.name
+		 FROM users u JOIN roles r ON r.id = u.role_id
+		 WHERE u.deleted_at IS NULL`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	users := make([]extdomain.UserResponse, 0)
+	for rows.Next() {
+		var u extdomain.UserResponse
+		if err := rows.Scan(&u.UserRef, &u.Username, &u.Email, &u.Role); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
 func (r UsersRepository) FindByEmail(ctx context.Context, email string) (extdomain.UserResponse, error) {
 	var resp extdomain.UserResponse
 	err := r.QueryRowContext(ctx,

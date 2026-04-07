@@ -13,9 +13,10 @@ tasks:
     env:
       AWS_ACCESS_KEY_ID: "test"
       AWS_SECRET_ACCESS_KEY: "test"
-      SES_FROM_EMAIL: "arngrimurbjarnason@gmail.com"
+      FROM_EMAIL: ${FROM_EMAIL}
+      BREVO_API_KEY: ${BREVO_API_KEY}
     cmds:
-      - docker-compose up -d --remove-orphans --build journal event-ledger bookings authentication
+      - docker-compose up -d --remove-orphans --build journal event-ledger bookings authentication bilcool-ui
   down:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
@@ -147,6 +148,27 @@ tasks:
       - task: authentication:integration-test
       - task: event_ledger:test
       - task: event_ledger:integration-test
+
+  ui:build:
+    dir: ui/bilcool-ui
+    preconditions:
+      - test -f package.json
+    cmds:
+      - npm run build
+
+  ui:test:
+    dir: ui/bilcool-ui
+    preconditions:
+      - test -f package.json
+    cmds:
+      - npm test
+
+  ui:dev:
+    dir: ui/bilcool-ui
+    preconditions:
+      - test -f package.json
+    cmds:
+      - npm run dev
 
   vendor:
     cmds:
