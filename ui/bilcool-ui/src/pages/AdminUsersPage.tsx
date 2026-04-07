@@ -2,8 +2,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { useBookings } from '../hooks/useBookings'
-import { useUsers, useCreateUser, useDeleteUser } from '../hooks/useUsers'
+import { useAllUsers, useCreateUser, useDeleteUser } from '../hooks/useUsers'
 import { useAuthStore } from '../stores/authStore'
 import { toast } from '../components/ui/use-toast'
 import { Button } from '../components/ui/button'
@@ -19,12 +18,12 @@ type CreateFormValues = z.infer<typeof createSchema>
 
 export default function AdminUsersPage() {
   const { t } = useTranslation('common')
+  const role = useAuthStore((s) => s.role)
   const currentUserRef = useAuthStore((s) => s.userRef)
-  const { data: bookings = [] } = useBookings()
+  const currentUsername = useAuthStore((s) => s.username)
+  const currentEmail = useAuthStore((s) => s.email)
 
-  const uniqueUserRefs = [...new Set(bookings.map((b) => b.user_ref))]
-  const userQueries = useUsers(uniqueUserRefs)
-  const users = userQueries.map((q) => q.data).filter(Boolean) as NonNullable<typeof userQueries[number]['data']>[]
+  const { data: allUsers = [] } = useAllUsers()
 
   const createUser = useCreateUser()
   const deleteUser = useDeleteUser()
@@ -45,6 +44,32 @@ export default function AdminUsersPage() {
   async function handleDelete(id: string) {
     await deleteUser.mutateAsync(id)
     toast({ title: t('admin.user_deleted') })
+  }
+
+  if (role !== 'admin') {
+    return (
+      <div className="space-y-8 max-w-2xl">
+        <h1 className="text-2xl font-bold">{t('nav.admin_users')}</h1>
+        <div className="rounded-lg border overflow-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="px-4 py-3 text-left font-medium">{t('admin.col_username')}</th>
+                <th className="px-4 py-3 text-left font-medium">{t('admin.col_email')}</th>
+                <th className="px-4 py-3 text-left font-medium">{t('admin.col_role')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="px-4 py-3">{currentUsername}</td>
+                <td className="px-4 py-3">{currentEmail}</td>
+                <td className="px-4 py-3">{role}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -99,10 +124,9 @@ export default function AdminUsersPage() {
       </section>
 
       <section aria-labelledby="users-list-heading">
-        <h2 id="users-list-heading" className="text-lg font-semibold mb-2">{t('admin.title')}</h2>
-        <p className="text-sm text-muted-foreground mb-4">{t('admin.no_users')}</p>
+        <h2 id="users-list-heading" className="text-lg font-semibold mb-4">{t('admin.title')}</h2>
 
-        {users.length === 0 ? (
+        {allUsers.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('admin.no_users')}</p>
         ) : (
           <div className="rounded-lg border overflow-auto">
@@ -116,7 +140,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {allUsers.map((user) => (
                   <tr key={user.user_ref} className="border-b last:border-0">
                     <td className="px-4 py-3">{user.username}</td>
                     <td className="px-4 py-3">{user.email}</td>

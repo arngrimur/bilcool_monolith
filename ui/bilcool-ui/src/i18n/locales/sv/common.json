@@ -45,7 +45,7 @@
     "delete_confirm": "Vill du verkligen radera {{username}}?",
     "user_created": "Användare {{username}} skapades",
     "user_deleted": "Användare raderad",
-    "no_users": "Inga användare med bokningar hittades"
+    "no_users": "Inga användare hittades"
   },
   "errors": { "unexpected": "Ett oväntat fel uppstod" }
 }

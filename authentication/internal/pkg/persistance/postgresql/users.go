@@ -111,7 +111,7 @@ func (r UsersRepository) FindAll(ctx context.Context) ([]extdomain.UserResponse,
 	}
 	defer func() { _ = rows.Close() }()
 
-	var users []extdomain.UserResponse
+	users := make([]extdomain.UserResponse, 0)
 	for rows.Next() {
 		var u extdomain.UserResponse
 		if err := rows.Scan(&u.UserRef, &u.Username, &u.Email, &u.Role); err != nil {

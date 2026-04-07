@@ -1,6 +1,14 @@
-import { useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUser, createUser, deleteUser } from '../api/auth'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getUser, listUsers, createUser, deleteUser } from '../api/auth'
 import type { CreateUserRequest } from '../types/api'
+
+export function useAllUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: async () => (await listUsers()) ?? [],
+    staleTime: 5 * 60_000,
+  })
+}
 
 export function useUsers(userRefs: string[]) {
   return useQueries({
@@ -18,6 +26,7 @@ export function useCreateUser() {
     mutationFn: (body: CreateUserRequest) => createUser(body),
     onSuccess: (user) => {
       queryClient.setQueryData(['user', user.user_ref], user)
+      queryClient.invalidateQueries({ queryKey: ['users'] })
     },
   })
 }
@@ -28,6 +37,7 @@ export function useDeleteUser() {
     mutationFn: (id: string) => deleteUser(id),
     onSuccess: (_data, id) => {
       queryClient.removeQueries({ queryKey: ['user', id] })
+      queryClient.invalidateQueries({ queryKey: ['users'] })
     },
   })
 }

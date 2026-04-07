@@ -27,5 +27,8 @@ export const createUser = (body: CreateUserRequest) =>
 export const getUser = (id: string) =>
   apiFetch<UserResponse>(`${BASE}/users/${id}`);
 
+export const listUsers = () =>
+  apiFetch<UserResponse[]>(`${BASE}/users`);
+
 export const deleteUser = (id: string) =>
   apiFetch<void>(`${BASE}/users/${id}`, { method: 'DELETE' });

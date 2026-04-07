@@ -45,7 +45,7 @@
     "delete_confirm": "Are you sure you want to delete {{username}}?",
     "user_created": "User {{username}} created successfully",
     "user_deleted": "User deleted",
-    "no_users": "No users with bookings found"
+    "no_users": "No users found"
   },
   "errors": { "unexpected": "An unexpected error occurred" }
 }
