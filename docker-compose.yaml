@@ -103,6 +103,7 @@ services:
       AWS_ENDPOINT_URL: http://localstack:4566
       JWT_SECRET: ${JWT_SECRET:-changeme}
       FROM_EMAIL: ${FROM_EMAIL}
+      BREVO_API_KEY: ${BREVO_API_KEY}
       WEBAUTHN_DISPLAY_NAME: ${WEBAUTHN_DISPLAY_NAME:-BilCool}
       WEBAUTHN_RP_ID: ${WEBAUTHN_RPID:-localhost}
       WEBAUTHN_RP_ORIGINS: ${WEBAUTHN_RP_ORIGINS:-http://localhost:3000}
