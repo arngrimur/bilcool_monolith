@@ -13,10 +13,10 @@ tasks:
     env:
       AWS_ACCESS_KEY_ID: "test"
       AWS_SECRET_ACCESS_KEY: "test"
-      FROM_EMAIL: "security@areskiftet44.se"
-      BREVO_API_KEY: "test"
+      FROM_EMAIL: ${FROM_EMAIL}
+      BREVO_API_KEY: ${BREVO_API_KEY}
     cmds:
-      - docker-compose up -d --remove-orphans --build journal event-ledger bookings authentication
+      - docker-compose up -d --remove-orphans --build journal event-ledger bookings authentication bilcool-ui
   down:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:

@@ -31,7 +31,8 @@ export default function LoginPage() {
       }
 
       if (result.next_step === 'passkey_assertion') {
-        const credential = await startAuthentication({ optionsJSON: result.options as Parameters<typeof startAuthentication>[0]['optionsJSON'] })
+        const { publicKey } = result.options as { publicKey: Parameters<typeof startAuthentication>[0]['optionsJSON'] }
+        const credential = await startAuthentication({ optionsJSON: publicKey })
         const { token } = await completeLogin({ session_id: result.session_id!, credential })
         await finalizeLogin(token)
       }

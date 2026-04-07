@@ -115,6 +115,7 @@ func (h *HttpRouter) loginBegin(c *gin.Context) {
 	}
 	resp, err := h.commands.LoginBegin(c.Request.Context(), req)
 	if err != nil {
+		log.Error().Err(err).Msg("login begin failed")
 		e := NewHttpError(err)
 		NewError(c, e.Code, e.Message)
 		return
@@ -125,11 +126,13 @@ func (h *HttpRouter) loginBegin(c *gin.Context) {
 func (h *HttpRouter) verifyToken(c *gin.Context) {
 	var req domain.VerifyTokenRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		log.Error().Err(err).Msg("invalid request body")
 		NewError(c, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	resp, err := h.commands.VerifyToken(c.Request.Context(), req)
 	if err != nil {
+		log.Error().Err(err).Msg("verify token failed")
 		e := NewHttpError(err)
 		NewError(c, e.Code, e.Message)
 		return

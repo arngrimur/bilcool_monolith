@@ -32,7 +32,8 @@ export default function OtpPage() {
 
     try {
       const { session_id, options } = await verifyToken({ email: email!, token: otp })
-      const credential = await startRegistration({ optionsJSON: options as Parameters<typeof startRegistration>[0]['optionsJSON'] })
+      const { publicKey } = options as { publicKey: Parameters<typeof startRegistration>[0]['optionsJSON'] }
+      const credential = await startRegistration({ optionsJSON: publicKey })
       const { token } = await completeLogin({ session_id, credential })
       storeAuthToken(token)
       const userRef = decodeUserRefFromToken(token)

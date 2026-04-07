@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -66,11 +67,21 @@ export default function BookingForm({
     register,
     handleSubmit,
     setError,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { start: defaultStart, end: defaultEnd },
   })
+
+  useEffect(() => {
+    if (open) {
+      reset({
+        start: initialStart ? toLocalDatetimeString(snapToQuarterHour(initialStart)) : '',
+        end: initialEnd ? toLocalDatetimeString(snapToQuarterHour(initialEnd)) : '',
+      })
+    }
+  }, [open, initialStart, initialEnd, reset])
 
   async function onSubmit(data: FormValues) {
     const start = snapToQuarterHour(new Date(data.start))
