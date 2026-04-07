@@ -8,11 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	localconfig "github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/config"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/stretchr/testify/suite"
+
+	localconfig "github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/config"
 )
 
 // sesTestSuite We need a licences for AWS SES in LocalStack to run this test
@@ -28,6 +29,7 @@ type sesTestSuite struct {
 
 // region setup
 func (suite *sesTestSuite) SetupSuite() {
+	suite.T().Skip("ses test skipped, we have to setup a localstack instance of ses to run this test. Missing licesnce")
 	cfg, err := config.LoadDefaultConfig(
 		context.Background(),
 		config.WithRegion("eu-north-1"),
