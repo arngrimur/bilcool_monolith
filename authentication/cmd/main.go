@@ -13,7 +13,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/application"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/event_dispatcher"
-	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail/ses"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail/brevo"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/persistance/postgresql"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/web"
 	soutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
@@ -76,7 +76,7 @@ func main() {
 	}
 	defer close(closer)
 
-	mailSender := ses.NewSeSender(awsCfg, config.SESFromEmail())
+	mailSender := brevo.NewSender()
 
 	wauthn, err := webauthn.New(&webauthn.Config{
 		RPDisplayName: config.WebAuthnDisplayName(),

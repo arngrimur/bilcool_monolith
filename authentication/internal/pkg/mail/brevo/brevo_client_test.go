@@ -9,7 +9,7 @@ import (
 
 func TestSendingOkMessage(t *testing.T) {
 	t.Skipf("We don't want ting to send emails in tests and create spam")
-	client := NewBrevoClient()
+	client := NewSender()
 	err := client.SendSecurityToken(context.Background(), "arngrimurbjarnason@gmail.com", "123456")
 	require.NoError(t, err)
 }

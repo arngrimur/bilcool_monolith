@@ -14,7 +14,7 @@ type BrevoClient struct {
 	client *brevolib.APIClient
 }
 
-func NewBrevoClient() *BrevoClient {
+func NewSender() *BrevoClient {
 	cfg := brevolib.NewConfiguration()
 	cfg.AddDefaultHeader("api-key", config.BrevoAPIKey())
 
