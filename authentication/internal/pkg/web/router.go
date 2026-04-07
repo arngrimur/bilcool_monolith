@@ -34,6 +34,7 @@ func NewRouter(commands application.Commands, queries application.Queries) *Http
 		c.String(http.StatusOK, "pong")
 	})
 	h.router.POST("/api/v1/users", h.createUser)
+	h.router.GET("/api/v1/users", h.listUsers)
 	h.router.DELETE("/api/v1/users/:id", h.deleteUser)
 	h.router.GET("/api/v1/users/:id", h.getUser)
 	h.router.POST("/api/v1/users/login", h.loginBegin)
@@ -90,6 +91,16 @@ func (h *HttpRouter) deleteUser(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *HttpRouter) listUsers(c *gin.Context) {
+	resp, err := h.queries.ListUsers(c.Request.Context())
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, e.Message)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *HttpRouter) getUser(c *gin.Context) {

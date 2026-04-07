@@ -27,6 +27,7 @@ type (
 	}
 
 	Queries interface {
+		ListUsers(ctx context.Context) ([]extdomain.UserResponse, error)
 		GetUserByRef(ctx context.Context, userRef uuid.UUID) (extdomain.UserResponse, error)
 	}
 )
@@ -44,6 +45,7 @@ type (
 		commands.LoginCompleteHandler
 	}
 	appQueries struct {
+		queries.ListUsersHandler
 		queries.GetUserHandler
 	}
 )
@@ -66,7 +68,8 @@ func New(
 			LoginCompleteHandler: commands.NewLoginCompleteHandler(users, webAuthn, jwtSecret),
 		},
 		appQueries: appQueries{
-			GetUserHandler: queries.NewGetUserHandler(users),
+			ListUsersHandler: queries.NewListUsersHandler(users),
+			GetUserHandler:   queries.NewGetUserHandler(users),
 		},
 	}
 }

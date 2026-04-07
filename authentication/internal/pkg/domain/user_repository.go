@@ -13,6 +13,7 @@ import (
 type UsersRepository interface {
 	CreateUser(ctx context.Context, req CreateUserRequest) (extdomain.UserResponse, error)
 	DeleteUser(ctx context.Context, userRef uuid.UUID) error
+	FindAll(ctx context.Context) ([]extdomain.UserResponse, error)
 	FindByEmail(ctx context.Context, email string) (extdomain.UserResponse, error)
 	FindByRef(ctx context.Context, userRef uuid.UUID) (extdomain.UserResponse, error)
 	CreateSecurityToken(ctx context.Context, userRef uuid.UUID, token string, expiresAt time.Time) error
