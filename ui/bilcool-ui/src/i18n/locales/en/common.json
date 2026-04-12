@@ -45,7 +45,10 @@
     "delete_confirm": "Are you sure you want to delete {{username}}?",
     "user_created": "User {{username}} created successfully",
     "user_deleted": "User deleted",
-    "no_users": "No users found"
+    "no_users": "No users found",
+    "promote_to_admin": "Make admin",
+    "demote_to_user": "Make user",
+    "role_changed": "Role updated"
   },
   "errors": { "unexpected": "An unexpected error occurred" }
 }

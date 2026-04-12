@@ -89,7 +89,7 @@ func main() {
 
 	repo := postgresql.NewUsersRepository(psqlDb)
 	app := application.New(repo, mailSender, wauthn, config.JWTSecret())
-	webService := web.NewRouter(app, app)
+	webService := web.NewRouter(app, app, config.JWTSecret())
 
 	err = webService.StartRouter(":8080")
 	if err != nil {

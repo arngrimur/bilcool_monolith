@@ -2,7 +2,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { useAllUsers, useCreateUser, useDeleteUser } from '../hooks/useUsers'
+import { useAllUsers, useCreateUser, useDeleteUser, useChangeUserRole } from '../hooks/useUsers'
 import { useAuthStore } from '../stores/authStore'
 import { toast } from '../components/ui/use-toast'
 import { Button } from '../components/ui/button'
@@ -27,6 +27,7 @@ export default function AdminUsersPage() {
 
   const createUser = useCreateUser()
   const deleteUser = useDeleteUser()
+  const changeUserRole = useChangeUserRole()
 
   const {
     register,
@@ -44,6 +45,11 @@ export default function AdminUsersPage() {
   async function handleDelete(id: string) {
     await deleteUser.mutateAsync(id)
     toast({ title: t('admin.user_deleted') })
+  }
+
+  async function handleRoleChange(id: string, newRole: 'admin' | 'user') {
+    await changeUserRole.mutateAsync({ id, role: newRole })
+    toast({ title: t('admin.role_changed') })
   }
 
   if (role !== 'admin') {
@@ -145,7 +151,16 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3">{user.username}</td>
                     <td className="px-4 py-3">{user.email}</td>
                     <td className="px-4 py-3">{user.role}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRoleChange(user.user_ref, user.role === 'admin' ? 'user' : 'admin')}
+                        disabled={user.user_ref === currentUserRef || changeUserRole.isPending}
+                        className="min-h-[44px]"
+                      >
+                        {user.role === 'admin' ? t('admin.demote_to_user') : t('admin.promote_to_admin')}
+                      </Button>
                       <Button
                         variant="destructive"
                         size="sm"

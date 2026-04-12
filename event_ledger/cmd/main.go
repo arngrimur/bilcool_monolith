@@ -35,7 +35,7 @@ func main() {
 
 	repo := dynstore.NewEventRepository(dynamoClient, config.DynamoTableName())
 
-	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, "event_ledger")
+	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, sqs.EventLedgerSqsQueue)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create SQS subscriber")
 	}

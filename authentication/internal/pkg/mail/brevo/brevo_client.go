@@ -3,6 +3,7 @@ package brevo
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	brevolib "github.com/getbrevo/brevo-go/lib"
 	"github.com/rs/zerolog/log"
@@ -11,7 +12,8 @@ import (
 )
 
 type BrevoClient struct {
-	client *brevolib.APIClient
+	client      *brevolib.APIClient
+	idGenerator IDGenerator
 }
 
 func NewSender() *BrevoClient {
@@ -21,6 +23,10 @@ func NewSender() *BrevoClient {
 	brc := brevolib.NewAPIClient(cfg)
 	return &BrevoClient{
 		client: brc,
+		idGenerator: IDGenerator{
+			idCounter: 0,
+			mu:        sync.Mutex{},
+		},
 	}
 }
 
@@ -29,6 +35,7 @@ func (b BrevoClient) SendSecurityToken(ctx context.Context, toEmail string, toke
 		Sender: &brevolib.SendSmtpEmailSender{
 			Name:  "Bilcool",
 			Email: config.FromSenderEmail(),
+			Id:    b.idGenerator.NextID(),
 		},
 		To:          []brevolib.SendSmtpEmailTo{{Email: toEmail, Name: toEmail}},
 		Subject:     "Your BilCool security code",

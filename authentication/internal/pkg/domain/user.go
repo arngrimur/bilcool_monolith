@@ -16,6 +16,10 @@ import (
 	extdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
 )
 
+type ChangeUserRoleRequest struct {
+	Role string `json:"role" validate:"required" binding:"required" example:"admin"`
+}
+
 type CreateUserRequest struct {
 	Username string `json:"username" validate:"required" binding:"required" example:"johndoe"`
 	Email    string `json:"email" validate:"required,email" binding:"required" example:"john@example.com"`
@@ -151,6 +155,13 @@ func (u *Users) DeleteWebAuthnSession(ctx context.Context, sessionID uuid.UUID) 
 
 func (u *Users) StorePasskey(ctx context.Context, userRef uuid.UUID, passkey Passkey) error {
 	return u.r.StorePasskey(ctx, userRef, passkey)
+}
+
+func (u *Users) ChangeUserRole(ctx context.Context, callerRef, targetRef uuid.UUID, newRole string) error {
+	if callerRef == targetRef {
+		return ErrSelfRoleChange
+	}
+	return u.r.ChangeUserRole(ctx, targetRef, newRole)
 }
 
 func GenerateSecurityToken() (string, error) {

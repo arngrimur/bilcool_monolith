@@ -237,6 +237,41 @@ func (r UsersRepository) GetPasskeys(ctx context.Context, userRef uuid.UUID) ([]
 	return passkeys, nil
 }
 
+func (r UsersRepository) ChangeUserRole(ctx context.Context, targetRef uuid.UUID, newRole string) error {
+	local_r, tx, err := r.createTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if newRole == "user" {
+		var adminCount int
+		err = local_r.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM users u JOIN roles r ON r.id = u.role_id WHERE r.name = 'admin' AND u.deleted_at IS NULL`,
+		).Scan(&adminCount)
+		if err != nil {
+			return err
+		}
+		if adminCount <= 1 {
+			return domain.ErrLastAdmin
+		}
+	}
+
+	var ref uuid.UUID
+	err = local_r.QueryRowContext(ctx,
+		`UPDATE users SET role_id = (SELECT id FROM roles WHERE name = $2) WHERE user_ref = $1 AND deleted_at IS NULL RETURNING user_ref`,
+		targetRef, newRole,
+	).Scan(&ref)
+	if err == sql.ErrNoRows {
+		return domain.ErrUserNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func (r UsersRepository) StorePasskey(ctx context.Context, userRef uuid.UUID, passkey domain.Passkey) error {
 	_, err := r.ExecContext(ctx,
 		`INSERT INTO passkeys (user_ref, credential_id, credential) VALUES ($1, $2, $3)`,

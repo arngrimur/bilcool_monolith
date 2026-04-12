@@ -219,7 +219,7 @@ func (h LoginCompleteHandler) LoginComplete(ctx context.Context, req domain.Logi
 		}
 	}
 
-	token, err := h.generateJWT(user.UserRef)
+	token, err := h.generateJWT(user.UserRef, user.Role)
 	if err != nil {
 		return domain.LoginCompleteResponse{}, err
 	}
@@ -227,9 +227,10 @@ func (h LoginCompleteHandler) LoginComplete(ctx context.Context, req domain.Logi
 	return domain.LoginCompleteResponse{Token: token}, nil
 }
 
-func (h LoginCompleteHandler) generateJWT(userRef uuid.UUID) (string, error) {
+func (h LoginCompleteHandler) generateJWT(userRef uuid.UUID, role string) (string, error) {
 	claims := jwtlib.MapClaims{
 		"user_ref": userRef.String(),
+		"role":     role,
 		"exp":      time.Now().Add(24 * time.Hour).Unix(),
 	}
 	token := jwtlib.NewWithClaims(jwtlib.SigningMethodHS256, claims)

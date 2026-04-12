@@ -3,6 +3,10 @@ export interface CreateUserRequest {
   email: string;
 }
 
+export interface ChangeUserRoleRequest {
+  role: 'admin' | 'user';
+}
+
 export interface UserResponse {
   user_ref: string;
   username: string;

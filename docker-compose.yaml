@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       SERVICES: sns,sqs,s3,dynamodb
-      DEFAULT_REGION: ${AWS_REGION:-eu-north-1}
+      REGION: ${AWS_REGION:-eu-north-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
       LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-test}
@@ -17,6 +17,8 @@ services:
       retries: 10
     networks:
       - bilcool
+    volumes:
+      - "./localstack/ready/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh"
 
   bookings-database:
     image: postgres:18

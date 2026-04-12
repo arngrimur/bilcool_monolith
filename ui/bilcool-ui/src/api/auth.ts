@@ -8,6 +8,7 @@ import type {
   LoginCompleteResponse,
   CreateUserRequest,
   UserResponse,
+  ChangeUserRoleRequest,
 } from '../types/api';
 
 const BASE = '/api/auth/api/v1';
@@ -32,3 +33,6 @@ export const listUsers = () =>
 
 export const deleteUser = (id: string) =>
   apiFetch<void>(`${BASE}/users/${id}`, { method: 'DELETE' });
+
+export const changeUserRole = (id: string, body: ChangeUserRoleRequest) =>
+  apiFetch<void>(`${BASE}/users/${id}/role`, { method: 'PATCH', body: JSON.stringify(body) });

@@ -45,7 +45,10 @@
     "delete_confirm": "Vill du verkligen radera {{username}}?",
     "user_created": "Användare {{username}} skapades",
     "user_deleted": "Användare raderad",
-    "no_users": "Inga användare hittades"
+    "no_users": "Inga användare hittades",
+    "promote_to_admin": "Gör till admin",
+    "demote_to_user": "Gör till användare",
+    "role_changed": "Roll uppdaterad"
   },
   "errors": { "unexpected": "Ett oväntat fel uppstod" }
 }

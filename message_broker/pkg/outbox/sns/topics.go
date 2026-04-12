@@ -2,6 +2,7 @@ package sns
 
 const (
 	TopicBookings = "bilcool_bookings"
+	TopicUsers    = "bilcool_users"
 )
 
 const (

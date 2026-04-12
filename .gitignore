@@ -4,3 +4,4 @@ go.work*
 **/*_mock.go
 .ai
 .envrc
+a.out

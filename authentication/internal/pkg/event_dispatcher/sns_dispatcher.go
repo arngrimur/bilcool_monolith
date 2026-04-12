@@ -12,8 +12,6 @@ import (
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
-const TopicUsers = "users"
-
 type SnsDispatcher[T postgres.Connector] struct {
 	sns.Publisher
 	connector T
@@ -38,7 +36,7 @@ func (s SnsDispatcher[T]) Execute(ctx context.Context, table soutbox_domain.Tabl
 	for _, e := range events {
 		e.EmittedAt = new(time.Now())
 	}
-	messages, err := s.SendBatchMessages(ctx, events, TopicUsers)
+	messages, err := s.SendBatchMessages(ctx, events, sns.TopicUsers)
 	if err != nil {
 		return err
 	}

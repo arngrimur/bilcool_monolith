@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error loading AWS config")
 	}
-	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, "journal")
+	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, sqs.JournalSqsQueue)
 	if err != nil {
 		log.Ctx(ctx).Fatal().Err(err).Msg("Error creating SQS subscriber")
 	}

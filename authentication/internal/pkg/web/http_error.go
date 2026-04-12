@@ -30,6 +30,12 @@ func NewHttpError(err error) HTTPError {
 		return HTTPError{Message: "session not found or expired", Code: http.StatusUnauthorized}
 	case domain.ErrInvalidCredential:
 		return HTTPError{Message: "invalid credential", Code: http.StatusUnauthorized}
+	case domain.ErrForbidden:
+		return HTTPError{Message: "forbidden", Code: http.StatusForbidden}
+	case domain.ErrSelfRoleChange:
+		return HTTPError{Message: "cannot change your own role", Code: http.StatusUnprocessableEntity}
+	case domain.ErrLastAdmin:
+		return HTTPError{Message: "cannot remove the last admin", Code: http.StatusUnprocessableEntity}
 	default:
 		return HTTPError{Message: "internal server error", Code: http.StatusInternalServerError}
 	}
