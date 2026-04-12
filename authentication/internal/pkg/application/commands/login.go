@@ -10,6 +10,7 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 	jwtlib "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/domain"
 )
@@ -24,6 +25,7 @@ func NewLoginBeginHandler(users *domain.Users, webAuthn domain.WebAuthnProvider)
 }
 
 func (h LoginBeginHandler) LoginBegin(ctx context.Context, req domain.LoginBeginRequest) (domain.LoginBeginResponse, error) {
+	log.Ctx(ctx).Info().Msg("LoginBegin")
 	user, err := h.users.FindByEmail(ctx, req.Email)
 	if err != nil {
 		return domain.LoginBeginResponse{}, err

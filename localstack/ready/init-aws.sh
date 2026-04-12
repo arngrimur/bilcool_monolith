@@ -18,7 +18,7 @@ BOOKINGS_TOPIC=$(awslocal "${REGION[@]}" sns  create-topic --output text  --name
 # event-ledger
 LEDGER_DLQ_NAME='bilcool-monolith-event_ledger_dlq'
 LEDGER_DLQ=$(awslocal "${REGION[@]}" sqs --output text create-queue --queue-name "$LEDGER_DLQ_NAME")
-FILE=$(attributes "$LEDGER_DLQ")
+FILE=$(attributes "$(QueueArn "$LEDGER_DLQ")")
 EVENT_LEDGER_SQS_END_POINT=$(awslocal "${REGION[@]}" sqs --output text  create-queue --queue-name bilcool-monolith-event_ledger --attributes "$FILE")
 EVENT_LEDGER_SQS_END_POINT=$(QueueArn "$EVENT_LEDGER_SQS_END_POINT")
 awslocal "${REGION[@]}" sns  subscribe --topic-arn "${USERS_TOPIC}" --protocol sqs --notification-endpoint "${EVENT_LEDGER_SQS_END_POINT}"
@@ -27,7 +27,7 @@ awslocal "${REGION[@]}" sns  subscribe --topic-arn "${BOOKINGS_TOPIC}" --protoco
 #bookings
 BOOKINGS_DLQ_NAME='bilcool-monolith-bookings_dlq'
 BOOKINGS_DLQ=$(awslocal "${REGION[@]}" sqs  --output text create-queue --queue-name "$BOOKINGS_DLQ_NAME" )
-FILE=$(attributes "$BOOKINGS_DLQ")
+FILE=$(attributes "$(QueueArn "$BOOKINGS_DLQ")")
 BOOKINGS_SQS_END_POINT=$(awslocal "${REGION[@]}" sqs --output text create-queue --queue-name bilcool-monolith-bookings --attributes "$FILE")
 BOOKINGS_SQS_END_POINT=$(QueueArn "$BOOKINGS_SQS_END_POINT")
 awslocal "${REGION[@]}" sns  subscribe --topic-arn "${USERS_TOPIC}" --protocol sqs --notification-endpoint "${BOOKINGS_SQS_END_POINT}"
@@ -35,7 +35,7 @@ awslocal "${REGION[@]}" sns  subscribe --topic-arn "${USERS_TOPIC}" --protocol s
 #journal
 JOURNAL_DLQ_NAME='bilcool-monolith-journal_dlq'
 JOURNAL_DLQ=$(awslocal "${REGION[@]}" sqs  --output text create-queue --queue-name "$JOURNAL_DLQ_NAME" )
-FILE=$(attributes "$JOURNAL_DLQ")
+FILE=$(attributes "$(QueueArn "$JOURNAL_DLQ")")
 JOURNAL_SQS_END_POINT=$(awslocal "${REGION[@]}" sqs --output text create-queue --queue-name bilcool-monolith-journal --attributes "$FILE")
 JOURNAL_SQS_END_POINT=$(QueueArn "$JOURNAL_SQS_END_POINT")
 awslocal "${REGION[@]}" sns  subscribe --topic-arn "${BOOKINGS_TOPIC}" --protocol sqs --notification-endpoint "${JOURNAL_SQS_END_POINT}"
