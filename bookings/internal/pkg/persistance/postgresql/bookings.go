@@ -25,8 +25,8 @@ func NewBookingsRepository(a *sql.DB) BookingRepository {
 }
 
 func (bdb BookingRepository) Find(ctx context.Context, request domain.BookingRequest) (extdomain.BookingResponse, error) {
-	const query = `SELECT  start_date, end_date, user_ref 
-FROM bookings 
+	const query = `SELECT start_date, end_date, user_ref
+FROM bookings
 WHERE booking_reference = $1`
 
 	var (
@@ -40,21 +40,17 @@ WHERE booking_reference = $1`
 		return extdomain.BookingResponse{}, err
 	}
 
-	response := domain.NewBookingResponse(request.BookingReference, sTime, eTime, uRef)
+	response := domain.NewBookingResponse(request.BookingReference, sTime, eTime, uRef, nil)
 
 	return response, err
 }
 
 func (bdb BookingRepository) FindAll(ctx context.Context) ([]extdomain.BookingResponse, error) {
-	const query = `SELECT booking_reference, start_date, end_date, user_ref 
-FROM bookings`
-	var (
-		bookings   = []extdomain.BookingResponse{}
-		sTime      time.Time
-		eTime      time.Time
-		uRef       uuid.UUID
-		bookingRef uuid.UUID
-	)
+	const query = `SELECT b.booking_reference, b.start_date, b.end_date, b.user_ref,
+       d.start_distance, d.end_distance
+FROM bookings b
+LEFT JOIN distances d ON d.fk_booking_id = b.id`
+	bookings := []extdomain.BookingResponse{}
 
 	rows, err := bdb.QueryContext(ctx, query)
 	if err != nil {
@@ -64,11 +60,26 @@ FROM bookings`
 		_ = rows.Close()
 	}()
 	for rows.Next() {
-		err = rows.Scan(&bookingRef, &sTime, &eTime, &uRef)
+		var (
+			bookingRef    uuid.UUID
+			sTime         time.Time
+			eTime         time.Time
+			uRef          uuid.UUID
+			startDistance sql.NullInt64
+			endDistance   sql.NullInt64
+		)
+		err = rows.Scan(&bookingRef, &sTime, &eTime, &uRef, &startDistance, &endDistance)
 		if err != nil {
 			return nil, err
 		}
-		bookings = append(bookings, domain.NewBookingResponse(bookingRef, sTime, eTime, uRef))
+		var dist *extdomain.Distance
+		if startDistance.Valid {
+			dist = &extdomain.Distance{
+				StartDistance: int(startDistance.Int64),
+				EndDistance:   int(endDistance.Int64),
+			}
+		}
+		bookings = append(bookings, domain.NewBookingResponse(bookingRef, sTime, eTime, uRef, dist))
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err

@@ -50,6 +50,7 @@ export interface BookingResponse {
   booking_reference: string;
   start_date: string;
   end_date: string;
+  distance?: { start_distance: number; end_distance: number };
 }
 
 export interface UpdateBookingRequest {

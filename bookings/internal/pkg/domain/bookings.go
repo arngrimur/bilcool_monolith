@@ -23,12 +23,13 @@ type EndBookingRequest struct {
 	extdomain.Distance
 }
 
-func NewBookingResponse(bookingRef uuid.UUID, startTime time.Time, endTime time.Time, userRef uuid.UUID) extdomain.BookingResponse {
+func NewBookingResponse(bookingRef uuid.UUID, startTime time.Time, endTime time.Time, userRef uuid.UUID, distance *extdomain.Distance) extdomain.BookingResponse {
 	return extdomain.BookingResponse{
 		UserRef:          userRef,
 		BookingReference: bookingRef,
 		StartDate:        startTime,
 		EndDate:          endTime,
+		Distance:         distance,
 	}
 }
 

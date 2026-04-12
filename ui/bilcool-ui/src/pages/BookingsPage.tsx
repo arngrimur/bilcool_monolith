@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useBookings } from '../hooks/useBookings'
 import { useUsers } from '../hooks/useUsers'
 import { useAuthStore } from '../stores/authStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { listEvents } from '../api/events'
-import type { CompletedBookingPayload, BookingResponse } from '../types/api'
+import type { BookingResponse } from '../types/api'
 import { formatDate, formatTime, formatMonthYear, formatMonthKey } from '../utils/dateUtils'
 
 type BookingStatus = 'upcoming' | 'active' | 'completed' | 'overdue'
@@ -29,17 +27,11 @@ export default function BookingsPage() {
 
   const { data: bookings = [] } = useBookings()
 
-  const { data: events = [] } = useQuery({
-    queryKey: ['events', { producer: 'bookings', event_type: 'booking_ended' }],
-    queryFn: () => listEvents({ producer: 'bookings', event_type: 'booking_ended' }),
-  })
-
   const completedBookingMap = new Map<string, number>()
-  for (const event of events) {
-    const payload = event.payload as CompletedBookingPayload
-    if (payload?.booking?.booking_reference && payload?.distance) {
-      const km = (payload.distance.end_distance - payload.distance.start_distance) / 1000
-      completedBookingMap.set(payload.booking.booking_reference, km)
+  for (const b of bookings) {
+    if (b.distance) {
+      const km = (b.distance.end_distance - b.distance.start_distance) / 1000
+      completedBookingMap.set(b.booking_reference, km)
     }
   }
 
