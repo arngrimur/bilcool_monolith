@@ -26,6 +26,29 @@ jobs:
         if: steps.cache-vendor.outputs.cache-hit != 'true'
         run: task vendor
 
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    needs: vendor
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Restore vendor cache
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+      - name: Initialize workspace
+        run: go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal
+      - run: go work vendor
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          args: ./...
+
   build-testing:
     name: testing
     runs-on: ubuntu-latest
