@@ -13,9 +13,12 @@ import (
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/event_dispatcher"
+	bookinginbox "github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance/postgresql"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/web"
 	soutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
 	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
@@ -68,11 +71,19 @@ func main() {
 		log.Fatal().Err(err).Msg("Error starting replication")
 	}
 	defer close(closer)
-	// Create Application
-	app := application.New(postgresql.NewBookingsRepository(psqlDb))
+	repo := postgresql.NewBookingsRepository(psqlDb)
+	app := application.New(repo)
 	webService := web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler)
 	err = webService.StartRouter(":8080")
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error starting web service")
 	}
+
+	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, sqs.BookingsSqsQueue)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create SQS subscriber")
+	}
+
+	eventHandler := bookinginbox.NewEventHandler(sqsSubscriber, repo)
+	inbox.NewWorker(eventHandler, 5)
 }

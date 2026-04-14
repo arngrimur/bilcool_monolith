@@ -10,16 +10,17 @@ import (
 	"testing"
 	"time"
 
-	aws_sns "github.com/aws/aws-sdk-go-v2/service/sns"
-	aws_sqs "github.com/aws/aws-sdk-go-v2/service/sqs"
+	awssns "github.com/aws/aws-sdk-go-v2/service/sns"
+	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/domain"
 	dynstore "github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/persistance/dynamodb"
+	brokerinbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
-	broker "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
+	brokerpostgres "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 	testaws "github.com/arngrimur/bilcool_monolith/testing/aws"
 )
 
@@ -30,8 +31,9 @@ type consumerTestSuite struct {
 	cloud         *testaws.AwsLocalCloud
 	sqsSubscriber *sqs.SqsSubscriber
 	consumer      *Consumer
-	snsClient     *aws_sns.Client
-	topic         *aws_sns.CreateTopicOutput
+	worker        *brokerinbox.Worker
+	snsClient     *awssns.Client
+	topic         *awssns.CreateTopicOutput
 	repo          *dynstore.EventRepository
 }
 
@@ -39,8 +41,8 @@ func (suite *consumerTestSuite) SetupSuite() {
 	suite.cloud = testaws.SetupLocalCloud(suite.T(), "sqs,sns,dynamodb")
 	awsCfg := suite.cloud.CreateConfig(suite.T())
 
-	sqsClient := aws_sqs.NewFromConfig(awsCfg)
-	q, err := sqsClient.CreateQueue(suite.cloud.Ctx, &aws_sqs.CreateQueueInput{
+	sqsClient := awssqs.NewFromConfig(awsCfg)
+	q, err := sqsClient.CreateQueue(suite.cloud.Ctx, &awssqs.CreateQueueInput{
 		QueueName: new("event_ledger_test"),
 		Attributes: map[string]string{
 			"VisibilityTimeout":             "10",
@@ -49,20 +51,20 @@ func (suite *consumerTestSuite) SetupSuite() {
 	})
 	suite.Require().NoError(err)
 
-	suite.snsClient = aws_sns.NewFromConfig(awsCfg)
-	suite.topic, err = suite.snsClient.CreateTopic(suite.cloud.Ctx, &aws_sns.CreateTopicInput{
+	suite.snsClient = awssns.NewFromConfig(awsCfg)
+	suite.topic, err = suite.snsClient.CreateTopic(suite.cloud.Ctx, &awssns.CreateTopicInput{
 		Name:       new("test_topic"),
 		Attributes: map[string]string{"DisplayName": "test_topic", "FifoEndpointResolver": "false"},
 	})
 	suite.Require().NoError(err)
 
-	attrs, err := sqsClient.GetQueueAttributes(suite.cloud.Ctx, &aws_sqs.GetQueueAttributesInput{
+	attrs, err := sqsClient.GetQueueAttributes(suite.cloud.Ctx, &awssqs.GetQueueAttributesInput{
 		QueueUrl:       q.QueueUrl,
 		AttributeNames: []types.QueueAttributeName{"QueueArn"},
 	})
 	suite.Require().NoError(err)
 
-	_, err = suite.snsClient.Subscribe(suite.cloud.Ctx, &aws_sns.SubscribeInput{
+	_, err = suite.snsClient.Subscribe(suite.cloud.Ctx, &awssns.SubscribeInput{
 		Protocol: new("sqs"),
 		TopicArn: suite.topic.TopicArn,
 		Endpoint: new(attrs.Attributes["QueueArn"]),
@@ -77,7 +79,8 @@ func (suite *consumerTestSuite) SetupSuite() {
 	suite.Require().NoError(dynstore.EnsureTable(suite.cloud.Ctx, dynamoClient, testTableName))
 	suite.repo = dynstore.NewEventRepository(dynamoClient, testTableName)
 
-	suite.consumer = NewConsumer(sqsSubscriber, 5, suite.repo)
+	suite.consumer = NewConsumer(sqsSubscriber, suite.repo)
+	suite.worker = brokerinbox.NewWorker(suite.consumer, 5)
 }
 
 func (suite *consumerTestSuite) TearDownSuite() {
@@ -85,7 +88,7 @@ func (suite *consumerTestSuite) TearDownSuite() {
 }
 
 func (suite *consumerTestSuite) AfterTest(_, _ string) {
-	suite.consumer.Stop()
+	suite.worker.Stop()
 }
 
 func (suite *consumerTestSuite) HandleStats(suiteName string, stats *suite.SuiteInformation) {
@@ -106,7 +109,7 @@ func (suite *consumerTestSuite) TestConsumeMessages() {
 		suite.publishEvent(producer)
 	}
 
-	suite.consumer.Start(context.Background())
+	suite.worker.Start(context.Background())
 
 	suite.Require().Eventuallyf(func() bool {
 		results, err := suite.repo.QueryEvents(suite.cloud.Ctx, domain.QueryParams{
@@ -128,7 +131,7 @@ func (suite *consumerTestSuite) TestDuplicateEventsAreIdempotent() {
 		suite.publishEventWithId(producer, &id, &fixedTime)
 	}
 
-	suite.consumer.Start(context.Background())
+	suite.worker.Start(context.Background())
 	results := []domain.EventItem{}
 	suite.Require().Eventuallyf(func() bool {
 		results, err := suite.repo.QueryEvents(suite.cloud.Ctx, domain.QueryParams{
@@ -155,7 +158,7 @@ func (suite *consumerTestSuite) publishEventWithId(producer string, id *uuid.UUI
 	if id != nil {
 		eventId = *id
 	}
-	event := broker.Event{
+	event := brokerpostgres.Event{
 		EventId:       eventId,
 		Type:          "booking_ended",
 		CorrelationId: uuid.New(),
@@ -166,7 +169,7 @@ func (suite *consumerTestSuite) publishEventWithId(producer string, id *uuid.UUI
 	msg, err := json.Marshal(event)
 	suite.Require().NoError(err)
 
-	_, err = suite.snsClient.Publish(context.Background(), &aws_sns.PublishInput{
+	_, err = suite.snsClient.Publish(context.Background(), &awssns.PublishInput{
 		Message:  new(string(msg)),
 		TopicArn: suite.topic.TopicArn,
 	})

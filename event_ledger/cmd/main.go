@@ -10,6 +10,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/inbox"
 	dynstore "github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/persistance/dynamodb"
 	"github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/web"
+	brokerinbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
 )
 
@@ -40,8 +41,10 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to create SQS subscriber")
 	}
 
-	consumer := inbox.NewConsumer(sqsSubscriber, 5, repo)
-	consumer.Start(ctx)
+	consumer := inbox.NewConsumer(sqsSubscriber, repo)
+	worker := brokerinbox.NewWorker(consumer, 5)
+	worker.Start(ctx)
+	defer worker.Stop()
 
 	router := web.NewRouter(repo)
 	if err := router.StartRouter(config.APIPort()); err != nil {
@@ -53,5 +56,4 @@ func main() {
 	)
 	log.Info().Msg("press CTRL+C to stop")
 	log.Info().Msg("stopping event-ledge")
-	consumer.Stop()
 }

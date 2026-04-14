@@ -305,7 +305,7 @@ func executeActions(ctx context.Context, actions []Action, table Table) {
 	for _, action := range actions {
 		err := action.Execute(ctx, table)
 		if err != nil {
-			log.Error().Err(err).Msgf("failed to execute action")
+			log.Error().Err(err).Str("table", table.SchemaName+"."+table.TableName).Msgf("failed to execute action")
 		}
 	}
 }

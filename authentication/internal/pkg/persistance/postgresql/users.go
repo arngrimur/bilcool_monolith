@@ -54,9 +54,9 @@ func (r UsersRepository) CreateUser(ctx context.Context, req domain.CreateUserRe
 	}
 	err = outbox.Insert(ctx, tx, outbox.Event{
 		EventId:       uuid.New(),
-		Type:          "created",
+		Type:          extdomain.EventUserCreated,
 		CorrelationId: uuid.New(),
-		Producer:      "authentication",
+		Producer:      extdomain.EventProducer,
 		Payload:       payload,
 	})
 	if err != nil {
