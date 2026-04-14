@@ -9,7 +9,7 @@ import (
 	broker "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
-//go:gen mockgen -source=message_broker/pkg/inbox/worker.go -destination=message_broker/pkg/inbox/event_consumer_mock.go -package=inbox
+//go:generate mockgen -source=worker.go -destination=event_consumer_mock.go -package=inbox
 type EventConsumer interface {
 	// RetrieveMessages returns a slice of messages from the queue or an error
 	RetrieveMessages(ctx context.Context) ([]broker.Message, error)
