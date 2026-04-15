@@ -26,7 +26,8 @@ type CreateUserRequest struct {
 }
 
 type LoginBeginRequest struct {
-	Email string `json:"email" validate:"required,email" binding:"required" example:"john@example.com"`
+	Email  string `json:"email"  validate:"required,email" binding:"required" example:"john@example.com"`
+	Locale string `json:"locale" example:"sv"`
 }
 
 type LoginBeginResponse struct {
@@ -137,8 +138,8 @@ func (u *Users) VerifyAndConsumeToken(ctx context.Context, userRef uuid.UUID, to
 	return u.r.VerifyAndConsumeToken(ctx, userRef, token)
 }
 
-func (u *Users) SendToken(ctx context.Context, email, token string) error {
-	return u.m.SendSecurityToken(ctx, email, token)
+func (u *Users) SendToken(ctx context.Context, email, token, locale string) error {
+	return u.m.SendSecurityToken(ctx, email, token, locale)
 }
 
 func (u *Users) StoreWebAuthnSession(ctx context.Context, session WebAuthnSession) error {

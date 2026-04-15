@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/config"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail"
 )
 
 type BrevoClient struct {
@@ -21,16 +22,17 @@ func NewSender() *BrevoClient {
 	return &BrevoClient{client: brevolib.NewAPIClient(cfg)}
 }
 
-func (b BrevoClient) SendSecurityToken(ctx context.Context, toEmail string, token string) error {
+func (b BrevoClient) SendSecurityToken(ctx context.Context, toEmail string, token string, locale string) error {
+	subject, htmlContent, textContent := mail.SecurityTokenContent(token, locale)
 	mail := brevolib.SendSmtpEmail{
 		Sender: &brevolib.SendSmtpEmailSender{
 			Name:  "Bilcool",
 			Email: config.FromSenderEmail(),
 		},
 		To:          []brevolib.SendSmtpEmailTo{{Email: toEmail, Name: toEmail}},
-		Subject:     "Your BilCool security code",
-		HtmlContent: "Your security code is: <div><b>" + token + "</b><div>This code is valid for 10 minutes.",
-		TextContent: "Your security code is: " + token + "\n\nThis code is valid for 10 minutes.",
+		Subject:     subject,
+		HtmlContent: htmlContent,
+		TextContent: textContent,
 	}
 	_, response, err := b.client.TransactionalEmailsApi.SendTransacEmail(ctx, mail)
 	if err != nil {

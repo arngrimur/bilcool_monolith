@@ -206,6 +206,9 @@ func (h *HttpRouter) loginBegin(c *gin.Context) {
 		NewError(c, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	if req.Locale == "" {
+		req.Locale = c.GetHeader("Accept-Language")
+	}
 	resp, err := h.commands.LoginBegin(c.Request.Context(), req)
 	if err != nil {
 		log.Error().Err(err).Msg("login begin failed")

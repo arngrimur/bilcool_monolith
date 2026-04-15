@@ -68,7 +68,7 @@ func TestLoginBegin_NoPasskeys_SendsToken(t *testing.T) {
 		Return(extdomain.UserResponse{UserRef: userRef, Username: "alice", Email: "alice@example.com"}, nil).Times(1)
 	repo.EXPECT().GetPasskeys(gomock.Any(), userRef).Return(nil, nil).Times(1)
 	repo.EXPECT().CreateSecurityToken(gomock.Any(), userRef, gomock.Any(), gomock.Any()).Return(nil).Times(1)
-	mail.EXPECT().SendSecurityToken(gomock.Any(), "alice@example.com", gomock.Any()).Return(nil).Times(1)
+	mail.EXPECT().SendSecurityToken(gomock.Any(), "alice@example.com", gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 	app := New(repo, mail, nil, "secret")
 	resp, err := app.LoginBegin(context.Background(), domain.LoginBeginRequest{Email: "alice@example.com"})

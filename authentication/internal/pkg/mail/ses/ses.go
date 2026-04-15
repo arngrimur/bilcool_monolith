@@ -2,11 +2,12 @@ package ses
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsses "github.com/aws/aws-sdk-go-v2/service/sesv2"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2/types"
+
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail"
 )
 
 type SesSender struct {
@@ -22,9 +23,8 @@ func NewSeSender(cfg aws.Config, fromEmail string) *SesSender {
 	}
 }
 
-func (s *SesSender) SendSecurityToken(ctx context.Context, email string, token string) error {
-	subject := "Your BilCool security code"
-	body := fmt.Sprintf("Your security code is: %s\n\nThis code is valid for 10 minutes.", token)
+func (s *SesSender) SendSecurityToken(ctx context.Context, email string, token string, locale string) error {
+	subject, _, body := mail.SecurityTokenContent(token, locale)
 	_, err := s.client.SendEmail(ctx, &awsses.SendEmailInput{
 		FromEmailAddress: aws.String(s.fromEmail),
 		Destination: &types.Destination{

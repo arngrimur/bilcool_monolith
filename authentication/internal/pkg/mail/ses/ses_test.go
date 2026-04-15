@@ -62,6 +62,7 @@ func (suite *sesTestSuite) TestSendMail() {
 		suite.T().Context(),
 		"arngrimurbjarnason@gmail.com",
 		"123456",
+		"",
 	)
 	suite.Require().NoError(err)
 	suite.T().Log(
