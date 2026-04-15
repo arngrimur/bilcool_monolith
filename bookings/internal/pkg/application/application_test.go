@@ -44,12 +44,16 @@ func (suite *applicationTestSuite) TearDownSuite() {
 	testcontainers.CleanupContainer(suite.T(), suite.PostgresContainer)
 }
 func (suite *applicationTestSuite) BeforeTest(suiteName, testName string) {
+	var userID int
+	err := suite.Db.QueryRow("INSERT INTO users (userref) VALUES ($1) RETURNING id", suite.userRef).Scan(&userID)
+	suite.Require().NoError(err)
+
 	q := "INSERT INTO bookings (booking_reference, start_date, end_date, user_ref) VALUES ($1, $2, $3, $4)"
-	_, err := suite.Db.Exec(q, suite.bookingRef, suite.now, suite.now, suite.userRef)
+	_, err = suite.Db.Exec(q, suite.bookingRef, suite.now, suite.now, userID)
 	suite.Require().NoError(err)
 }
 func (suite *applicationTestSuite) AfterTest(suiteName, testName string) {
-	_, err := suite.Db.Exec("TRUNCATE TABLE bookings CASCADE")
+	_, err := suite.Db.Exec("TRUNCATE TABLE users, inbox CASCADE")
 	suite.Require().NoError(err)
 }
 func (suite *applicationTestSuite) HandleStats(suiteName string, stats *suite.SuiteInformation) {
@@ -86,7 +90,9 @@ func (suite *applicationTestSuite) TestUpdateBooking() {
 		EndDate:          suite.now,
 		UserRef:          uuid.New(),
 	}
-	err := application.UpdateBooking(context.Background(), r)
+	err := bookingRepository.AddUser(context.Background(), r.UserRef, uuid.New().String())
+	suite.Require().NoError(err)
+	err = application.UpdateBooking(context.Background(), r)
 	suite.Require().NoError(err)
 	e, err := application.GetBooking(context.Background(), domain.BookingRequest{BookingReference: r.BookingReference})
 	suite.Require().NoError(err)

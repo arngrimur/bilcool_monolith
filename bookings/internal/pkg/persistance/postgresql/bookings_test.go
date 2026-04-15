@@ -22,17 +22,14 @@ import (
 
 type bookingsTestSuite struct {
 	suite.Suite
-	// region variables
 	testdb.SuiteDbIntegration
 	bookingRef uuid.UUID
 	startTime  time.Time
 	userRef    uuid.UUID
+	userID     int
 	endTime    time.Time
-
-	// endregion variables
 }
 
-// region setup
 func (suite *bookingsTestSuite) SetupSuite() {
 	suite.SuiteDbIntegration = testdb.SetupDatabase(suite.T(), migrations.FS, "bookings_test")
 	suite.bookingRef = uuid.New()
@@ -46,15 +43,22 @@ func (suite *bookingsTestSuite) TearDownSuite() {
 }
 
 func (suite *bookingsTestSuite) BeforeTest(suiteName, testName string) {
-	q := "INSERT INTO bookings (booking_reference, start_date, end_date, user_ref) VALUES ($1, $2, $3, $4)"
-	_, err := suite.Db.Exec(q, suite.bookingRef, suite.startTime, suite.endTime, suite.userRef)
+	err := suite.Db.QueryRow("INSERT INTO users (userref) VALUES ($1) RETURNING id", suite.userRef).Scan(&suite.userID)
 	suite.Require().NoError(err)
-	_, err = suite.Db.Exec(q, uuid.New(), suite.startTime, suite.endTime, uuid.New())
+
+	var secondUserID int
+	err = suite.Db.QueryRow("INSERT INTO users (userref) VALUES ($1) RETURNING id", uuid.New()).Scan(&secondUserID)
+	suite.Require().NoError(err)
+
+	q := "INSERT INTO bookings (booking_reference, start_date, end_date, user_ref) VALUES ($1, $2, $3, $4)"
+	_, err = suite.Db.Exec(q, suite.bookingRef, suite.startTime, suite.endTime, suite.userID)
+	suite.Require().NoError(err)
+	_, err = suite.Db.Exec(q, uuid.New(), suite.startTime, suite.endTime, secondUserID)
 	suite.Require().NoError(err)
 }
 
 func (suite *bookingsTestSuite) AfterTest(suiteName, testName string) {
-	_, err := suite.Db.Exec("TRUNCATE TABLE bookings CASCADE")
+	_, err := suite.Db.Exec("TRUNCATE TABLE users, inbox CASCADE")
 	suite.Require().NoError(err)
 }
 
@@ -74,8 +78,6 @@ func TestRunSuitebookings(t *testing.T) {
 	suite.Run(t, new(bookingsTestSuite))
 }
 
-// endregion setup
-// region tests
 func (suite *bookingsTestSuite) TestGetBooking() {
 	database := NewBookingsRepository(suite.Db)
 	booking, err := database.Find(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
@@ -114,7 +116,11 @@ func (suite *bookingsTestSuite) TestCreateNewBooking() {
 	database := NewBookingsRepository(suite.Db)
 	userRef := uuid.New()
 	bookingRef := uuid.New()
-	_, err := database.Find(context.Background(), domain.BookingRequest{BookingReference: bookingRef})
+
+	err := database.AddUser(context.Background(), userRef, uuid.New().String())
+	suite.Require().NoError(err)
+
+	_, err = database.Find(context.Background(), domain.BookingRequest{BookingReference: bookingRef})
 	suite.Require().Error(err)
 
 	err = database.UpdateBooking(context.Background(), domain.UpdateBookingRequest{
@@ -144,36 +150,44 @@ func (suite *bookingsTestSuite) TestDeleteBooking() {
 func (suite *bookingsTestSuite) TestDeleteBookingThatHasStarted() {
 	ref := uuid.New()
 	q := "INSERT INTO bookings (booking_reference, start_date, end_date, user_ref) VALUES ($1, $2, $3, $4)"
-	_, err := suite.Db.Exec(q, ref, suite.startTime.Add(-4*time.Hour), suite.endTime, suite.userRef)
+	_, err := suite.Db.Exec(q, ref, suite.startTime.Add(-4*time.Hour), suite.endTime, suite.userID)
 	suite.Require().NoError(err)
 
 	database := NewBookingsRepository(suite.Db)
 	err = database.DeleteBooking(context.Background(), domain.BookingRequest{BookingReference: ref})
 	suite.Require().Error(err)
-
 }
 
 func (suite *bookingsTestSuite) TestBookingCanBeUpdated() {
 	database := NewBookingsRepository(suite.Db)
+	ctx := context.Background()
+
+	addUser := func() uuid.UUID {
+		ref := uuid.New()
+		err := database.AddUser(ctx, ref, uuid.New().String())
+		suite.Require().NoError(err)
+		return ref
+	}
+
 	booking1 := domain.UpdateBookingRequest{
-		UserRef:          uuid.New(),
+		UserRef:          addUser(),
 		BookingReference: uuid.New(),
 		StartDate:        time.Date(2026, 2, 28, 3, 0, 0, 0, time.UTC),
 		EndDate:          time.Date(2026, 2, 28, 5, 0, 0, 0, time.UTC),
 	}
 	booking2 := domain.UpdateBookingRequest{
-		UserRef:          uuid.New(),
+		UserRef:          addUser(),
 		BookingReference: uuid.New(),
 		StartDate:        time.Date(2026, 2, 28, 5, 0, 0, 0, time.UTC),
 		EndDate:          time.Date(2026, 2, 28, 7, 0, 0, 0, time.UTC),
 	}
 	booking3 := domain.UpdateBookingRequest{
-		UserRef:          uuid.New(),
+		UserRef:          addUser(),
 		BookingReference: uuid.New(),
 		StartDate:        time.Date(2026, 2, 28, 7, 0, 0, 0, time.UTC),
 		EndDate:          time.Date(2026, 2, 28, 9, 0, 0, 0, time.UTC),
 	}
-	ctx := context.Background()
+
 	err := database.UpdateBooking(ctx, booking1)
 	suite.Require().NoError(err)
 	err = database.UpdateBooking(ctx, booking2)
@@ -204,7 +218,97 @@ func (suite *bookingsTestSuite) TestBookingCanBeUpdated() {
 		err := database.UpdateBooking(ctx, booking2)
 		suite.Require().NoError(err)
 	})
-
 }
 
-// endregion tests
+func (suite *bookingsTestSuite) TestAddUser() {
+	database := NewBookingsRepository(suite.Db)
+	userRef := uuid.New()
+	messageID := uuid.New().String()
+
+	err := database.AddUser(context.Background(), userRef, messageID)
+	suite.Require().NoError(err)
+
+	var found uuid.UUID
+	err = suite.Db.QueryRow("SELECT userref FROM users WHERE userref = $1", userRef).Scan(&found)
+	suite.Require().NoError(err)
+	suite.Require().Equal(userRef, found)
+
+	var storedMsgID string
+	err = suite.Db.QueryRow("SELECT message_id FROM inbox WHERE message_id = $1", messageID).Scan(&storedMsgID)
+	suite.Require().NoError(err)
+	suite.Require().Equal(messageID, storedMsgID)
+}
+
+func (suite *bookingsTestSuite) TestAddUserDuplicateMessageID() {
+	database := NewBookingsRepository(suite.Db)
+	messageID := uuid.New().String()
+
+	err := database.AddUser(context.Background(), uuid.New(), messageID)
+	suite.Require().NoError(err)
+
+	err = database.AddUser(context.Background(), uuid.New(), messageID)
+	suite.Require().Error(err)
+}
+
+func (suite *bookingsTestSuite) TestAddUserDuplicateUserRef() {
+	database := NewBookingsRepository(suite.Db)
+	userRef := uuid.New()
+
+	err := database.AddUser(context.Background(), userRef, uuid.New().String())
+	suite.Require().NoError(err)
+
+	err = database.AddUser(context.Background(), userRef, uuid.New().String())
+	suite.Require().Error(err)
+}
+
+func (suite *bookingsTestSuite) TestDeleteUser() {
+	database := NewBookingsRepository(suite.Db)
+	userRef := uuid.New()
+
+	err := database.AddUser(context.Background(), userRef, uuid.New().String())
+	suite.Require().NoError(err)
+
+	err = database.DeleteUser(context.Background(), userRef, uuid.New().String())
+	suite.Require().NoError(err)
+
+	var deleted bool
+	var deletedAt *time.Time
+	err = suite.Db.QueryRow("SELECT deleted, deleted_at FROM users WHERE userref = $1", userRef).Scan(&deleted, &deletedAt)
+	suite.Require().NoError(err)
+	suite.Require().True(deleted)
+	suite.Require().NotNil(deletedAt)
+}
+
+func (suite *bookingsTestSuite) TestDeleteUserIdempotent() {
+	database := NewBookingsRepository(suite.Db)
+	userRef := uuid.New()
+
+	err := database.AddUser(context.Background(), userRef, uuid.New().String())
+	suite.Require().NoError(err)
+
+	err = database.DeleteUser(context.Background(), userRef, uuid.New().String())
+	suite.Require().NoError(err)
+
+	err = database.DeleteUser(context.Background(), userRef, uuid.New().String())
+	suite.Require().NoError(err)
+
+	var count int
+	err = suite.Db.QueryRow("SELECT COUNT(*) FROM users WHERE userref = $1 AND deleted = true", userRef).Scan(&count)
+	suite.Require().NoError(err)
+	suite.Require().Equal(1, count)
+}
+
+func (suite *bookingsTestSuite) TestDeleteUserDuplicateMessageID() {
+	database := NewBookingsRepository(suite.Db)
+	userRef := uuid.New()
+	messageID := uuid.New().String()
+
+	err := database.AddUser(context.Background(), userRef, uuid.New().String())
+	suite.Require().NoError(err)
+
+	err = database.DeleteUser(context.Background(), userRef, messageID)
+	suite.Require().NoError(err)
+
+	err = database.DeleteUser(context.Background(), userRef, messageID)
+	suite.Require().Error(err)
+}

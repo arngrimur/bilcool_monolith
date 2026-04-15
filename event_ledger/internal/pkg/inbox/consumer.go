@@ -2,14 +2,13 @@ package inbox
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
-	broker "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
+	brokerpostgres "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
 type EventStore interface {
@@ -17,63 +16,22 @@ type EventStore interface {
 }
 
 type Consumer struct {
-	handler     *sqs.SqsSubscriber
-	workerCount int
-	store       EventStore
-	cancel      context.CancelFunc
-	wg          sync.WaitGroup
+	handler *sqs.SqsSubscriber
+	store   EventStore
 }
 
-func NewConsumer(client *sqs.SqsSubscriber, noWorkers int, store EventStore) *Consumer {
+func NewConsumer(client *sqs.SqsSubscriber, store EventStore) *Consumer {
 	return &Consumer{
-		handler:     client,
-		workerCount: noWorkers,
-		store:       store,
+		handler: client,
+		store:   store,
 	}
 }
 
-func (c *Consumer) Start(ctx context.Context) {
-	ctx, c.cancel = context.WithCancel(ctx)
-	msgChan := make(chan []broker.Message, c.workerCount*2)
-
-	for i := 0; i < c.workerCount; i++ {
-		c.wg.Go(func() {
-			c.worker(ctx, msgChan)
-		})
-	}
-
-	c.wg.Go(func() {
-		c.poll(ctx, msgChan)
-		close(msgChan)
-	})
-}
-
-func (c *Consumer) Stop() {
-	if c.cancel != nil {
-		c.cancel()
-	}
-	c.wg.Wait()
-}
-
-func (c *Consumer) worker(ctx context.Context, msgChan chan []broker.Message) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case batch, ok := <-msgChan:
-			if !ok {
-				return
-			}
-			c.processMessages(ctx, batch)
-		}
-	}
-}
-
-func (c *Consumer) processMessages(ctx context.Context, messages []broker.Message) {
+func (c *Consumer) ProcessMessages(ctx context.Context, messages []brokerpostgres.Message) {
 	processedCtx, cancel := context.WithTimeout(ctx, time.Duration(c.handler.VisibilityTimeout()-5)*time.Second)
 	defer cancel()
 
-	ok := make([]broker.Message, 0, len(messages))
+	ok := make([]brokerpostgres.Message, 0, len(messages))
 
 	for _, m := range messages {
 		item := messageToEventItem(m)
@@ -91,33 +49,11 @@ func (c *Consumer) processMessages(ctx context.Context, messages []broker.Messag
 	log.Info().Int("deleted_messages", n).Send()
 }
 
-func (c *Consumer) poll(ctx context.Context, msgChan chan<- []broker.Message) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			messages, err := c.handler.RetrieveMessages(ctx)
-			if err != nil {
-				if ctx.Err() != nil {
-					return
-				}
-				log.Error().Err(err).Msg("error retrieving messages")
-				continue
-			}
-			if len(messages) == 0 {
-				continue
-			}
-			select {
-			case msgChan <- messages:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}
+func (c *Consumer) RetrieveMessages(ctx context.Context) ([]brokerpostgres.Message, error) {
+	return c.handler.RetrieveMessages(ctx)
 }
 
-func messageToEventItem(m broker.Message) domain.EventItem {
+func messageToEventItem(m brokerpostgres.Message) domain.EventItem {
 	emittedAt := ""
 	if m.Message.EmittedAt != nil {
 		emittedAt = m.Message.EmittedAt.UTC().Format(time.RFC3339Nano)

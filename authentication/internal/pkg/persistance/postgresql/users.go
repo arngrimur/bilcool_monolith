@@ -54,9 +54,9 @@ func (r UsersRepository) CreateUser(ctx context.Context, req domain.CreateUserRe
 	}
 	err = outbox.Insert(ctx, tx, outbox.Event{
 		EventId:       uuid.New(),
-		Type:          "created",
+		Type:          extdomain.EventUserCreated,
 		CorrelationId: uuid.New(),
-		Producer:      "authentication",
+		Producer:      extdomain.EventProducer,
 		Payload:       payload,
 	})
 	if err != nil {
@@ -88,9 +88,9 @@ func (r UsersRepository) DeleteUser(ctx context.Context, userRef uuid.UUID) erro
 	}
 	err = outbox.Insert(ctx, tx, outbox.Event{
 		EventId:       uuid.New(),
-		Type:          "deleted",
+		Type:          extdomain.EventUserDeleted,
 		CorrelationId: uuid.New(),
-		Producer:      "authentication",
+		Producer:      extdomain.EventProducer,
 		Payload:       payload,
 	})
 	if err != nil {

@@ -8,3 +8,7 @@ type UserResponse struct {
 	Email    string    `json:"email" example:"john@example.com"`
 	Role     string    `json:"role" example:"user"`
 }
+
+const EventProducer string = "authentication"
+const EventUserCreated string = "user.created"
+const EventUserDeleted string = "user.deleted"

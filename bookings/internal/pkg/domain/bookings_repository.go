@@ -3,6 +3,8 @@ package domain
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	ext_domain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 )
 
@@ -13,4 +15,6 @@ type BookingsRepository interface {
 	UpdateBooking(ctx context.Context, request UpdateBookingRequest) error
 	DeleteBooking(ctx context.Context, request BookingRequest) error
 	EndBooking(ctx context.Context, request EndBookingRequest) error
+	AddUser(ctx context.Context, user uuid.UUID, eventID string) error
+	DeleteUser(ctx context.Context, user uuid.UUID, eventID string) error
 }

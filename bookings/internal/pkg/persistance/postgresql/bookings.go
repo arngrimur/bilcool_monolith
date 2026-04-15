@@ -25,8 +25,8 @@ func NewBookingsRepository(a *sql.DB) BookingRepository {
 }
 
 func (bdb BookingRepository) Find(ctx context.Context, request domain.BookingRequest) (extdomain.BookingResponse, error) {
-	const query = `SELECT start_date, end_date, user_ref
-FROM bookings
+	const query = `SELECT start_date, end_date, userref
+FROM bookings_and_users
 WHERE booking_reference = $1`
 
 	var (
@@ -46,9 +46,10 @@ WHERE booking_reference = $1`
 }
 
 func (bdb BookingRepository) FindAll(ctx context.Context) ([]extdomain.BookingResponse, error) {
-	const query = `SELECT b.booking_reference, b.start_date, b.end_date, b.user_ref,
+	const query = `SELECT b.booking_reference, b.start_date, b.end_date, u.userref,
        d.start_distance, d.end_distance
 FROM bookings b
+INNER JOIN users u ON b.user_ref = u.id
 LEFT JOIN distances d ON d.fk_booking_id = b.id`
 	bookings := []extdomain.BookingResponse{}
 
@@ -94,9 +95,12 @@ WITH overlap AS (
         SELECT 1 FROM bookings
         WHERE booking_reference <> $1 AND start_date < $3 AND end_date > $2
     ) AS has_overlap
+),
+uid AS (
+    SELECT id FROM users WHERE userref = $4
 )
 INSERT INTO bookings (booking_reference, start_date, end_date, user_ref)
-SELECT $1, $2, $3, $4 WHERE NOT (SELECT has_overlap FROM overlap)
+SELECT $1, $2, $3, uid.id FROM uid WHERE NOT (SELECT has_overlap FROM overlap)
 ON CONFLICT (booking_reference) DO UPDATE
 SET start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date
 WHERE NOT (SELECT has_overlap FROM overlap)
@@ -147,7 +151,7 @@ func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndB
 		completed extdomain.CompletedBooking
 	} // Get booking
 	booking := &tmpData{}
-	err = local_bdb.QueryRowContext(ctx, "SELECT id, booking_reference, user_ref, start_date, end_date FROM bookings WHERE booking_reference = $1", request.BookingReference).
+	err = local_bdb.QueryRowContext(ctx, "SELECT bookings.id, booking_reference, users.userref, start_date, end_date FROM bookings INNER JOIN users ON bookings.user_ref = users.id WHERE booking_reference = $1", request.BookingReference).
 		Scan(
 			&booking.id,
 			&booking.completed.Booking.BookingReference,
@@ -192,4 +196,42 @@ func (bdb BookingRepository) createTransaction(ctx context.Context) (BookingRepo
 		return BookingRepository{}, nil, err
 	}
 	return BookingRepository{DbActions: tx, Transactioner: bdb.Transactioner}, tx, nil
+}
+
+func (bdb BookingRepository) AddUser(ctx context.Context, user uuid.UUID, eventID string) error {
+	local_bdb, tx, err := bdb.createTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	_, err = local_bdb.ExecContext(ctx, `INSERT INTO users (userref) VALUES ($1)`, user)
+	if err != nil {
+		return err
+	}
+	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1)`, eventID)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (bdb BookingRepository) DeleteUser(ctx context.Context, user uuid.UUID, eventID string) error {
+	local_bdb, tx, err := bdb.createTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	_, err = local_bdb.ExecContext(ctx, `UPDATE users SET deleted = true, deleted_at = NOW() WHERE userref = $1 AND deleted = false`, user)
+	if err != nil {
+		return err
+	}
+	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1)`, eventID)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
