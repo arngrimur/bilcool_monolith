@@ -45,7 +45,7 @@ func (h LoginBeginHandler) LoginBegin(ctx context.Context, req domain.LoginBegin
 		if err = h.users.CreateSecurityToken(ctx, user.UserRef, token, expiresAt); err != nil {
 			return domain.LoginBeginResponse{}, err
 		}
-		if err = h.users.SendToken(ctx, user.Email, token); err != nil {
+		if err = h.users.SendToken(ctx, user.Email, token, req.Locale); err != nil {
 			return domain.LoginBeginResponse{}, err
 		}
 		return domain.LoginBeginResponse{NextStep: "verify_token"}, nil
