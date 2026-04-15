@@ -121,6 +121,7 @@ export default function CalendarView({ completedBookingMap }: CalendarViewProps)
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView={view}
           locale={locale}
+          firstDay={1}
           events={events}
           selectable
           selectMirror
