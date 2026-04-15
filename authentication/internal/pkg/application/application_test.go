@@ -109,16 +109,38 @@ func TestVerifyToken_InvalidToken(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	repo := domain.NewMockUsersRepository(ctrl)
-	mail := mail.NewMockMailSender(ctrl)
+	cases := []struct {
+		name    string
+		repoErr error
+		wantErr error
+	}{
+		{
+			name: "success",
+		},
+		{
+			name:    "last admin blocked",
+			repoErr: domain.ErrLastAdmin,
+			wantErr: domain.ErrLastAdmin,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			repo := domain.NewMockUsersRepository(ctrl)
+			m := mail.NewMockMailSender(ctrl)
 
-	userRef := uuid.New()
-	repo.EXPECT().DeleteUser(gomock.Any(), userRef).Return(nil).Times(1)
+			userRef := uuid.New()
+			repo.EXPECT().DeleteUser(gomock.Any(), userRef).Return(tc.repoErr).Times(1)
 
-	app := New(repo, mail, nil, "secret")
-	err := app.DeleteUser(context.Background(), userRef)
-	require.NoError(t, err)
+			app := New(repo, m, nil, "secret")
+			err := app.DeleteUser(context.Background(), userRef)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }
 
 func TestGenerateSecurityToken(t *testing.T) {

@@ -94,6 +94,51 @@ func (suite *usersTestSuite) TestDeleteUser() {
 	suite.Require().Error(err)
 }
 
+func (suite *usersTestSuite) TestDeleteLastAdminIsRejected() {
+	repo := NewUsersRepository(suite.Db)
+
+	// Create a single admin — the only admin in the system
+	admin, err := repo.CreateUser(context.Background(), domain.CreateUserRequest{
+		Username: "soleadmin",
+		Email:    "soleadmin@example.com",
+	})
+	suite.Require().NoError(err)
+	err = repo.ChangeUserRole(context.Background(), admin.UserRef, "admin")
+	suite.Require().NoError(err)
+
+	// Deleting this admin should fail because they are the last admin
+	err = repo.DeleteUser(context.Background(), admin.UserRef)
+	suite.Require().ErrorIs(err, domain.ErrLastAdmin)
+}
+
+func (suite *usersTestSuite) TestDeleteAdminWhenAnotherAdminExists() {
+	repo := NewUsersRepository(suite.Db)
+
+	// Create two admin users
+	first, err := repo.CreateUser(context.Background(), domain.CreateUserRequest{
+		Username: "firstadmin",
+		Email:    "firstadmin@example.com",
+	})
+	suite.Require().NoError(err)
+	err = repo.ChangeUserRole(context.Background(), first.UserRef, "admin")
+	suite.Require().NoError(err)
+
+	second, err := repo.CreateUser(context.Background(), domain.CreateUserRequest{
+		Username: "secondadmin",
+		Email:    "secondadmin@example.com",
+	})
+	suite.Require().NoError(err)
+	err = repo.ChangeUserRole(context.Background(), second.UserRef, "admin")
+	suite.Require().NoError(err)
+
+	// Deleting the first admin should succeed since a second admin exists
+	err = repo.DeleteUser(context.Background(), first.UserRef)
+	suite.Require().NoError(err)
+
+	_, err = repo.FindByEmail(context.Background(), "firstadmin@example.com")
+	suite.Require().Error(err)
+}
+
 func (suite *usersTestSuite) TestSecurityToken() {
 	repo := NewUsersRepository(suite.Db)
 	token := "123456"
