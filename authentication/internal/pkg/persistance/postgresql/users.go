@@ -73,6 +73,30 @@ func (r UsersRepository) DeleteUser(ctx context.Context, userRef uuid.UUID) erro
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	var isAdmin bool
+	err = local_r.QueryRowContext(ctx,
+		`SELECT EXISTS(
+			SELECT 1 FROM users u JOIN roles r ON r.id = u.role_id
+			WHERE u.user_ref = $1 AND r.name = 'admin' AND u.deleted_at IS NULL
+		)`,
+		userRef,
+	).Scan(&isAdmin)
+	if err != nil {
+		return err
+	}
+	if isAdmin {
+		var adminCount int
+		err = local_r.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM users u JOIN roles r ON r.id = u.role_id WHERE r.name = 'admin' AND u.deleted_at IS NULL`,
+		).Scan(&adminCount)
+		if err != nil {
+			return err
+		}
+		if adminCount <= 1 {
+			return domain.ErrLastAdmin
+		}
+	}
+
 	var ref uuid.UUID
 	err = local_r.QueryRowContext(ctx,
 		`UPDATE users SET deleted_at = NOW() WHERE user_ref = $1 AND deleted_at IS NULL RETURNING user_ref`,
