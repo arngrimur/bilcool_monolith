@@ -1,7 +1,7 @@
 #! /bin/bash
 
 function attributes() {
-  printf '{"RedrivePolicy": \"{\\"deadLetterTargetArn\\":\\"%s\\"}"}' "$1" > dlq.json
+  printf '{"RedrivePolicy": "{\"deadLetterTargetArn\":\"%s\",\"maxReceiveCount\":\"5\"}"}' "$1" > dlq.json
   echo "file://dlq.json"
 }
 
@@ -21,8 +21,8 @@ LEDGER_DLQ=$(awslocal "${REGION[@]}" sqs --output text create-queue --queue-name
 FILE=$(attributes "$(QueueArn "$LEDGER_DLQ")")
 EVENT_LEDGER_SQS_END_POINT=$(awslocal "${REGION[@]}" sqs --output text  create-queue --queue-name bilcool-monolith-event_ledger --attributes "$FILE")
 EVENT_LEDGER_SQS_END_POINT=$(QueueArn "$EVENT_LEDGER_SQS_END_POINT")
-awslocal "${REGION[@]}" sns  subscribe --topic-arn "${USERS_TOPIC}" --protocol sqs --notification-endpoint "${EVENT_LEDGER_SQS_END_POINT}"
-awslocal "${REGION[@]}" sns  subscribe --topic-arn "${BOOKINGS_TOPIC}" --protocol sqs --notification-endpoint "${EVENT_LEDGER_SQS_END_POINT}"
+awslocal "${REGION[@]}" sns subscribe --topic-arn "${USERS_TOPIC}" --protocol sqs --notification-endpoint "$(QueueArn "$(awslocal "${REGION[@]}" sqs --output text get-queue-url --queue-name bilcool-monolith-event_ledger)")"
+awslocal "${REGION[@]}" sns subscribe --topic-arn "${BOOKINGS_TOPIC}" --protocol sqs --notification-endpoint "$(QueueArn "$(awslocal "${REGION[@]}" sqs --output text get-queue-url --queue-name bilcool-monolith-event_ledger)")"
 
 #bookings
 BOOKINGS_DLQ_NAME='bilcool-monolith-bookings_dlq'
@@ -30,7 +30,7 @@ BOOKINGS_DLQ=$(awslocal "${REGION[@]}" sqs  --output text create-queue --queue-n
 FILE=$(attributes "$(QueueArn "$BOOKINGS_DLQ")")
 BOOKINGS_SQS_END_POINT=$(awslocal "${REGION[@]}" sqs --output text create-queue --queue-name bilcool-monolith-bookings --attributes "$FILE")
 BOOKINGS_SQS_END_POINT=$(QueueArn "$BOOKINGS_SQS_END_POINT")
-awslocal "${REGION[@]}" sns  subscribe --topic-arn "${USERS_TOPIC}" --protocol sqs --notification-endpoint "${BOOKINGS_SQS_END_POINT}"
+awslocal "${REGION[@]}" sns subscribe --topic-arn "${USERS_TOPIC}" --protocol sqs --notification-endpoint "$(QueueArn "$(awslocal "${REGION[@]}" sqs --output text get-queue-url --queue-name bilcool-monolith-bookings)")"
 
 #journal
 JOURNAL_DLQ_NAME='bilcool-monolith-journal_dlq'

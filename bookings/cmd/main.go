@@ -80,6 +80,7 @@ func main() {
 	eventHandler := bookinginbox.NewEventHandler(sqsSubscriber, repo)
 	worker := inbox.NewWorker(eventHandler, 5)
 	worker.Start(ctx)
+	defer worker.Stop()
 
 	app := application.New(repo)
 	webService := web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler)
