@@ -72,7 +72,8 @@ func SetupDatabase(t *testing.T, fs embed.FS, dbName string) SuiteDbIntegration 
 	require.NoError(t, err)
 	suiteDb.ConnString = u
 
-	dbMate := NewDBMate(t, WithEmbeddedFs(fs))
+	dbMate := NewDBMate(t, WithEmbeddedFs(fs), WithWait())
+
 	err = dbMate.Migrate(suiteDb.Db, u)
 	if err != nil && err.Error() == "no migration files found" {
 		return suiteDb

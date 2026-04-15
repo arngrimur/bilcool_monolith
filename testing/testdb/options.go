@@ -21,3 +21,9 @@ func WithEmbeddedFs(fs embed.FS) OptionsFunc {
 		dbMate.UseFs = true
 	}
 }
+
+func WithWait() OptionsFunc {
+	return func(dbMate *DBMate) {
+		dbMate.Wait = true
+	}
+}

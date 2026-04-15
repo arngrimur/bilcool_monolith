@@ -4,6 +4,8 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { DateSelectArg, EventClickArg, EventInput } from '@fullcalendar/core'
+import enGbLocale from '@fullcalendar/core/locales/en-gb'
+import svLocale from '@fullcalendar/core/locales/sv'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useBookings } from '../../hooks/useBookings'
@@ -84,7 +86,7 @@ export default function CalendarView({ completedBookingMap }: CalendarViewProps)
     calendarRef.current?.getApi().changeView(v)
   }
 
-  const locale = language === 'sv' ? 'sv' : 'en-GB'
+  const locale = language === 'sv' ? svLocale : enGbLocale
 
   return (
     <div className="space-y-4">

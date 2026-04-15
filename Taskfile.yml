@@ -22,7 +22,7 @@ tasks:
     preconditions:
       - test -f docker-compose.yaml
     cmds:
-      - dock/clearer-compose down --remove-orphans
+      - docker-compose down --remove-orphans
   bookings_db:
     dir: '{{.USER_WORKING_DIR}}'
     cmd: docker exec -it bookings-db psql -U postgres -d bookings

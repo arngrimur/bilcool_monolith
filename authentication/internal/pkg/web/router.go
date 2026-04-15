@@ -37,15 +37,15 @@ func NewRouter(commands application.Commands, queries application.Queries, jwtSe
 	h.router.GET("/ping", func(c *gin.Context) {
 		c.String(http.StatusOK, "pong")
 	})
-	h.router.POST("/api/v1/users", h.createUser)
-	h.router.GET("/api/v1/users", h.listUsers)
-	h.router.DELETE("/api/v1/users/:id", h.deleteUser)
 	h.router.GET("/api/v1/users/:id", h.getUser)
 	h.router.POST("/api/v1/users/login", h.loginBegin)
 	h.router.POST("/api/v1/users/login/token", h.verifyToken)
 	h.router.POST("/api/v1/users/login/complete", h.loginComplete)
 
 	admin := h.router.Group("/api/v1", h.jwtMiddleware(), h.requireAdmin())
+	admin.POST("/users", h.createUser)
+	admin.GET("/users", h.listUsers)
+	admin.DELETE("/users/:id", h.deleteUser)
 	admin.PATCH("/users/:id/role", h.changeUserRole)
 
 	return h
