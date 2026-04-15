@@ -198,7 +198,7 @@ func (bdb BookingRepository) createTransaction(ctx context.Context) (BookingRepo
 	return BookingRepository{DbActions: tx, Transactioner: bdb.Transactioner}, tx, nil
 }
 
-func (bdb BookingRepository) AddUser(ctx context.Context, user uuid.UUID, messageID string) error {
+func (bdb BookingRepository) AddUser(ctx context.Context, user uuid.UUID, eventID string) error {
 	local_bdb, tx, err := bdb.createTransaction(ctx)
 	if err != nil {
 		return err
@@ -210,14 +210,14 @@ func (bdb BookingRepository) AddUser(ctx context.Context, user uuid.UUID, messag
 	if err != nil {
 		return err
 	}
-	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1)`, messageID)
+	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1)`, eventID)
 	if err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
-func (bdb BookingRepository) DeleteUser(ctx context.Context, user uuid.UUID, messageID string) error {
+func (bdb BookingRepository) DeleteUser(ctx context.Context, user uuid.UUID, eventID string) error {
 	local_bdb, tx, err := bdb.createTransaction(ctx)
 	if err != nil {
 		return err
@@ -229,7 +229,7 @@ func (bdb BookingRepository) DeleteUser(ctx context.Context, user uuid.UUID, mes
 	if err != nil {
 		return err
 	}
-	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1)`, messageID)
+	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1)`, eventID)
 	if err != nil {
 		return err
 	}

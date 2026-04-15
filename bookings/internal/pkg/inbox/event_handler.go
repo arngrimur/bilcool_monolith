@@ -45,13 +45,24 @@ func (e EventHandler) ProcessMessages(ctx context.Context, messages []brokerpost
 				log.Ctx(ctx).Err(err).Msg("failed to parse user event")
 				continue
 			}
-			err = e.repo.AddUser(ctx, user, m.MessageId)
+			err = e.repo.AddUser(ctx, user, m.Message.EventId.String())
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("failed to add user")
 				continue
 			}
 			markedForDeletion = append(markedForDeletion, m)
 		case authdomain.EventUserDeleted:
+			user, err := e.userRef(m)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("failed to parse user event")
+				continue
+			}
+			err = e.repo.DeleteUser(ctx, user, m.Message.EventId.String())
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("failed to delete user")
+				continue
+			}
+			markedForDeletion = append(markedForDeletion, m)
 		default:
 			continue
 		}

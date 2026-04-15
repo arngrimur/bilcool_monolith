@@ -72,18 +72,19 @@ func main() {
 	}
 	defer close(closer)
 	repo := postgresql.NewBookingsRepository(psqlDb)
+
+	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, sqs.BookingsSqsQueue)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create SQS subscriber")
+	}
+	eventHandler := bookinginbox.NewEventHandler(sqsSubscriber, repo)
+	worker := inbox.NewWorker(eventHandler, 5)
+	worker.Start(ctx)
+
 	app := application.New(repo)
 	webService := web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler)
 	err = webService.StartRouter(":8080")
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error starting web service")
 	}
-
-	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, sqs.BookingsSqsQueue)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create SQS subscriber")
-	}
-
-	eventHandler := bookinginbox.NewEventHandler(sqsSubscriber, repo)
-	inbox.NewWorker(eventHandler, 5)
 }
