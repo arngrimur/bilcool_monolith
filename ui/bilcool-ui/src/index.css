@@ -69,6 +69,51 @@
   }
 }
 
+/* Accent color palettes — applied via .accent-<color> on <html> */
+.accent-blue {
+  --primary: 221 83% 53%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 221 83% 53%;
+}
+.accent-blue.dark {
+  --primary: 217 91% 60%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 217 91% 60%;
+}
+
+.accent-green {
+  --primary: 142 71% 45%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 142 71% 45%;
+}
+.accent-green.dark {
+  --primary: 142 76% 36%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 142 76% 36%;
+}
+
+.accent-purple {
+  --primary: 262 83% 58%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 262 83% 58%;
+}
+.accent-purple.dark {
+  --primary: 263 70% 50%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 263 70% 50%;
+}
+
+.accent-rose {
+  --primary: 347 77% 50%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 347 77% 50%;
+}
+.accent-rose.dark {
+  --primary: 347 77% 50%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 347 77% 50%;
+}
+
 @layer base {
   * {
     @apply border-border;
