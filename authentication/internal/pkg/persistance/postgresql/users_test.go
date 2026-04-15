@@ -97,14 +97,6 @@ func (suite *usersTestSuite) TestDeleteUser() {
 func (suite *usersTestSuite) TestDeleteLastAdminIsRejected() {
 	repo := NewUsersRepository(suite.Db)
 
-	// Soft-delete any pre-existing admins (e.g. the seeded admin from migrations)
-	// so we control exactly how many admins exist during this test.
-	_, err := suite.Db.Exec(
-		`UPDATE users SET deleted_at = NOW()
-		 WHERE role_id = (SELECT id FROM roles WHERE name = 'admin') AND deleted_at IS NULL`,
-	)
-	suite.Require().NoError(err)
-
 	// Create a single admin — the only admin in the system
 	admin, err := repo.CreateUser(context.Background(), domain.CreateUserRequest{
 		Username: "soleadmin",
@@ -121,13 +113,6 @@ func (suite *usersTestSuite) TestDeleteLastAdminIsRejected() {
 
 func (suite *usersTestSuite) TestDeleteAdminWhenAnotherAdminExists() {
 	repo := NewUsersRepository(suite.Db)
-
-	// Soft-delete any pre-existing admins so we control the exact admin count.
-	_, err := suite.Db.Exec(
-		`UPDATE users SET deleted_at = NOW()
-		 WHERE role_id = (SELECT id FROM roles WHERE name = 'admin') AND deleted_at IS NULL`,
-	)
-	suite.Require().NoError(err)
 
 	// Create two admin users
 	first, err := repo.CreateUser(context.Background(), domain.CreateUserRequest{
