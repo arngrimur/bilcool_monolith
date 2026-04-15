@@ -30,6 +30,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: bookings
       POSTGRES_INITDB_ARGS: "-c wal_level=logical -c max_wal_senders=5 -c max_replication_slots=5"
+    volumes:
+      - bookings-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bookings"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - bilcool
 
@@ -43,16 +50,24 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: authentication
       POSTGRES_INITDB_ARGS: "-c wal_level=logical -c max_wal_senders=5 -c max_replication_slots=5"
+    volumes:
+      - authentication-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d authentication"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - bilcool
 
   db-migration-bookings:
     image: amacneil/dbmate
-    entrypoint: ["/bin/sh", "-c", "dbmate --wait --migrations-dir /migrations migrate"]
+    entrypoint: ["/bin/sh", "-c", "dbmate --migrations-dir /migrations migrate"]
     volumes:
       - "./bookings/internal/migrations:/migrations"
     depends_on:
-      - bookings-database
+      bookings-database:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgres://postgres:postgres@bookings-db:5432/bookings?sslmode=disable
     networks:
@@ -60,13 +75,28 @@ services:
 
   db-migration-authentication:
     image: amacneil/dbmate
-    entrypoint: ["/bin/sh", "-c", "dbmate --wait --migrations-dir /migrations migrate"]
+    entrypoint: ["/bin/sh", "-c", "dbmate --migrations-dir /migrations migrate"]
     volumes:
       - "./authentication/internal/migrations:/migrations"
     depends_on:
-      - authentication-database
+      authentication-database:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgres://postgres:postgres@authentication-db:5432/authentication?sslmode=disable
+    networks:
+      - bilcool
+
+  db-seed-authentication:
+    image: postgres:18
+    depends_on:
+      db-migration-authentication:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@authentication-db:5432/authentication?sslmode=disable
+    volumes:
+      - "./seed/users.csv:/seed/users.csv:ro"
+      - "./seed/seed-users.sh:/seed/seed-users.sh:ro"
+    entrypoint: ["/bin/sh", "/seed/seed-users.sh"]
     networks:
       - bilcool
 
@@ -94,7 +124,7 @@ services:
       context: .
       dockerfile: authentication/Dockerfile
     depends_on:
-      db-migration-authentication:
+      db-seed-authentication:
         condition: service_completed_successfully
       localstack:
         condition: service_healthy
@@ -124,16 +154,24 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: journal
       POSTGRES_INITDB_ARGS: "-c wal_level=logical -c max_wal_senders=5 -c max_replication_slots=5"
+    volumes:
+      - journal-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d journal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - bilcool
 
   db-migration-journal:
     image: amacneil/dbmate
-    entrypoint: ["/bin/sh", "-c", "dbmate --wait --migrations-dir /migrations migrate"]
+    entrypoint: ["/bin/sh", "-c", "dbmate --migrations-dir /migrations migrate"]
     volumes:
       - "./journal/internal/migrations:/migrations"
     depends_on:
-      - journal-database
+      journal-database:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgres://postgres:postgres@journal-db:5432/journal?sslmode=disable
     networks:
@@ -189,3 +227,8 @@ services:
 
 networks:
   bilcool:
+
+volumes:
+  bookings-db-data:
+  authentication-db-data:
+  journal-db-data:
