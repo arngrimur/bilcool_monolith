@@ -33,6 +33,7 @@ type DBMate struct {
 	MigrationsTableName string
 	Fs                  embed.FS
 	UseFs               bool
+	Wait                bool
 }
 
 // NewDBMate returns a new DBMate instance with the GoModule project root
@@ -58,6 +59,11 @@ func (m *DBMate) Migrate(db *sql.DB, u *url.URL) error {
 	dbm := dbmate.New(u)
 	dbm.AutoDumpSchema = false
 	dbm.Log = m.Log
+	if m.Wait {
+		if err := dbm.Wait(); err != nil {
+			return err
+		}
+	}
 	if !m.UseFs {
 		projectRoot, err := m.ProjectRoot.getDir()
 		if err != nil {
