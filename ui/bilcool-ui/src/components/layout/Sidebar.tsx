@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { cn } from '../../lib/utils'
 import ThemeToggle from './ThemeToggle'
 import LanguageToggle from './LanguageToggle'
+import ColorSelector from './ColorSelector'
 
 interface SidebarProps {
   onNavigate: () => void
@@ -56,6 +57,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           <ThemeToggle />
           <LanguageToggle />
         </div>
+        <ColorSelector />
         <button
           onClick={logout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground min-h-[44px]"

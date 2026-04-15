@@ -8,6 +8,7 @@
     "sign_out": "Logga ut"
   },
   "theme": { "light": "Ljust", "dark": "Mörkt", "system": "System" },
+  "color": { "label": "Accentfärg", "default": "Standard", "blue": "Blå", "green": "Grön", "purple": "Lila", "rose": "Rosa" },
   "language": { "en": "Engelska", "sv": "Svenska" },
   "auth": {
     "email_label": "E-postadress",
