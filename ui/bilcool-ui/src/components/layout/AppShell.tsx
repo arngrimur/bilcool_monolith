@@ -5,11 +5,16 @@ import Header from './Header'
 
 export default function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   return (
     <div className="flex min-h-svh bg-background">
-      <div className="hidden md:flex md:w-64 md:flex-shrink-0">
-        <Sidebar onNavigate={() => setDrawerOpen(false)} />
+      <div className={`hidden md:flex md:flex-shrink-0 transition-all duration-300 ${sidebarCollapsed ? 'md:w-16' : 'md:w-64'}`}>
+        <Sidebar
+          onNavigate={() => setDrawerOpen(false)}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
+        />
       </div>
 
       {drawerOpen && (
