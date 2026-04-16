@@ -14,9 +14,9 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api/auth': { target: 'http://localhost:8082', rewrite: (path) => path.replace('/api/auth', '') },
-      '/api/book': { target: 'http://localhost:8081', rewrite: (path) => path.replace('/api/book', '') },
-      '/api/events': { target: 'http://localhost:8083', rewrite: (path) => path.replace('/api/events', '') },
+      '/api/auth': { target: process.env.AUTH_SERVICE_URL ?? 'http://localhost:8082', rewrite: (path) => path.replace('/api/auth', '') },
+      '/api/book': { target: process.env.BOOK_SERVICE_URL ?? 'http://localhost:8081', rewrite: (path) => path.replace('/api/book', '') },
+      '/api/events': { target: process.env.EVENTS_SERVICE_URL ?? 'http://localhost:8083', rewrite: (path) => path.replace('/api/events', '') },
     },
   },
   test: {

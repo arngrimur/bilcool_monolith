@@ -1,12 +1,8 @@
 import { NavLink } from 'react-router-dom'
-import { CalendarDays, ClipboardList, User, Users, LogOut } from 'lucide-react'
+import { CalendarDays, ClipboardList, User, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
-import { useAuth } from '../../hooks/useAuth'
 import { cn } from '../../lib/utils'
-import ThemeToggle from './ThemeToggle'
-import LanguageToggle from './LanguageToggle'
-import ColorSelector from './ColorSelector'
 
 interface SidebarProps {
   onNavigate: () => void
@@ -23,7 +19,6 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 export default function Sidebar({ onNavigate }: SidebarProps) {
   const { t } = useTranslation('common')
   const role = useAuthStore((s) => s.role)
-  const { logout } = useAuth()
 
   return (
     <div className="flex h-full flex-col border-r bg-background">
@@ -51,22 +46,6 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           </NavLink>
         )}
       </nav>
-
-      <div className="border-t p-3 space-y-2">
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <LanguageToggle />
-        </div>
-        <ColorSelector />
-        <button
-          onClick={logout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground min-h-[44px]"
-          aria-label={t('nav.sign_out')}
-        >
-          <LogOut className="h-4 w-4" aria-hidden="true" />
-          {t('nav.sign_out')}
-        </button>
-      </div>
     </div>
   )
 }

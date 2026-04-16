@@ -5,8 +5,10 @@
     "bookings": "Bookings",
     "profile": "Profile",
     "admin_users": "Users",
-    "sign_out": "Sign out"
+    "sign_out": "Sign out",
+    "settings": "Settings"
   },
+  "settings": { "theme": "Theme" },
   "theme": { "light": "Light", "dark": "Dark", "system": "System" },
   "color": { "label": "Accent color", "default": "Default", "blue": "Blue", "green": "Green", "purple": "Purple", "rose": "Rose" },
   "language": { "en": "English", "sv": "Swedish" },

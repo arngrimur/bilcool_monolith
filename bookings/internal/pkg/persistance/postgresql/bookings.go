@@ -89,6 +89,15 @@ LEFT JOIN distances d ON d.fk_booking_id = b.id`
 }
 
 func (bdb BookingRepository) UpdateBooking(ctx context.Context, request domain.UpdateBookingRequest) error {
+	var userExists bool
+	err := bdb.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE userref = $1 AND deleted = false)`, request.UserRef).Scan(&userExists)
+	if err != nil {
+		return err
+	}
+	if !userExists {
+		return domain.ErrUserNotFound
+	}
+
 	const query = `
 WITH overlap AS (
     SELECT EXISTS (
@@ -97,7 +106,7 @@ WITH overlap AS (
     ) AS has_overlap
 ),
 uid AS (
-    SELECT id FROM users WHERE userref = $4
+    SELECT id FROM users WHERE userref = $4 AND deleted = false
 )
 INSERT INTO bookings (booking_reference, start_date, end_date, user_ref)
 SELECT $1, $2, $3, uid.id FROM uid WHERE NOT (SELECT has_overlap FROM overlap)
@@ -107,7 +116,7 @@ WHERE NOT (SELECT has_overlap FROM overlap)
 RETURNING booking_reference`
 
 	var ref uuid.UUID
-	err := bdb.QueryRowContext(ctx, query, request.BookingReference, request.StartDate, request.EndDate, request.UserRef).Scan(&ref)
+	err = bdb.QueryRowContext(ctx, query, request.BookingReference, request.StartDate, request.EndDate, request.UserRef).Scan(&ref)
 	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("booking overlaps with an existing booking")
 	}
@@ -206,11 +215,11 @@ func (bdb BookingRepository) AddUser(ctx context.Context, user uuid.UUID, eventI
 	defer func() {
 		_ = tx.Rollback()
 	}()
-	_, err = local_bdb.ExecContext(ctx, `INSERT INTO users (userref) VALUES ($1)`, user)
+	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1) ON CONFLICT DO NOTHING`, eventID)
 	if err != nil {
 		return err
 	}
-	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1)`, eventID)
+	_, err = local_bdb.ExecContext(ctx, `INSERT INTO users (userref) VALUES ($1) ON CONFLICT DO NOTHING`, user)
 	if err != nil {
 		return err
 	}

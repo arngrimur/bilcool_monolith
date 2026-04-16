@@ -11,6 +11,7 @@ import (
 )
 
 var ErrBookingAlreadyStarted = errors.New("booking has already started")
+var ErrUserNotFound = errors.New("user not found")
 
 type UpdateBookingRequest extdomain.BookingResponse
 
