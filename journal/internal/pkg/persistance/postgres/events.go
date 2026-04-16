@@ -90,7 +90,7 @@ func (r EventRepository) handleUserDeleted(ctx context.Context, txr EventReposit
 		return err
 	}
 	_, err := txr.ExecContext(ctx,
-		`DELETE FROM users WHERE user_ref = $1`,
+		`UPDATE users SET deleted_at = NOW() WHERE user_ref = $1 AND deleted_at IS NULL`,
 		user.UserRef,
 	)
 	return err
