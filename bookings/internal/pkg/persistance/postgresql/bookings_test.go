@@ -247,7 +247,7 @@ func (suite *bookingsTestSuite) TestAddUserDuplicateMessageID() {
 	suite.Require().NoError(err)
 
 	err = database.AddUser(context.Background(), uuid.New(), messageID)
-	suite.Require().Error(err)
+	suite.Require().Nil(err) // we use ON CONFLICT DO NOTHING
 }
 
 func (suite *bookingsTestSuite) TestAddUserDuplicateUserRef() {
@@ -258,7 +258,7 @@ func (suite *bookingsTestSuite) TestAddUserDuplicateUserRef() {
 	suite.Require().NoError(err)
 
 	err = database.AddUser(context.Background(), userRef, uuid.New().String())
-	suite.Require().Error(err)
+	suite.Require().Nil(err) // we use ON CONFLICT DO NOTHING
 }
 
 func (suite *bookingsTestSuite) TestDeleteUser() {
