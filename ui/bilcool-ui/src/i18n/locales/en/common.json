@@ -8,7 +8,7 @@
     "sign_out": "Sign out",
     "settings": "Settings"
   },
-  "settings": { "theme": "Theme" },
+  "settings": { "theme": "Theme", "bookingColor": "Booking color" },
   "theme": { "light": "Light", "dark": "Dark", "system": "System" },
   "color": { "label": "Accent color", "default": "Default", "blue": "Blue", "green": "Green", "purple": "Purple", "rose": "Rose" },
   "language": { "en": "English", "sv": "Swedish" },

@@ -15,6 +15,7 @@ import BookingStartEndDialog from '../bookings/BookingStartEndDialog'
 import { Button } from '../ui/button'
 import type { BookingResponse } from '../../types/api'
 import { snapToQuarterHour } from '../../utils/bookingUtils'
+import { getColorForUserRef } from '../../utils/bookingColors'
 import CalendarEvent from './CalendarEvent'
 
 type ViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay'
@@ -29,6 +30,7 @@ interface CalendarViewProps {
 
 export default function CalendarView({ completedBookingMap }: CalendarViewProps) {
   const language = useSettingsStore((s) => s.language)
+  const bookingColor = useSettingsStore((s) => s.bookingColor)
   const userRef = useAuthStore((s) => s.userRef)
   const { data: bookings = [] } = useBookings()
 
@@ -61,7 +63,7 @@ export default function CalendarView({ completedBookingMap }: CalendarViewProps)
       title: username,
       start: b.start_date,
       end: b.end_date,
-      color: isOwn ? 'hsl(240, 5.9%, 10%)' : 'hsl(240, 3.8%, 46.1%)',
+      color: isOwn ? bookingColor : getColorForUserRef(b.user_ref, bookingColor),
       extendedProps: { booking: b, isOwn },
     }
   })
