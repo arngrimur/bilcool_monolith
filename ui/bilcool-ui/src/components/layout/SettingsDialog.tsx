@@ -8,7 +8,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
-import ColorSelector from './ColorSelector'
 import ThemeToggle from './ThemeToggle'
 
 export default function SettingsDialog() {
@@ -34,10 +33,6 @@ export default function SettingsDialog() {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">{t('settings.theme')}</span>
             <ThemeToggle />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{t('color.label')}</span>
-            <ColorSelector />
           </div>
         </div>
       </DialogContent>
