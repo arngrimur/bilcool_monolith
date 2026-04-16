@@ -39,3 +39,4 @@ FILE=$(attributes "$(QueueArn "$JOURNAL_DLQ")")
 JOURNAL_SQS_END_POINT=$(awslocal "${REGION[@]}" sqs --output text create-queue --queue-name bilcool-monolith-journal --attributes "$FILE")
 JOURNAL_SQS_END_POINT=$(QueueArn "$JOURNAL_SQS_END_POINT")
 awslocal "${REGION[@]}" sns  subscribe --topic-arn "${BOOKINGS_TOPIC}" --protocol sqs --notification-endpoint "${JOURNAL_SQS_END_POINT}"
+awslocal "${REGION[@]}" sns  subscribe --topic-arn "${USERS_TOPIC}" --protocol sqs --notification-endpoint "${JOURNAL_SQS_END_POINT}"

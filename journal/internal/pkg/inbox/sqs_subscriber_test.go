@@ -186,9 +186,9 @@ func (suite *sqsSubscriberTestSuite) addEvent(id *uuid.UUID) {
 	}
 	event := postgres.Event{
 		EventId:       *id,
-		Type:          "test",
+		Type:          "booking_ended",
 		CorrelationId: uuid.New(),
-		Producer:      "test",
+		Producer:      "bookings",
 		EmittedAt:     new(time.Now()),
 		Payload:       bytes,
 	}

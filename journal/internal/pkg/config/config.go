@@ -5,18 +5,30 @@ import (
 	"os"
 )
 
-var databaseUrl string
+var (
+	databaseUrl string
+	apiPort     string
+)
 
 func Init() error {
 	ok := false
 	databaseUrl, ok = os.LookupEnv("DATABASE_URL")
-
 	if !ok {
 		return fmt.Errorf("DATABASE_URL not set")
 	}
+
+	apiPort, ok = os.LookupEnv("API_PORT")
+	if !ok {
+		apiPort = ":8080"
+	}
+
 	return nil
 }
 
 func DatabaseUrl() string {
 	return databaseUrl
+}
+
+func APIPort() string {
+	return apiPort
 }

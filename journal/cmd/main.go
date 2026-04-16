@@ -9,6 +9,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/persistance/postgres"
+	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/web"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
 	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
@@ -38,12 +39,14 @@ func main() {
 	}
 	consumer := inbox.NewConsumer(sqsSubscriber, 5, psqlDb)
 	consumer.Start(ctx)
-	for {
-		select {
-		case <-ctx.Done():
-			consumer.Stop()
-			_ = psqlDb.Close()
-		}
+	defer consumer.Stop()
+	defer psqlDb.Close()
+
+	repo := postgres.NewEventRepository(psqlDb)
+	router := web.NewRouter(repo)
+	if err := router.StartRouter(config.APIPort()); err != nil {
+		log.Fatal().Err(err).Msg("router stopped")
 	}
+
 	log.Ctx(ctx).Info().Msg("application stopped")
 }
