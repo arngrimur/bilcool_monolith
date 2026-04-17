@@ -29,7 +29,7 @@ ARN=$(QueueArn "$LEDGER_DLQ")
 attributes "$ARN"
 EVENT_LEDGER_SQS_END_POINT=$(awslocal "${REGION[@]}" sqs --output text  create-queue --queue-name bilcool-monolith-event_ledger --attributes "$FILE")
 EVENT_LEDGER_SQS_END_POINT=$(QueueArn "$EVENT_LEDGER_SQS_END_POINT")
-awslocal "${REGION[@]}" sns subscribe --topic-arn "${USERSS_TOPIC}" --protocol sqs --notification-endpoint "${EVENT_LEDGER_SQS_END_POINT}"
+awslocal "${REGION[@]}" sns subscribe --topic-arn "${USERS_TOPIC}" --protocol sqs --notification-endpoint "${EVENT_LEDGER_SQS_END_POINT}"
 awslocal "${REGION[@]}" sns subscribe --topic-arn "${BOOKINGS_TOPIC}" --protocol sqs --notification-endpoint "${EVENT_LEDGER_SQS_END_POINT}"
 
 #bookings
@@ -39,7 +39,6 @@ attributes "$(QueueArn "$BOOKINGS_DLQ")"
 BOOKINGS_SQS_END_POINT=$(awslocal "${REGION[@]}" sqs --output text create-queue --queue-name bilcool-monolith-bookings --attributes "$FILE")
 BOOKINGS_SQS_END_POINT=$(QueueArn "$BOOKINGS_SQS_END_POINT")
 awslocal "${REGION[@]}" sns subscribe --topic-arn "${USERS_TOPIC}" --protocol sqs --notification-endpoint "${BOOKINGS_SQS_END_POINT}"
-awslocal "${REGION[@]}" sns subscribe --topic-arn "${BOOKINGS_TOPIC}" --protocol sqs --notification-endpoint "${BOOKINGS_SQS_END_POINT}"
 
 #journal
 JOURNAL_DLQ_NAME='bilcool-monolith-journal_dlq'
