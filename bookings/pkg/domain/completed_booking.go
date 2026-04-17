@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const EventBookingEnded string = "booking.ended"
+
 type CompletedBooking struct {
 	Booking  BookingResponse `json:"booking"`
 	Distance Distance        `json:"distance"`

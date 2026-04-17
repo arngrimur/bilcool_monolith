@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 
+	authdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
 	extdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
-	outbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
+	brokerpostgres "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
 type BookingRepository struct {
@@ -184,14 +186,14 @@ func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndB
 		return err
 	}
 
-	e := outbox.Event{
+	e := brokerpostgres.Event{
 		EventId:       uuid.New(),
-		Type:          "booking_ended",
+		Type:          extdomain.EventBookingEnded,
 		CorrelationId: uuid.New(),
 		Producer:      "bookings",
 		Payload:       bytes,
 	}
-	err = outbox.Insert(ctx, tx, e)
+	err = brokerpostgres.Insert(ctx, tx, e)
 	if err != nil {
 		return err
 	}
@@ -207,7 +209,13 @@ func (bdb BookingRepository) createTransaction(ctx context.Context) (BookingRepo
 	return BookingRepository{DbActions: tx, Transactioner: bdb.Transactioner}, tx, nil
 }
 
-func (bdb BookingRepository) AddUser(ctx context.Context, user uuid.UUID, eventID string) error {
+func (bdb BookingRepository) AddUser(ctx context.Context, m brokerpostgres.Message) error {
+	user, err := bdb.userRef(m)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("failed to parse user event")
+		return err
+	}
+
 	local_bdb, tx, err := bdb.createTransaction(ctx)
 	if err != nil {
 		return err
@@ -215,7 +223,7 @@ func (bdb BookingRepository) AddUser(ctx context.Context, user uuid.UUID, eventI
 	defer func() {
 		_ = tx.Rollback()
 	}()
-	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1) ON CONFLICT DO NOTHING`, eventID)
+	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1) ON CONFLICT DO NOTHING`, m.Message.EventId.String())
 	if err != nil {
 		return err
 	}
@@ -226,7 +234,12 @@ func (bdb BookingRepository) AddUser(ctx context.Context, user uuid.UUID, eventI
 	return tx.Commit()
 }
 
-func (bdb BookingRepository) DeleteUser(ctx context.Context, user uuid.UUID, eventID string) error {
+func (bdb BookingRepository) DeleteUser(ctx context.Context, m brokerpostgres.Message) error {
+	user, err := bdb.userRef(m)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("failed to parse user event")
+		return err
+	}
 	local_bdb, tx, err := bdb.createTransaction(ctx)
 	if err != nil {
 		return err
@@ -238,9 +251,18 @@ func (bdb BookingRepository) DeleteUser(ctx context.Context, user uuid.UUID, eve
 	if err != nil {
 		return err
 	}
-	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1)`, eventID)
+	_, err = local_bdb.ExecContext(ctx, `INSERT INTO inbox (message_id) VALUES ($1)`, m.Message.EventId.String())
 	if err != nil {
 		return err
 	}
 	return tx.Commit()
+}
+
+func (bdb BookingRepository) userRef(m brokerpostgres.Message) (uuid.UUID, error) {
+	user := authdomain.UserResponse{}
+	err := json.Unmarshal(m.Message.Payload, &user)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+	return user.UserRef, nil
 }

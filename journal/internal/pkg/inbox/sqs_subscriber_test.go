@@ -17,8 +17,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
+	bookingsdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/journal/internal/migrations"
+	journalpostgres "github.com/arngrimur/bilcool_monolith/journal/internal/pkg/persistance/postgres"
+	msinbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 	"github.com/arngrimur/bilcool_monolith/testing/aws"
@@ -30,7 +32,7 @@ type sqsSubscriberTestSuite struct {
 	// region variables
 	cloud         *aws.AwsLocalCloud
 	sqsSubscriber *sqs.SqsSubscriber
-	consumer      *Consumer
+	consumer      *msinbox.Worker
 	snsClient     *aws_sns.Client
 	topic         *aws_sns.CreateTopicOutput
 	dbIntegration testdb.SuiteDbIntegration
@@ -79,7 +81,9 @@ func (suite *sqsSubscriberTestSuite) SetupSuite() {
 	suite.Require().NotNil(sqsSubscriber)
 	suite.dbIntegration = testdb.SetupDatabase(suite.T(), migrations.FS, "journal_test")
 
-	suite.consumer = NewConsumer(sqsSubscriber, 10, suite.dbIntegration.Db)
+	repo := journalpostgres.NewEventRepository(suite.dbIntegration.Db)
+	handler := NewEventHandler(sqsSubscriber, repo)
+	suite.consumer = msinbox.NewWorker(handler, 10)
 	suite.userRef = uuid.New()
 	_, err = suite.dbIntegration.Db.Exec("INSERT INTO users(id,user_ref,created_at) VALUES (1,$1,$2 )", suite.userRef.String(), time.Now().Add(time.Hour*24*-31))
 	suite.Require().NoError(err)
@@ -168,14 +172,14 @@ func (suite *sqsSubscriberTestSuite) TestDuplicateEventsAreStopped() {
 
 func (suite *sqsSubscriberTestSuite) addEvent(id *uuid.UUID) {
 	now := time.Now()
-	cb := domain.CompletedBooking{
-		Booking: domain.BookingResponse{
+	cb := bookingsdomain.CompletedBooking{
+		Booking: bookingsdomain.BookingResponse{
 			UserRef:          suite.userRef,
 			BookingReference: uuid.New(),
 			StartDate:        now.Add(time.Hour * -4),
 			EndDate:          now,
 		},
-		Distance: domain.Distance{
+		Distance: bookingsdomain.Distance{
 			StartDistance: 1,
 			EndDistance:   200,
 		},
@@ -186,7 +190,7 @@ func (suite *sqsSubscriberTestSuite) addEvent(id *uuid.UUID) {
 	}
 	event := postgres.Event{
 		EventId:       *id,
-		Type:          "booking_ended",
+		Type:          bookingsdomain.EventBookingEnded,
 		CorrelationId: uuid.New(),
 		Producer:      "bookings",
 		EmittedAt:     new(time.Now()),

@@ -54,6 +54,5 @@ func main() {
 	log.Ctx(ctx).Info().Msg(
 		"event-ledger is running",
 	)
-	log.Info().Msg("press CTRL+C to stop")
 	log.Info().Msg("stopping event-ledge")
 }

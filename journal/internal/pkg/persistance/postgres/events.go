@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,8 @@ import (
 	"github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
+
+var ErrDuplicateEvent = errors.New("duplicate event")
 
 type FinishedBooking struct {
 	BookingRef     uuid.UUID `json:"booking_reference"`
@@ -31,85 +34,115 @@ func NewEventRepository(db *sql.DB) *EventRepository {
 	return &EventRepository{DbActions: db, Transactioner: db}
 }
 
-func (r EventRepository) SaveMessage(ctx context.Context, e postgres.Message) error {
+func (r EventRepository) SaveUserCreated(ctx context.Context, e postgres.Message) error {
 	txr, tx, err := r.createTransaction(context.Background())
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	if err = txr.saveInbox(ctx, e); err != nil {
+		if errors.Is(err, ErrDuplicateEvent) {
+			return nil
+		}
+		return err
+	}
+	if err = txr.handleUserCreated(ctx, e.Message.Payload); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
 
-	q := `INSERT INTO inbox (event_id, type, correlation_id, producer, emitted_at) VALUES ($1, $2, $3, $4, $5)`
-	_, err = txr.ExecContext(
-		ctx,
-		q,
-		e.Message.EventId.String(),
-		e.Type,
-		e.Message.CorrelationId,
-		e.Message.Producer,
-		e.Message.EmittedAt,
-	)
+func (r EventRepository) SaveUserDeleted(ctx context.Context, e postgres.Message) error {
+	txr, tx, err := r.createTransaction(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = txr.saveInbox(ctx, e); err != nil {
+		if errors.Is(err, ErrDuplicateEvent) {
+			return nil
+		}
+		return err
+	}
+	if err = txr.handleUserDeleted(ctx, e.Message.Payload); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (r EventRepository) SaveBookingEnded(ctx context.Context, e postgres.Message) error {
+	txr, tx, err := r.createTransaction(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = txr.saveInbox(ctx, e); err != nil {
+		if errors.Is(err, ErrDuplicateEvent) {
+			return nil
+		}
+		return err
+	}
+	if err = txr.handleBookingEnded(ctx, e.Message.Payload); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (r EventRepository) saveInbox(ctx context.Context, e postgres.Message) error {
+	q := `INSERT INTO inbox (event_id, type, correlation_id, producer, emitted_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (event_id) DO NOTHING`
+	result, err := r.ExecContext(ctx, q, e.Message.EventId.String(), e.Message.Type, e.Message.CorrelationId, e.Message.Producer, e.Message.EmittedAt)
 	if err != nil {
 		log.Ctx(ctx).Debug().Err(err).Msg("failed to save message")
 		return err
 	}
-
-	switch e.Message.Type {
-	case authdomain.EventUserCreated:
-		err = r.handleUserCreated(ctx, txr, e.Message.Payload)
-	case authdomain.EventUserDeleted:
-		err = r.handleUserDeleted(ctx, txr, e.Message.Payload)
-	case "booking_ended":
-		err = r.handleBookingEnded(ctx, txr, e.Message.Payload)
-	default:
-		log.Ctx(ctx).Debug().Str("type", e.Message.Type).Msg("unhandled event type, skipping")
-	}
-
+	rows, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
-
-	tx.Commit()
+	if rows == 0 {
+		return ErrDuplicateEvent
+	}
 	return nil
 }
 
-func (r EventRepository) handleUserCreated(ctx context.Context, txr EventRepository, payload json.RawMessage) error {
+func (r EventRepository) handleUserCreated(ctx context.Context, payload json.RawMessage) error {
 	user := authdomain.UserResponse{}
 	if err := json.Unmarshal(payload, &user); err != nil {
 		return err
 	}
-	_, err := txr.ExecContext(ctx,
+	_, err := r.ExecContext(ctx,
 		`INSERT INTO users (user_ref, created_at) VALUES ($1, NOW()) ON CONFLICT (user_ref) DO NOTHING`,
 		user.UserRef,
 	)
 	return err
 }
 
-func (r EventRepository) handleUserDeleted(ctx context.Context, txr EventRepository, payload json.RawMessage) error {
+func (r EventRepository) handleUserDeleted(ctx context.Context, payload json.RawMessage) error {
 	user := authdomain.UserResponse{}
 	if err := json.Unmarshal(payload, &user); err != nil {
 		return err
 	}
-	_, err := txr.ExecContext(ctx,
+	_, err := r.ExecContext(ctx,
 		`UPDATE users SET deleted_at = NOW() WHERE user_ref = $1 AND deleted_at IS NULL`,
 		user.UserRef,
 	)
 	return err
 }
 
-func (r EventRepository) handleBookingEnded(ctx context.Context, txr EventRepository, payload json.RawMessage) error {
+func (r EventRepository) handleBookingEnded(ctx context.Context, payload json.RawMessage) error {
 	completedBooking := domain.CompletedBooking{}
 	if err := json.Unmarshal(payload, &completedBooking); err != nil {
 		return err
 	}
 
 	var userId int64
-	err := txr.QueryRowContext(ctx, `SELECT id FROM users WHERE user_ref = $1`, completedBooking.Booking.UserRef).Scan(&userId)
+	err := r.QueryRowContext(ctx, `SELECT id FROM users WHERE user_ref = $1`, completedBooking.Booking.UserRef).Scan(&userId)
 	if err != nil {
 		return err
 	}
 
 	q := `INSERT INTO booking_ended_events (fk_user, booking_ref, start_date, end_date, distance_meters) VALUES ($1, $2, $3, $4, $5)`
-	_, err = txr.ExecContext(ctx, q, userId, completedBooking.Booking.BookingReference, completedBooking.Booking.StartDate, completedBooking.Booking.EndDate, completedBooking.Distance.Distance())
+	_, err = r.ExecContext(ctx, q, userId, completedBooking.Booking.BookingReference, completedBooking.Booking.StartDate, completedBooking.Booking.EndDate, completedBooking.Distance.Distance())
 	return err
 }
 

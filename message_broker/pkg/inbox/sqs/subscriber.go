@@ -29,18 +29,16 @@ func NewSubscriber(ctx context.Context, c aws.Config, queueName string) (*SqsSub
 	}
 	url, err := s.sqsClient.GetQueueUrl(ctx, &aws_sqs.GetQueueUrlInput{QueueName: &queueName})
 	if err != nil {
-		created, err := s.sqsClient.CreateQueue(ctx, &aws_sqs.CreateQueueInput{QueueName: &queueName})
-		if err != nil {
-			return nil, err
-		}
-		s.queueUrl = &aws_sqs.GetQueueUrlOutput{QueueUrl: created.QueueUrl}
-		return s, nil
+		return nil, fmt.Errorf("queue %q not found: %w", queueName, err)
 	}
 	s.queueUrl = url
 	return s, nil
 }
 
 func (s *SqsSubscriber) RetrieveMessages(ctx context.Context) ([]postgres.Message, error) {
+	log.Ctx(ctx).Info().
+		Str("queue_url", *s.queueUrl.QueueUrl).
+		Msg("Retrieving messages")
 	sqsMessages, err := s.sqsClient.ReceiveMessage(ctx, &aws_sqs.ReceiveMessageInput{
 		QueueUrl:                    s.queueUrl.QueueUrl,
 		MaxNumberOfMessages:         10,
@@ -63,7 +61,7 @@ func (s *SqsSubscriber) RetrieveMessages(ctx context.Context) ([]postgres.Messag
 		}
 		err = json.Unmarshal([]byte(*message.Body), &m)
 		if err != nil {
-			l := log.Error().Err(err)
+			l := log.Ctx(ctx).Error().Err(err)
 			if message.Body != nil {
 				l = l.Str("body", *message.Body)
 			}

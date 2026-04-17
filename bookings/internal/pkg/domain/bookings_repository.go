@@ -3,9 +3,8 @@ package domain
 import (
 	"context"
 
-	"github.com/google/uuid"
-
 	ext_domain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
+	brokerpostgres "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
 //go:generate mockgen -source=bookings_repository.go -destination=bookings_repository_mock.go -package=domain github.com/arngrimur/bilcool_monolith/bookings
@@ -15,6 +14,6 @@ type BookingsRepository interface {
 	UpdateBooking(ctx context.Context, request UpdateBookingRequest) error
 	DeleteBooking(ctx context.Context, request BookingRequest) error
 	EndBooking(ctx context.Context, request EndBookingRequest) error
-	AddUser(ctx context.Context, user uuid.UUID, eventID string) error
-	DeleteUser(ctx context.Context, user uuid.UUID, eventID string) error
+	AddUser(ctx context.Context, message brokerpostgres.Message) error
+	DeleteUser(ctx context.Context, message brokerpostgres.Message) error
 }

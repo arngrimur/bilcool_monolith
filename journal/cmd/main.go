@@ -10,8 +10,9 @@ import (
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/persistance/postgres"
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/web"
+	brokerinbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
-	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
+	brokerpostgres "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
 func main() {
@@ -24,7 +25,7 @@ func main() {
 	}
 	// Create Db Connection
 	psqlDb := postgres.SetupPostgresDatabase()
-	err = coutbox.CreateTable(psqlDb)
+	err = brokerpostgres.CreateTable(psqlDb)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating outbox table")
 	}
@@ -37,12 +38,12 @@ func main() {
 	if err != nil {
 		log.Ctx(ctx).Fatal().Err(err).Msg("Error creating SQS subscriber")
 	}
-	consumer := inbox.NewConsumer(sqsSubscriber, 5, psqlDb)
-	consumer.Start(ctx)
-	defer consumer.Stop()
-	defer psqlDb.Close()
-
 	repo := postgres.NewEventRepository(psqlDb)
+	eventHandler := inbox.NewEventHandler(sqsSubscriber, repo)
+	worker := brokerinbox.NewWorker(eventHandler, 5)
+	worker.Start(ctx)
+	defer worker.Stop()
+	defer psqlDb.Close()
 	router := web.NewRouter(repo)
 	if err := router.StartRouter(config.APIPort()); err != nil {
 		log.Fatal().Err(err).Msg("router stopped")
