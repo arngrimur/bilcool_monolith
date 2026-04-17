@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/arngrimur/bilcool_monolith v0.1.0
-	github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260402112002-df5a2cfef02b
+	github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260416092020-364bd8b53ab3
 	github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260402112002-df5a2cfef02b
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.14
@@ -26,6 +26,7 @@ require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/amacneil/dbmate/v2 v2.32.0 // indirect
+	github.com/arngrimur/bilcool_monolith/authentication v0.0.0-20260416092020-364bd8b53ab3 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.14 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.21 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.21 // indirect
@@ -34,6 +35,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.21 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.25 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.19 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.10 // indirect
