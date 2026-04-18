@@ -16,7 +16,7 @@ tasks:
       FROM_EMAIL: ${FROM_EMAIL}
       BREVO_API_KEY: ${BREVO_API_KEY}
     cmds:
-      - docker-compose up -d --remove-orphans --build journal event-ledger bookings authentication bilcool-ui
+      - docker-compose up --build journal event-ledger bookings authentication bilcool-ui
 
   down:
     dir: '{{.USER_WORKING_DIR}}'

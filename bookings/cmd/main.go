@@ -25,6 +25,8 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	c := log.With().Caller().Timestamp()
+	ctx = c.Logger().WithContext(ctx)
 	log.Ctx(ctx).Info().Msg("starting application")
 	// Read Config
 	err := config.Init()
