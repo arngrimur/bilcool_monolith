@@ -4,6 +4,7 @@ import (
 	"context"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/config"
@@ -18,6 +19,7 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Ctx(ctx).Info().Msg("starting application")
 	err := config.Init()
 	if err != nil {

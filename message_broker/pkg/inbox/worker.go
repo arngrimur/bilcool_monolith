@@ -50,6 +50,7 @@ func (c *Worker) doWork(ctx context.Context, msgChan chan []broker.Message) {
 		case <-ctx.Done():
 			return
 		case batch, ok := <-msgChan:
+			log.Ctx(ctx).Info().Int("batch_size", len(batch)).Any("batch_content", batch).Msg("processing batch")
 			if !ok {
 				return
 			}

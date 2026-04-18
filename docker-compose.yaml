@@ -1,6 +1,6 @@
 services:
   localstack:
-    image: localstack/localstack:latest
+    image: localstack/localstack:2026.3.0
     container_name: localstack
     ports: ["4566:4566"]
     restart: unless-stopped
@@ -11,6 +11,7 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
       LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-test}
+      LS_LOG: info
     healthcheck:
       test: ["CMD-SHELL", "curl -sfS localhost:4566/_localstack/init/ready |  grep 'SUCCESSFUL'"]
       interval: 5s
