@@ -36,7 +36,7 @@ func EnsureTable(ctx context.Context, client DynamoDBClient, tableName string) e
 		return err
 	}
 
-	log.Info().Str("table", tableName).Msg("creating DynamoDB table")
+	log.Ctx(ctx).Info().Str("table", tableName).Msg("creating DynamoDB table")
 
 	_, err = client.CreateTable(ctx, &awsdynamo.CreateTableInput{
 		TableName:   aws.String(tableName),

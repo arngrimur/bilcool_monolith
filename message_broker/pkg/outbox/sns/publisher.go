@@ -134,7 +134,6 @@ func (s *SnsPublisher) sendBatchMessages(ctx context.Context, events []postgres.
 		input = append(input, types.PublishBatchRequestEntry{
 			Id:      new(event.EventId.String()),
 			Message: new(string(msg)),
-			Subject: &event.Type,
 		})
 	}
 	if ctx.Err() != nil {

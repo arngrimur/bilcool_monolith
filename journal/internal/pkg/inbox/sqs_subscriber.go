@@ -1,128 +1,77 @@
 package inbox
 
-// TODO: Create worker to read from queue
-// TODO: store messsageId to inbox
-// TODO read payload and store in database
-
-// Reviceves
-// - booking_ended event
-// - user_created event
-// - user_deleted event
+//go:generate mockgen -source=sqs_subscriber.go -destination=sqs_client_mock.go -package=inbox
 
 import (
 	"context"
-	"database/sql"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
+	authdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
+	bookingsdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/persistance/postgres"
-	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
 	broker "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
-// Consumer handles receiving and processing messages from SQS
-type Consumer struct {
-	handler     *sqs.SqsSubscriber
-	workerCount int
-	queueUrl    string
-	eventsRepo  *postgres.EventRepository
-	cancel      context.CancelFunc
-	wg          sync.WaitGroup
+type sqsClient interface {
+	VisibilityTimeout() int
+	DeleteMessages(ctx context.Context, messages []broker.Message) (int, error)
+	RetrieveMessages(ctx context.Context) ([]broker.Message, error)
 }
 
-// NewConsumer creates a new Consumer instance
-func NewConsumer(client *sqs.SqsSubscriber, noWorkers int, db *sql.DB) *Consumer {
-	return &Consumer{
-		handler:     client,
-		workerCount: noWorkers,
-		eventsRepo:  postgres.NewEventRepository(db),
+type EventHandler struct {
+	sqsClient sqsClient
+	repo      *postgres.EventRepository
+}
+
+func NewEventHandler(client sqsClient, repo *postgres.EventRepository) *EventHandler {
+	return &EventHandler{
+		sqsClient: client,
+		repo:      repo,
 	}
 }
 
-func (c *Consumer) Start(ctx context.Context) {
-	ctx, c.cancel = context.WithCancel(ctx)
-	msgChan := make(chan []broker.Message, c.workerCount*2)
-
-	for i := 0; i < c.workerCount; i++ {
-		c.wg.Go(func() {
-			c.worker(ctx, i, msgChan)
-		})
-	}
-
-	go func() {
-		c.poll(ctx, msgChan)
-		close(msgChan)
-	}()
-}
-
-func (c *Consumer) Stop() {
-	if c.cancel != nil {
-		c.cancel()
-	}
-	c.wg.Wait()
-}
-
-// worker processes messages from the channel
-func (c *Consumer) worker(ctx context.Context, id int, msgChan chan []broker.Message) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case batch, ok := <-msgChan:
-			if !ok {
-				return
-			}
-			c.processMessages(ctx, batch)
-		}
-	}
-}
-
-func (c *Consumer) processMessages(ctx context.Context, messages []broker.Message) {
-	processedCtx, cancel := context.WithTimeout(ctx, time.Duration(c.handler.VisibilityTimeout()-5)*time.Second)
+func (e EventHandler) ProcessMessages(ctx context.Context, messages []broker.Message) {
+	processedCtx, cancel := context.WithTimeout(ctx, time.Duration(e.sqsClient.VisibilityTimeout()-5)*time.Second)
 	defer cancel()
-
-	ok := make([]broker.Message, 0)
-
-	for _, e := range messages {
-		err := c.eventsRepo.SaveMessage(processedCtx, e)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("failed to save message")
+	markedForDeletion := make([]broker.Message, 0)
+	log.Ctx(ctx).Info().Int("messages_to_process", len(messages)).Msg("journal processing messages")
+	for _, m := range messages {
+		var err error
+		switch m.Message.Type {
+		case authdomain.EventUserCreated:
+			err = e.repo.SaveUserCreated(processedCtx, m)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("failed to add user")
+				continue
+			}
+		case authdomain.EventUserDeleted:
+			err = e.repo.SaveUserDeleted(processedCtx, m)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("failed to delete user")
+				continue
+			}
+		case bookingsdomain.EventBookingEnded:
+			err = e.repo.SaveBookingEnded(processedCtx, m)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("failed to save booking ended event")
+				continue
+			}
+		default:
 			continue
 		}
-		ok = append(ok, e)
+
+		markedForDeletion = append(markedForDeletion, m)
 	}
 
-	n, err := c.handler.DeleteMessages(processedCtx, ok)
+	n, err := e.sqsClient.DeleteMessages(processedCtx, markedForDeletion)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to delete messages")
 	}
-	log.Info().Int("deleted_messages", n)
+	log.Ctx(ctx).Info().Int("deleted_messages", n).Send()
 }
 
-func (c *Consumer) poll(ctx context.Context, msgChan chan<- []broker.Message) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			messages, err := c.handler.RetrieveMessages(ctx)
-			if err != nil {
-				if ctx.Err() != nil {
-					return
-				}
-				log.Error().Err(err).Msg("error retrieving messages")
-				continue
-			}
-			if len(messages) == 0 {
-				continue
-			}
-			select {
-			case msgChan <- messages:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}
+func (e EventHandler) RetrieveMessages(ctx context.Context) ([]broker.Message, error) {
+	return e.sqsClient.RetrieveMessages(ctx)
 }

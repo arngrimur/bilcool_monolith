@@ -4,6 +4,7 @@ package postgresql
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,7 +13,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
+	authdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/migrations"
+	brokerpostgres "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 	"github.com/arngrimur/bilcool_monolith/testing/testdb"
 
 	_ "github.com/lib/pq"
@@ -117,7 +120,7 @@ func (suite *bookingsTestSuite) TestCreateNewBooking() {
 	userRef := uuid.New()
 	bookingRef := uuid.New()
 
-	err := database.AddUser(context.Background(), userRef, uuid.New().String())
+	err := database.AddUser(context.Background(), makeUserMessage(userRef, uuid.New().String()))
 	suite.Require().NoError(err)
 
 	_, err = database.Find(context.Background(), domain.BookingRequest{BookingReference: bookingRef})
@@ -164,7 +167,7 @@ func (suite *bookingsTestSuite) TestBookingCanBeUpdated() {
 
 	addUser := func() uuid.UUID {
 		ref := uuid.New()
-		err := database.AddUser(ctx, ref, uuid.New().String())
+		err := database.AddUser(ctx, makeUserMessage(ref, uuid.New().String()))
 		suite.Require().NoError(err)
 		return ref
 	}
@@ -225,7 +228,7 @@ func (suite *bookingsTestSuite) TestAddUser() {
 	userRef := uuid.New()
 	messageID := uuid.New().String()
 
-	err := database.AddUser(context.Background(), userRef, messageID)
+	err := database.AddUser(context.Background(), makeUserMessage(userRef, messageID))
 	suite.Require().NoError(err)
 
 	var found uuid.UUID
@@ -243,10 +246,10 @@ func (suite *bookingsTestSuite) TestAddUserDuplicateMessageID() {
 	database := NewBookingsRepository(suite.Db)
 	messageID := uuid.New().String()
 
-	err := database.AddUser(context.Background(), uuid.New(), messageID)
+	err := database.AddUser(context.Background(), makeUserMessage(uuid.New(), messageID))
 	suite.Require().NoError(err)
 
-	err = database.AddUser(context.Background(), uuid.New(), messageID)
+	err = database.AddUser(context.Background(), makeUserMessage(uuid.New(), messageID))
 	suite.Require().Nil(err) // we use ON CONFLICT DO NOTHING
 }
 
@@ -254,10 +257,10 @@ func (suite *bookingsTestSuite) TestAddUserDuplicateUserRef() {
 	database := NewBookingsRepository(suite.Db)
 	userRef := uuid.New()
 
-	err := database.AddUser(context.Background(), userRef, uuid.New().String())
+	err := database.AddUser(context.Background(), makeUserMessage(userRef, uuid.New().String()))
 	suite.Require().NoError(err)
 
-	err = database.AddUser(context.Background(), userRef, uuid.New().String())
+	err = database.AddUser(context.Background(), makeUserMessage(userRef, uuid.New().String()))
 	suite.Require().Nil(err) // we use ON CONFLICT DO NOTHING
 }
 
@@ -265,10 +268,10 @@ func (suite *bookingsTestSuite) TestDeleteUser() {
 	database := NewBookingsRepository(suite.Db)
 	userRef := uuid.New()
 
-	err := database.AddUser(context.Background(), userRef, uuid.New().String())
+	err := database.AddUser(context.Background(), makeUserMessage(userRef, uuid.New().String()))
 	suite.Require().NoError(err)
 
-	err = database.DeleteUser(context.Background(), userRef, uuid.New().String())
+	err = database.DeleteUser(context.Background(), makeUserMessage(userRef, uuid.New().String()))
 	suite.Require().NoError(err)
 
 	var deleted bool
@@ -283,13 +286,13 @@ func (suite *bookingsTestSuite) TestDeleteUserIdempotent() {
 	database := NewBookingsRepository(suite.Db)
 	userRef := uuid.New()
 
-	err := database.AddUser(context.Background(), userRef, uuid.New().String())
+	err := database.AddUser(context.Background(), makeUserMessage(userRef, uuid.New().String()))
 	suite.Require().NoError(err)
 
-	err = database.DeleteUser(context.Background(), userRef, uuid.New().String())
+	err = database.DeleteUser(context.Background(), makeUserMessage(userRef, uuid.New().String()))
 	suite.Require().NoError(err)
 
-	err = database.DeleteUser(context.Background(), userRef, uuid.New().String())
+	err = database.DeleteUser(context.Background(), makeUserMessage(userRef, uuid.New().String()))
 	suite.Require().NoError(err)
 
 	var count int
@@ -303,12 +306,24 @@ func (suite *bookingsTestSuite) TestDeleteUserDuplicateMessageID() {
 	userRef := uuid.New()
 	messageID := uuid.New().String()
 
-	err := database.AddUser(context.Background(), userRef, uuid.New().String())
+	err := database.AddUser(context.Background(), makeUserMessage(userRef, uuid.New().String()))
 	suite.Require().NoError(err)
 
-	err = database.DeleteUser(context.Background(), userRef, messageID)
+	err = database.DeleteUser(context.Background(), makeUserMessage(userRef, messageID))
 	suite.Require().NoError(err)
 
-	err = database.DeleteUser(context.Background(), userRef, messageID)
+	err = database.DeleteUser(context.Background(), makeUserMessage(userRef, messageID))
 	suite.Require().Error(err)
+}
+
+func makeUserMessage(userRef uuid.UUID, messageID string) brokerpostgres.Message {
+	payload, _ := json.Marshal(authdomain.UserResponse{UserRef: userRef})
+	return brokerpostgres.Message{
+		MessageBody: brokerpostgres.MessageBody{
+			Message: brokerpostgres.Event{
+				EventId: uuid.MustParse(messageID),
+				Payload: payload,
+			},
+		},
+	}
 }

@@ -40,32 +40,21 @@ func (e EventHandler) ProcessMessages(ctx context.Context, messages []brokerpost
 	for _, m := range messages {
 		switch m.Message.Type {
 		case authdomain.EventUserCreated:
-			user, err := e.userRef(m)
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("failed to parse user event")
-				continue
-			}
-			err = e.repo.AddUser(ctx, user, m.Message.EventId.String())
+			err := e.repo.AddUser(ctx, m)
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("failed to add user")
 				continue
 			}
-			markedForDeletion = append(markedForDeletion, m)
 		case authdomain.EventUserDeleted:
-			user, err := e.userRef(m)
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("failed to parse user event")
-				continue
-			}
-			err = e.repo.DeleteUser(ctx, user, m.Message.EventId.String())
+			err := e.repo.DeleteUser(ctx, m)
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("failed to delete user")
 				continue
 			}
-			markedForDeletion = append(markedForDeletion, m)
 		default:
 			continue
 		}
+		markedForDeletion = append(markedForDeletion, m)
 
 	}
 
@@ -73,7 +62,7 @@ func (e EventHandler) ProcessMessages(ctx context.Context, messages []brokerpost
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to delete messages")
 	}
-	log.Info().Int("deleted_messages", n).Send()
+	log.Ctx(ctx).Info().Int("deleted_messages", n).Send()
 }
 func (e EventHandler) userRef(m brokerpostgres.Message) (uuid.UUID, error) {
 	user := authdomain.UserResponse{}

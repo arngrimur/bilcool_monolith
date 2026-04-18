@@ -4,6 +4,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -13,7 +14,9 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 
+	authdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/migrations"
+	brokerpostgres "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 	"github.com/arngrimur/bilcool_monolith/testing/testdb"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
@@ -90,7 +93,13 @@ func (suite *applicationTestSuite) TestUpdateBooking() {
 		EndDate:          suite.now,
 		UserRef:          uuid.New(),
 	}
-	err := bookingRepository.AddUser(context.Background(), r.UserRef, uuid.New().String())
+	payload, _ := json.Marshal(authdomain.UserResponse{UserRef: r.UserRef})
+	addMsg := brokerpostgres.Message{
+		MessageBody: brokerpostgres.MessageBody{
+			Message: brokerpostgres.Event{EventId: uuid.New(), Payload: payload},
+		},
+	}
+	err := bookingRepository.AddUser(context.Background(), addMsg)
 	suite.Require().NoError(err)
 	err = application.UpdateBooking(context.Background(), r)
 	suite.Require().NoError(err)

@@ -152,7 +152,7 @@ func (h *HttpRouter) getBooking(c *gin.Context) {
 func (h *HttpRouter) getAllBookings(c *gin.Context) {
 	bookings, err := h.queries.GetAllBooking(c.Request.Context())
 	if err != nil {
-		log.Error().Err(err).Msg("failed to get all bookings")
+		log.Ctx(c.Request.Context()).Error().Err(err).Msg("failed to get all bookings")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ooops! Something went wrong"})
 		return
 	}

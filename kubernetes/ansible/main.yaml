@@ -1,0 +1,104 @@
+---
+- hosts:                  all
+  become: yes
+  tasks:
+    - name: Update host
+      ansible.builtin.apt:
+        name: '*'
+        state: latest
+        autoremove: yes
+
+    - name: Install software
+      ansible.builtin.apt:
+        pkg:
+          - iptables
+          - tree
+          - bind9-utils
+      ignore_errors: yes
+
+    - name: Setup hosts
+      command: "{{ item }}"
+      with_items:
+        - sudo iptables -F
+        - update-alternatives --set iptables /usr/sbin/iptables-legacy
+        - update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+        - echo -n ' cgroup_memory=1 cgroup_enable=memory ' >> /boot/cmdline.txt
+      ignore_errors: yes
+
+    - name : Reboot for iptables to take effect
+      reboot:
+
+- hosts: control_plane
+  become: yes
+  vars:
+    installdir: /var/lib/rancher/k3s
+  tasks:
+    - name: Check unistall script
+      stat:
+        path: /usr/local/bin/k3s-uninstall.sh
+      register: uninstall_server
+
+    - name: Uninstall server if it exists
+      command: /usr/local/bin/k3s-uninstall.sh
+      when: uninstall_server
+
+    - name: Create k3s folder
+      file:
+        path: "{{ installdir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy config
+      copy:
+        src: files/server/config/config.yaml
+        dest: "{{ installdir }}/config.yaml"
+        mode: '0644'
+
+    - name: Install k3s
+      shell: curl -sfL https://get.k3s.io | sh -
+
+    - name: Get token
+      command: cat /var/lib/rancher/k3s/server/node-token
+      register: servertoken
+
+    - name: Get server token
+      set_fact:
+        k3s_token: "{{ servertoken.stdout }}"
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      with_items: "{{ groups['nodes'] }}"
+
+- hosts: nodes
+  become: yes
+  tasks:
+    - name: Check unistall script
+      stat:
+        path: /usr/local/bin/k3s-agent-uninstall.sh
+      register: uninstall_agent
+
+    - name: Uninstall server if it exists
+      command: /usr/local/bin/k3s-agent-uninstall.sh
+      when: uninstall_agent
+
+    - name: Install k3s nodes
+      shell: "curl -sfL https://get.k3s.io | K3S_URL=https://{{ groups['control_plane'][0] }}:6443 K3S_TOKEN={{ k3s_token }} sh -"
+
+- hosts: control_plane
+  become: yes
+  vars:
+    SETUPDIR: /tmp/setup
+  tasks:
+    - name: Copy setup files
+      copy:
+        dest: "/tmp"
+        src: files/server/setup
+
+    - name: Setup dashboard pod
+      command: "bash install-dashboard.sh"
+      args:
+        chdir: "{{ SETUPDIR }}/dashboard/"
+
+    - name: Delete setup files
+      file:
+        path: "{{ SETUPDIR }}"
+        state: absent

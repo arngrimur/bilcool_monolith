@@ -60,7 +60,7 @@ func TestProcessMessages_UserCreated_Success(t *testing.T) {
 	eventID := uuid.New()
 	msg := makeUserCreatedMessage(userRef, eventID)
 
-	repoMock.EXPECT().AddUser(gomock.Any(), userRef, eventID.String()).Return(nil)
+	repoMock.EXPECT().AddUser(gomock.Any(), msg).Return(nil)
 	sqsMock.EXPECT().DeleteMessages(gomock.Any(), []brokerpostgres.Message{msg}).Return(1, nil)
 
 	require.NotPanics(t, func() {
@@ -76,7 +76,7 @@ func TestProcessMessages_UserDeleted_Success(t *testing.T) {
 	eventID := uuid.New()
 	msg := makeUserDeletedMessage(userRef, eventID)
 
-	repoMock.EXPECT().DeleteUser(gomock.Any(), userRef, eventID.String()).Return(nil)
+	repoMock.EXPECT().DeleteUser(gomock.Any(), msg).Return(nil)
 	sqsMock.EXPECT().DeleteMessages(gomock.Any(), []brokerpostgres.Message{msg}).Return(1, nil)
 
 	require.NotPanics(t, func() {
@@ -92,7 +92,7 @@ func TestProcessMessages_UserDeleted_RepoError_MessageNotDeleted(t *testing.T) {
 	eventID := uuid.New()
 	msg := makeUserDeletedMessage(userRef, eventID)
 
-	repoMock.EXPECT().DeleteUser(gomock.Any(), userRef, eventID.String()).Return(errors.New("db error"))
+	repoMock.EXPECT().DeleteUser(gomock.Any(), msg).Return(errors.New("db error"))
 	sqsMock.EXPECT().DeleteMessages(gomock.Any(), []brokerpostgres.Message{}).Return(0, nil)
 
 	require.NotPanics(t, func() {
@@ -108,7 +108,7 @@ func TestProcessMessages_RepoError_MessageNotDeleted(t *testing.T) {
 	eventID := uuid.New()
 	msg := makeUserCreatedMessage(userRef, eventID)
 
-	repoMock.EXPECT().AddUser(gomock.Any(), userRef, eventID.String()).Return(errors.New("db error"))
+	repoMock.EXPECT().AddUser(gomock.Any(), msg).Return(errors.New("db error"))
 	sqsMock.EXPECT().DeleteMessages(gomock.Any(), []brokerpostgres.Message{}).Return(0, nil)
 
 	require.NotPanics(t, func() {
@@ -118,7 +118,7 @@ func TestProcessMessages_RepoError_MessageNotDeleted(t *testing.T) {
 
 func TestProcessMessages_InvalidPayload_MessageNotDeleted(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	handler, sqsMock, _ := setupHandler(ctrl)
+	handler, sqsMock, repoMock := setupHandler(ctrl)
 
 	msg := brokerpostgres.Message{
 		ReceiptHandle: "handle-bad",
@@ -132,6 +132,7 @@ func TestProcessMessages_InvalidPayload_MessageNotDeleted(t *testing.T) {
 		},
 	}
 
+	repoMock.EXPECT().AddUser(gomock.Any(), msg).Return(errors.New("invalid json"))
 	sqsMock.EXPECT().DeleteMessages(gomock.Any(), []brokerpostgres.Message{}).Return(0, nil)
 
 	require.NotPanics(t, func() {
@@ -170,7 +171,7 @@ func TestProcessMessages_DeleteError_NoReturnError(t *testing.T) {
 	eventID := uuid.New()
 	msg := makeUserCreatedMessage(userRef, eventID)
 
-	repoMock.EXPECT().AddUser(gomock.Any(), userRef, eventID.String()).Return(nil)
+	repoMock.EXPECT().AddUser(gomock.Any(), msg).Return(nil)
 	sqsMock.EXPECT().DeleteMessages(gomock.Any(), []brokerpostgres.Message{msg}).Return(0, errors.New("sqs error"))
 
 	require.NotPanics(t, func() {
@@ -200,8 +201,8 @@ func TestProcessMessages_MultipleMessages_PartialFailure(t *testing.T) {
 	msg1 := makeUserCreatedMessage(userRef1, eventID1)
 	msg2 := makeUserCreatedMessage(userRef2, eventID2)
 
-	repoMock.EXPECT().AddUser(gomock.Any(), userRef1, eventID1.String()).Return(nil)
-	repoMock.EXPECT().AddUser(gomock.Any(), userRef2, eventID2.String()).Return(errors.New("db error"))
+	repoMock.EXPECT().AddUser(gomock.Any(), msg1).Return(nil)
+	repoMock.EXPECT().AddUser(gomock.Any(), msg2).Return(errors.New("db error"))
 	sqsMock.EXPECT().DeleteMessages(gomock.Any(), []brokerpostgres.Message{msg1}).Return(1, nil)
 
 	require.NotPanics(t, func() {

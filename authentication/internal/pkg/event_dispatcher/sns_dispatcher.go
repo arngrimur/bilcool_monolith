@@ -43,8 +43,8 @@ func (s SnsDispatcher[T]) Execute(ctx context.Context, table soutbox_domain.Tabl
 	}
 
 	log.Ctx(ctx).Info().Int("no new events", len(events)).Msg("found new events")
-	for _, e := range events {
-		e.EmittedAt = new(time.Now())
+	for i := range events {
+		events[i].EmittedAt = new(time.Now())
 	}
 	messages, err := s.SendBatchMessages(ctx, events, sns.TopicUsers)
 	if err != nil {

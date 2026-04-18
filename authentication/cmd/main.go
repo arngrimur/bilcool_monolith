@@ -24,7 +24,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Info().Msg("starting application")
+	c := log.With().Caller().Timestamp()
+	ctx = c.Logger().WithContext(ctx)
+	log.Ctx(ctx).Info().Msg("starting application")
 
 	err := config.Init()
 	if err != nil {

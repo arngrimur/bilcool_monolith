@@ -34,8 +34,8 @@ func (s SnsDispatcher[T]) Execute(ctx context.Context, table soutbox_domain.Tabl
 	if err != nil {
 		return err
 	}
-	for _, e := range events {
-		e.EmittedAt = new(time.Now())
+	for i := range events {
+		events[i].EmittedAt = new(time.Now())
 	}
 	messages, err := s.SendBatchMessages(ctx, events, sns.TopicBookings)
 	if err != nil {

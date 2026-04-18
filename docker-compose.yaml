@@ -1,17 +1,19 @@
 services:
   localstack:
-    image: localstack/localstack:latest
+    image: localstack/localstack:2026.3.0
     container_name: localstack
     ports: ["4566:4566"]
     restart: unless-stopped
     environment:
       SERVICES: sns,sqs,s3,dynamodb
       REGION: ${AWS_REGION:-eu-north-1}
+      DEFAULT_REGION: ${AWS_REGION:-eu-north-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
       LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-test}
+      LS_LOG: info
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      test: ["CMD-SHELL", "curl -sfS localhost:4566/_localstack/init/ready |  grep 'SUCCESSFUL'"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -192,12 +194,15 @@ services:
         condition: service_healthy
       localstack:
         condition: service_healthy
+      db-migration-journal:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgres://postgres:postgres@journal-db:5432/journal?sslmode=disable
       AWS_REGION: ${AWS_REGION:-eu-north-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
       AWS_ENDPOINT_URL: http://localstack:4566
+    ports: ["8084:8080"]
     networks:
       - bilcool
 
@@ -229,10 +234,12 @@ services:
       - authentication
       - bookings
       - event-ledger
+      - journal
     environment:
       AUTH_SERVICE_URL: http://authentication:8080
       BOOK_SERVICE_URL: http://bookings:8080
       EVENTS_SERVICE_URL: http://event-ledger:8080
+      JOURNAL_SERVICE_URL: http://journal:8080
     ports: ["3000:3000"]
     volumes:
       - ./ui/bilcool-ui:/app
