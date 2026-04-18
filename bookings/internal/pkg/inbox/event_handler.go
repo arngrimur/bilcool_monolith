@@ -62,7 +62,7 @@ func (e EventHandler) ProcessMessages(ctx context.Context, messages []brokerpost
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to delete messages")
 	}
-	log.Info().Int("deleted_messages", n).Send()
+	log.Ctx(ctx).Info().Int("deleted_messages", n).Send()
 }
 func (e EventHandler) userRef(m brokerpostgres.Message) (uuid.UUID, error) {
 	user := authdomain.UserResponse{}

@@ -19,7 +19,7 @@ func main() {
 	defer cancel()
 	c := log.With().Caller().Timestamp()
 	ctx = c.Logger().WithContext(ctx)
-	log.Info().Msg("starting event-ledger")
+	log.Ctx(ctx).Info().Msg("starting event-ledger")
 
 	if err := config.Init(); err != nil {
 		log.Fatal().Err(err).Msg("failed to load config")
@@ -55,5 +55,5 @@ func main() {
 	log.Ctx(ctx).Info().Msg(
 		"event-ledger is running",
 	)
-	log.Info().Msg("stopping event-ledge")
+	log.Ctx(ctx).Info().Msg("stopping event-ledge")
 }

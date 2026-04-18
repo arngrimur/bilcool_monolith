@@ -42,7 +42,7 @@ func NewRouter(querier BookingQuerier) *HttpRouter {
 func (h *HttpRouter) getFinishedBookings(c *gin.Context) {
 	bookings, err := h.querier.GetFinishedBookings(c.Request.Context())
 	if err != nil {
-		log.Error().Err(err).Msg("failed to get finished bookings")
+		log.Ctx(c.Request.Context()).Error().Err(err).Msg("failed to get finished bookings")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve finished bookings"})
 		return
 	}

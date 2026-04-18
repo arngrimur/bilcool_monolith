@@ -26,7 +26,7 @@ func main() {
 
 	c := log.With().Caller().Timestamp()
 	ctx = c.Logger().WithContext(ctx)
-	log.Info().Msg("starting application")
+	log.Ctx(ctx).Info().Msg("starting application")
 
 	err := config.Init()
 	if err != nil {

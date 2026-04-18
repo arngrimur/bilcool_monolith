@@ -69,7 +69,7 @@ func (e EventHandler) ProcessMessages(ctx context.Context, messages []broker.Mes
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to delete messages")
 	}
-	log.Info().Int("deleted_messages", n).Send()
+	log.Ctx(ctx).Info().Int("deleted_messages", n).Send()
 }
 
 func (e EventHandler) RetrieveMessages(ctx context.Context) ([]broker.Message, error) {

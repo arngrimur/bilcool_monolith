@@ -46,7 +46,7 @@ func (c *Consumer) ProcessMessages(ctx context.Context, messages []brokerpostgre
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to delete messages")
 	}
-	log.Info().Int("deleted_messages", n).Send()
+	log.Ctx(ctx).Info().Int("deleted_messages", n).Send()
 }
 
 func (c *Consumer) RetrieveMessages(ctx context.Context) ([]brokerpostgres.Message, error) {
