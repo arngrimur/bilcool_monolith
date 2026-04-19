@@ -88,6 +88,20 @@ export interface EventQueryParams {
   order_direction?: 'asc' | 'desc';
 }
 
+export interface FinishedBooking {
+  booking_reference: string
+  user_ref: string
+  start_date: string
+  end_date: string
+  distance_meters: number
+}
+
+export interface FinishedBookingParams {
+  year?: number
+  month?: number
+  user_ref?: string
+}
+
 export interface CompletedBookingPayload {
   booking: BookingResponse;
   distance: {

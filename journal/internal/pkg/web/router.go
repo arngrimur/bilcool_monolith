@@ -6,17 +6,19 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/persistance/postgres"
 )
 
 type BookingQuerier interface {
-	GetFinishedBookings(ctx context.Context) ([]postgres.FinishedBooking, error)
+	GetFinishedBookings(ctx context.Context, f postgres.FinishedBookingFilter) ([]postgres.FinishedBooking, error)
 }
 
 type HttpRouter struct {
@@ -40,7 +42,23 @@ func NewRouter(querier BookingQuerier) *HttpRouter {
 }
 
 func (h *HttpRouter) getFinishedBookings(c *gin.Context) {
-	bookings, err := h.querier.GetFinishedBookings(c.Request.Context())
+	var f postgres.FinishedBookingFilter
+	if y := c.Query("year"); y != "" {
+		if v, err := strconv.Atoi(y); err == nil {
+			f.Year = &v
+		}
+	}
+	if m := c.Query("month"); m != "" {
+		if v, err := strconv.Atoi(m); err == nil {
+			f.Month = &v
+		}
+	}
+	if u := c.Query("user_ref"); u != "" {
+		if id, err := uuid.Parse(u); err == nil {
+			f.UserRef = &id
+		}
+	}
+	bookings, err := h.querier.GetFinishedBookings(c.Request.Context(), f)
 	if err != nil {
 		log.Ctx(c.Request.Context()).Error().Err(err).Msg("failed to get finished bookings")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve finished bookings"})
