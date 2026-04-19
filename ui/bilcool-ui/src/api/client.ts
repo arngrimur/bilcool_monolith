@@ -2,6 +2,7 @@ export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promi
   const token = localStorage.getItem('bilcool_token');
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    'Correlation-Id': crypto.randomUUID(),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...init?.headers,
   };
