@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -16,54 +17,49 @@ import (
 )
 
 func TestAddCorrelationIdToLogger(t *testing.T) {
-	buf := bytes.NewBuffer(make([]byte, 500))
+	buf := bytes.NewBuffer(make([]byte, 0, 500))
 	log.Logger = zerolog.New(buf)
 
 	ctx := context.Background()
 	logging.NewDefaultLogger(ctx)
+	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(LogWithCorrelationID())
 
 	correlationID := uuid.NewString()
 	r.GET("/test", func(c *gin.Context) {
 		log.Ctx(c.Request.Context()).Info().Msg("test")
-		require.Contains(t, buf.String(), "correlation-id")
-		require.Contains(t, buf.String(), correlationID)
 	})
 
-	// Listen and serve on 0.0.0.0:8080
-	go func() { _ = r.Run(":8080") }()
+	req, err := http.NewRequest(http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+	req.Header.Set("Correlation-Id", correlationID)
 
-	request, err := http.NewRequest("GET", "http://localhost:8080/test", nil)
-	require.NoError(t, err)
-	request.Header.Add("Correlation-Id", correlationID)
-	client := &http.Client{}
-	_, err = client.Do(request)
-	require.NoError(t, err)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, buf.String(), "correlation_id")
+	require.Contains(t, buf.String(), correlationID)
 }
 
-func TestNoCorrelationIdFails(t *testing.T) {
-	buf := bytes.NewBuffer(make([]byte, 500))
-	log.Logger = zerolog.New(buf)
-
-	ctx := context.Background()
-	logging.NewDefaultLogger(ctx)
+func TestMissingCorrelationIdReturns400(t *testing.T) {
+	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(LogWithCorrelationID())
 
-	noCalls := 0
+	handlerCalled := false
 	r.GET("/test", func(c *gin.Context) {
-		noCalls++
+		handlerCalled = true
 	})
 
-	// Listen and serve on 0.0.0.0:8080
-	go func() { _ = r.Run(":8080") }()
-
-	request, err := http.NewRequest("GET", "http://localhost:8080/test", nil)
+	req, err := http.NewRequest(http.MethodGet, "/test", nil)
 	require.NoError(t, err)
-	client := &http.Client{}
-	_, err = client.Do(request)
-	require.NoError(t, err)
-	require.Equal(t, 0, noCalls)
 
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Contains(t, w.Body.String(), "Correlation-Id header is required")
+	require.False(t, handlerCalled)
 }

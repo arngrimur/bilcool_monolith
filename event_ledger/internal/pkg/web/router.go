@@ -15,6 +15,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"github.com/arngrimur/bilcool-lib/pkg/middleware"
 	_ "github.com/arngrimur/bilcool_monolith/event_ledger/docs"
 )
 
@@ -40,6 +41,7 @@ type HttpRouter struct {
 
 func NewRouter(querier EventQuerier) *HttpRouter {
 	engine := gin.Default()
+	engine.Use(middleware.LogWithCorrelationID())
 	h := &HttpRouter{
 		router:  engine,
 		querier: querier,
