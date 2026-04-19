@@ -18,7 +18,7 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ctx = logging.NewDefaultLogger(ctx)
+	ctx = logging.NewDefaultLogger(ctx, logging.WithService("event-ledger"))
 	log.Ctx(ctx).Info().Msg("starting event-ledger")
 
 	if err := config.Init(); err != nil {

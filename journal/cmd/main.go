@@ -19,7 +19,7 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ctx = logging.NewDefaultLogger(ctx)
+	ctx = logging.NewDefaultLogger(ctx, logging.WithService("journal"))
 	log.Ctx(ctx).Info().Msg("starting application")
 	err := config.Init()
 	if err != nil {

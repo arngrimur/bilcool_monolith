@@ -25,7 +25,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ctx = logging.NewDefaultLogger(ctx)
+	ctx = logging.NewDefaultLogger(ctx, logging.WithService("authentication"))
 	log.Ctx(ctx).Info().Msg("starting application")
 
 	err := config.Init()

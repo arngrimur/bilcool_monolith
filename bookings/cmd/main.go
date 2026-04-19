@@ -26,7 +26,8 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ctx = logging.NewDefaultLogger(ctx)
+
+	ctx = logging.NewDefaultLogger(ctx, logging.WithService("bookings"))
 	log.Ctx(ctx).Info().Msg("starting application")
 	// Read Config
 	err := config.Init()
