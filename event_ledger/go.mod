@@ -3,7 +3,8 @@ module github.com/arngrimur/bilcool_monolith/event_ledger
 go 1.26.0
 
 require (
-	github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260324161225-100b97514df9
+	github.com/arngrimur/bilcool-lib v0.0.0-00010101000000-000000000000
+	github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260419173804-5f6384f270e1
 	github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260324161225-100b97514df9
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.14
@@ -54,7 +55,6 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
-	github.com/creack/pty v1.1.24 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/docker v28.5.2+incompatible // indirect
@@ -140,9 +140,8 @@ require (
 	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401001100-f93e5f3e9f0f // indirect
-	google.golang.org/grpc v1.79.3 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/arngrimur/bilcool-lib => ../bilcool-lib

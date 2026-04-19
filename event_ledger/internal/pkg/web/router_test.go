@@ -11,6 +11,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/google/uuid"
+
 	"github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/web"
 )
@@ -29,6 +31,12 @@ func (f *fakeQuerier) QueryEvents(_ context.Context, _ domain.QueryParams) ([]do
 	return f.events, f.err
 }
 
+func newRequest(method, target string) *http.Request {
+	req, _ := http.NewRequest(method, target, nil)
+	req.Header.Set("Correlation-Id", uuid.NewString())
+	return req
+}
+
 var _ = Describe("HttpRouter", func() {
 	var (
 		router  *web.HttpRouter
@@ -43,8 +51,7 @@ var _ = Describe("HttpRouter", func() {
 	Describe("GET /health", func() {
 		It("returns 200 with ok status", func() {
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest(http.MethodGet, "/health", nil)
-			router.ServeHTTP(w, req)
+			router.ServeHTTP(w, newRequest(http.MethodGet, "/health"))
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var body map[string]string
@@ -69,8 +76,7 @@ var _ = Describe("HttpRouter", func() {
 
 			It("returns 200 with event list", func() {
 				w := httptest.NewRecorder()
-				req, _ := http.NewRequest(http.MethodGet, "/api/v1/events", nil)
-				router.ServeHTTP(w, req)
+				router.ServeHTTP(w, newRequest(http.MethodGet, "/api/v1/events"))
 
 				Expect(w.Code).To(Equal(http.StatusOK))
 				var resp []domain.EventResponse
@@ -87,8 +93,7 @@ var _ = Describe("HttpRouter", func() {
 
 			It("returns 200 with empty list", func() {
 				w := httptest.NewRecorder()
-				req, _ := http.NewRequest(http.MethodGet, "/api/v1/events", nil)
-				router.ServeHTTP(w, req)
+				router.ServeHTTP(w, newRequest(http.MethodGet, "/api/v1/events"))
 
 				Expect(w.Code).To(Equal(http.StatusOK))
 				var resp []domain.EventResponse
@@ -101,8 +106,7 @@ var _ = Describe("HttpRouter", func() {
 			It("passes producer filter to querier", func() {
 				querier.events = []domain.EventItem{}
 				w := httptest.NewRecorder()
-				req, _ := http.NewRequest(http.MethodGet, "/api/v1/events?producer=bookings", nil)
-				router.ServeHTTP(w, req)
+				router.ServeHTTP(w, newRequest(http.MethodGet, "/api/v1/events?producer=bookings"))
 
 				Expect(w.Code).To(Equal(http.StatusOK))
 			})
@@ -112,8 +116,7 @@ var _ = Describe("HttpRouter", func() {
 			It("caps limit at 50", func() {
 				querier.events = []domain.EventItem{}
 				w := httptest.NewRecorder()
-				req, _ := http.NewRequest(http.MethodGet, "/api/v1/events?limit=999", nil)
-				router.ServeHTTP(w, req)
+				router.ServeHTTP(w, newRequest(http.MethodGet, "/api/v1/events?limit=999"))
 
 				Expect(w.Code).To(Equal(http.StatusOK))
 			})
@@ -126,10 +129,22 @@ var _ = Describe("HttpRouter", func() {
 
 			It("returns 500", func() {
 				w := httptest.NewRecorder()
+				router.ServeHTTP(w, newRequest(http.MethodGet, "/api/v1/events"))
+
+				Expect(w.Code).To(Equal(http.StatusInternalServerError))
+			})
+		})
+
+		Context("when Correlation-Id header is missing", func() {
+			It("returns 400", func() {
+				w := httptest.NewRecorder()
 				req, _ := http.NewRequest(http.MethodGet, "/api/v1/events", nil)
 				router.ServeHTTP(w, req)
 
-				Expect(w.Code).To(Equal(http.StatusInternalServerError))
+				Expect(w.Code).To(Equal(http.StatusBadRequest))
+				var body map[string]string
+				Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
+				Expect(body["error"]).To(Equal("Correlation-Id header is required"))
 			})
 		})
 	})
