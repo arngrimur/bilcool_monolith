@@ -17,6 +17,7 @@ import (
 	"github.com/swaggo/files"
 	"github.com/swaggo/gin-swagger"
 
+	"github.com/arngrimur/bilcool-lib/pkg/middleware"
 	extdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 	_ "github.com/arngrimur/bilcool_monolith/docs"
 
@@ -52,6 +53,7 @@ type HttpRouter struct {
 
 func NewRouter(q application.Queries, c application.Commands) *HttpRouter {
 	engine := gin.Default()
+	engine.Use(middleware.LogWithCorrelationID())
 	h := &HttpRouter{
 		queries:  q,
 		commands: c,
