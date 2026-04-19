@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 
+	"github.com/arngrimur/bilcool-lib/pkg/logging"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/application"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/event_dispatcher"
@@ -24,8 +25,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	c := log.With().Caller().Timestamp()
-	ctx = c.Logger().WithContext(ctx)
+	ctx = logging.NewDefaultLogger(ctx)
 	log.Ctx(ctx).Info().Msg("starting application")
 
 	err := config.Init()

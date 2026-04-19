@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/lib/pq"
 
+	"github.com/arngrimur/bilcool-lib/pkg/logging"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/event_dispatcher"
@@ -25,8 +26,7 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	c := log.With().Caller().Timestamp()
-	ctx = c.Logger().WithContext(ctx)
+	ctx = logging.NewDefaultLogger(ctx)
 	log.Ctx(ctx).Info().Msg("starting application")
 	// Read Config
 	err := config.Init()

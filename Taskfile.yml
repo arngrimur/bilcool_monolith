@@ -84,6 +84,17 @@ tasks:
       - go generate ./...
       - go test -tags=integration ./...
 
+  bilcool-lib:build:
+    dir: bilcool-lib
+    cmds:
+      - go build ./...
+
+  bilcool-lib:test:
+    dir: bilcool-lib
+    cmds:
+      - go generate ./...
+      - go test ./...
+
   message_broker:build:
     dir: message_broker
     cmds:
@@ -174,7 +185,7 @@ tasks:
 
   vendor:
     cmds:
-      - go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal
+      - go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal ./bilcool-lib
       - go work vendor
 
   coverage-all:

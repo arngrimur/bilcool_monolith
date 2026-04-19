@@ -6,6 +6,7 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/rs/zerolog/log"
 
+	"github.com/arngrimur/bilcool-lib/pkg/logging"
 	"github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/inbox"
 	dynstore "github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/persistance/dynamodb"
@@ -17,8 +18,7 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	c := log.With().Caller().Timestamp()
-	ctx = c.Logger().WithContext(ctx)
+	ctx = logging.NewDefaultLogger(ctx)
 	log.Ctx(ctx).Info().Msg("starting event-ledger")
 
 	if err := config.Init(); err != nil {

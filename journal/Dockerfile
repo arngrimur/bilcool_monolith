@@ -7,6 +7,7 @@ WORKDIR /workspace
 COPY go.work go.work.sum ./
 COPY go.mod go.sum ./
 COPY authentication/go.mod authentication/go.sum ./authentication/
+COPY bilcool-lib/go.mod bilcool-lib/go.sum ./bilcool-lib/
 COPY bookings/go.mod bookings/go.sum ./bookings/
 COPY event_ledger/go.mod event_ledger/go.sum ./event_ledger/
 COPY journal/go.mod journal/go.sum ./journal/
