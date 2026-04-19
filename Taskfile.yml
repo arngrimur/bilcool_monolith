@@ -191,6 +191,7 @@ tasks:
   coverage-all:
     dir: '{{.USER_WORKING_DIR}}'
     vars:
+      BL_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/bilcool_lib.out"
       MB_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_unit.out"
       MB_INT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_int.out"
       EL_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/event_ledger_unit.out"
@@ -202,6 +203,7 @@ tasks:
       HTML: "{{.COVERAGE_OUTPUT_DIR}}/{{.COVERAGE_OUTPUT_HTML}}"
     cmds:
       - mkdir -p {{.COVERAGE_OUTPUT_DIR}}
+      - cd bilcool-lib && go generate ./... && go test -coverprofile={{.BL_UNIT}} -covermode=atomic -coverpkg=./... ./...
       - cd message_broker && go generate ./... && go test -coverprofile={{.MB_UNIT}} -covermode=atomic -coverpkg=./... ./...
       - cd message_broker && go test -tags=integration -coverprofile={{.MB_INT}} -covermode=atomic -coverpkg=./... ./...
       - cd event_ledger && go generate ./... && go test -coverprofile={{.MB_UNIT}} -covermode=atomic -coverpkg=./... ./...
@@ -210,6 +212,7 @@ tasks:
       - cd authentication && go generate ./... && go test -coverprofile={{.AUTH_UNIT}} -covermode=atomic -coverpkg=./... ./...
       - cd authentication && go generate ./... && go test -tags=integration -coverprofile={{.AUTH_INT}} -covermode=atomic -coverpkg=./... ./...
       - "printf 'mode: atomic\\n' > {{.MERGED}}"
+      - "tail -n +2 {{.BL_UNIT}} >> {{.MERGED}}"
       - "tail -n +2 {{.MB_UNIT}} >> {{.MERGED}}"
       - "tail -n +2 {{.MB_INT}} >> {{.MERGED}}"
       - "tail -n +2 {{.BK_INT}} >> {{.MERGED}}"

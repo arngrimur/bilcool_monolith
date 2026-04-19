@@ -12,6 +12,7 @@ func LogWithCorrelationID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.GetHeader("Correlation-Id")
 		if _, err := uuid.Parse(id); err != nil {
+			log.Error().Err(err).Msg("invalid correlation-id")
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Correlation-Id header is required"})
 			return
 		}
