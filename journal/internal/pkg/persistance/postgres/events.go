@@ -146,14 +146,23 @@ func (r EventRepository) handleBookingEnded(ctx context.Context, payload json.Ra
 	return err
 }
 
-func (r EventRepository) GetFinishedBookings(ctx context.Context) ([]FinishedBooking, error) {
+type FinishedBookingFilter struct {
+	Year    *int
+	Month   *int
+	UserRef *uuid.UUID
+}
+
+func (r EventRepository) GetFinishedBookings(ctx context.Context, f FinishedBookingFilter) ([]FinishedBooking, error) {
 	const query = `
 SELECT b.booking_ref, u.user_ref, b.start_date, b.end_date, b.distance_meters
 FROM booking_ended_events b
 INNER JOIN users u ON b.fk_user = u.id
+WHERE ($1::int IS NULL OR EXTRACT(YEAR  FROM b.start_date) = $1)
+  AND ($2::int IS NULL OR EXTRACT(MONTH FROM b.start_date) = $2)
+  AND ($3::uuid IS NULL OR u.user_ref = $3)
 ORDER BY b.start_date DESC`
 
-	rows, err := r.QueryContext(ctx, query)
+	rows, err := r.QueryContext(ctx, query, f.Year, f.Month, f.UserRef)
 	if err != nil {
 		return nil, err
 	}

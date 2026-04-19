@@ -17,6 +17,7 @@ export default defineConfig({
       '/api/auth': { target: process.env.AUTH_SERVICE_URL ?? 'http://localhost:8082', rewrite: (path) => path.replace('/api/auth', '') },
       '/api/book': { target: process.env.BOOK_SERVICE_URL ?? 'http://localhost:8081', rewrite: (path) => path.replace('/api/book', '') },
       '/api/events': { target: process.env.EVENTS_SERVICE_URL ?? 'http://localhost:8083', rewrite: (path) => path.replace('/api/events', '') },
+      '/api/journal': { target: process.env.JOURNAL_SERVICE_URL ?? 'http://localhost:8084', rewrite: (path) => path.replace('/api/journal', '') },
     },
   },
   test: {

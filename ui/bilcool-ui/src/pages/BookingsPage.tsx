@@ -1,78 +1,110 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useBookings } from '../hooks/useBookings'
-import { useUsers } from '../hooks/useUsers'
+import { useAllUsers } from '../hooks/useUsers'
 import { useAuthStore } from '../stores/authStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import type { BookingResponse } from '../types/api'
 import { formatDate, formatTime, formatMonthYear, formatMonthKey } from '../utils/dateUtils'
+import { listFinishedBookings } from '../api/events'
 
-type BookingStatus = 'upcoming' | 'active' | 'completed' | 'overdue'
+type BookingStatus = 'upcoming' | 'active' | 'overdue'
 
-function getStatus(booking: BookingResponse, hasDistance: boolean): BookingStatus {
+function getStatus(booking: BookingResponse): BookingStatus {
   const now = new Date()
   const start = new Date(booking.start_date)
   const end = new Date(booking.end_date)
-  if (hasDistance) return 'completed'
   if (start <= now && now < end) return 'active'
   if (end < now) return 'overdue'
   return 'upcoming'
 }
 
+const currentYear = new Date().getFullYear()
+const currentMonth = String(new Date().getMonth() + 1)
+
 export default function BookingsPage() {
   const { t } = useTranslation('bookings')
   const language = useSettingsStore((s) => s.language)
   const userRef = useAuthStore((s) => s.userRef)
-  const role = useAuthStore((s) => s.role)
 
-  const { data: bookings = [] } = useBookings()
-
-  const completedBookingMap = new Map<string, number>()
-  for (const b of bookings) {
-    if (b.distance) {
-      const km = (b.distance.end_distance - b.distance.start_distance) / 1000
-      completedBookingMap.set(b.booking_reference, km)
-    }
-  }
-
-  const uniqueUserRefs = [...new Set(bookings.map((b) => b.user_ref))]
-  const userQueries = useUsers(uniqueUserRefs)
-  const userMap = new Map(
-    userQueries
-      .map((q) => q.data)
-      .filter(Boolean)
-      .map((u) => [u!.user_ref, u!.username])
-  )
-
-  const allMonthKeys = [...new Set(bookings.map((b) => formatMonthKey(b.start_date)))].sort()
-
-  const [selectedMonth, setSelectedMonth] = useState<string>(allMonthKeys[allMonthKeys.length - 1] ?? '')
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear)
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth)
   const [selectedUser, setSelectedUser] = useState<string>('all')
 
-  const monthlySummary = allMonthKeys.map((monthKey) => {
-    const inMonth = bookings.filter((b) => formatMonthKey(b.start_date) === monthKey)
-    const myInMonth = inMonth.filter((b) => b.user_ref === userRef)
-    const myKm = myInMonth.reduce((sum, b) => {
-      const km = completedBookingMap.get(b.booking_reference)
-      return sum + (km ?? 0)
-    }, 0)
+  const userFilter = selectedUser !== 'all' ? selectedUser : undefined
+
+  const { data: allBookings = [] } = useBookings()
+  const nonCompleted = allBookings.filter((b) => !b.distance)
+
+  const summaryParams = { year: selectedYear, user_ref: userFilter }
+  const { data: finishedBookingsAll = [] } = useQuery({
+    queryKey: ['finishedBookings', summaryParams],
+    queryFn: () => listFinishedBookings(summaryParams),
+    staleTime: 30_000,
+  })
+
+  const listParams = {
+    year: selectedYear,
+    month: selectedMonth ? Number(selectedMonth) : undefined,
+    user_ref: userFilter,
+  }
+  const { data: finishedBookings = [] } = useQuery({
+    queryKey: ['finishedBookings', listParams],
+    queryFn: () => listFinishedBookings(listParams),
+    staleTime: 30_000,
+  })
+
+  const { data: allUsers = [] } = useAllUsers()
+  const userMap = new Map(allUsers.map((u) => [u.user_ref, u.username]))
+
+  const availableYears = [
+    ...new Set([
+      currentYear,
+      ...allBookings.map((b) => new Date(b.start_date).getFullYear()),
+      ...finishedBookingsAll.map((b) => new Date(b.start_date).getFullYear()),
+    ]),
+  ].sort((a, b) => b - a)
+
+  const monthsInYear = [
+    ...new Set([
+      ...allBookings
+        .filter((b) => new Date(b.start_date).getFullYear() === selectedYear)
+        .map((b) => formatMonthKey(b.start_date).split('-')[1]),
+      ...finishedBookingsAll.map((b) => formatMonthKey(b.start_date).split('-')[1]),
+    ]),
+  ].sort()
+
+  const nonCompletedInYear = nonCompleted.filter(
+    (b) => new Date(b.start_date).getFullYear() === selectedYear
+  )
+
+  const filteredNonCompleted = nonCompletedInYear.filter((b) => {
+    if (selectedMonth && formatMonthKey(b.start_date).split('-')[1] !== selectedMonth) return false
+    if (userFilter && b.user_ref !== userFilter) return false
+    return true
+  })
+
+  const monthlySummary = monthsInYear.map((monthNum) => {
+    const inMonth = (b: { start_date: string }) =>
+      formatMonthKey(b.start_date).split('-')[1] === monthNum
+
+    const myNonCompleted = nonCompletedInYear.filter(
+      (b) => inMonth(b) && b.user_ref === userRef
+    )
+    const myFinished = finishedBookingsAll.filter(
+      (b) => inMonth(b) && b.user_ref === (userRef ?? '')
+    )
+    const myKm = myFinished.reduce((sum, b) => sum + b.distance_meters / 1000, 0)
+
     return {
-      monthKey,
-      label: formatMonthYear(new Date(monthKey + '-01'), language),
-      myCount: myInMonth.length,
-      totalCount: inMonth.length,
+      monthKey: `${selectedYear}-${monthNum}`,
+      label: formatMonthYear(new Date(`${selectedYear}-${monthNum}-01`), language),
+      myCount: myNonCompleted.length + myFinished.length,
+      totalCount: nonCompletedInYear.filter(inMonth).length + finishedBookingsAll.filter(inMonth).length,
       myKm,
     }
   })
-
-  const filteredBookings = bookings
-    .filter((b) => {
-      if (selectedMonth && formatMonthKey(b.start_date) !== selectedMonth) return false
-      if (role !== 'admin' && b.user_ref !== userRef) return false
-      if (role === 'admin' && selectedUser !== 'all' && b.user_ref !== selectedUser) return false
-      return true
-    })
-    .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
 
   return (
     <div className="space-y-6">
@@ -109,6 +141,20 @@ export default function BookingsPage() {
 
         <div className="flex flex-wrap gap-3 mb-4">
           <div>
+            <label htmlFor="year-filter" className="text-sm font-medium mr-2">Year</label>
+            <select
+              id="year-filter"
+              value={selectedYear}
+              onChange={(e) => { setSelectedYear(Number(e.target.value)); setSelectedMonth(currentMonth) }}
+              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+            >
+              {availableYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label htmlFor="month-filter" className="text-sm font-medium mr-2">
               {t('filter_month')}
             </label>
@@ -118,38 +164,36 @@ export default function BookingsPage() {
               onChange={(e) => setSelectedMonth(e.target.value)}
               className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
             >
-              <option value="">{t('filter_all_users')}</option>
-              {allMonthKeys.map((mk) => (
-                <option key={mk} value={mk}>
-                  {formatMonthYear(new Date(mk + '-01'), language)}
+              <option value="">All months</option>
+              {monthsInYear.map((m) => (
+                <option key={m} value={m}>
+                  {formatMonthYear(new Date(`${selectedYear}-${m}-01`), language)}
                 </option>
               ))}
             </select>
           </div>
 
-          {role === 'admin' && (
-            <div>
-              <label htmlFor="user-filter" className="text-sm font-medium mr-2">
-                {t('filter_user')}
-              </label>
-              <select
-                id="user-filter"
-                value={selectedUser}
-                onChange={(e) => setSelectedUser(e.target.value)}
-                className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-              >
-                <option value="all">{t('filter_all_users')}</option>
-                {uniqueUserRefs.map((ref) => (
-                  <option key={ref} value={ref}>
-                    {userMap.get(ref) ?? ref}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div>
+            <label htmlFor="user-filter" className="text-sm font-medium mr-2">
+              {t('filter_user')}
+            </label>
+            <select
+              id="user-filter"
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+            >
+              <option value="all">{t('filter_all_users')}</option>
+              {allUsers.map((u) => (
+                <option key={u.user_ref} value={u.user_ref}>
+                  {u.username}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {filteredBookings.length === 0 ? (
+        {filteredNonCompleted.length === 0 && finishedBookings.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t('no_bookings')}</p>
         ) : (
           <>
@@ -166,42 +210,56 @@ export default function BookingsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBookings.map((b) => {
-                    const hasDistance = completedBookingMap.has(b.booking_reference)
-                    const km = completedBookingMap.get(b.booking_reference)
-                    const status = getStatus(b, hasDistance)
-                    return (
+                  {finishedBookings.map((b) => (
+                    <tr key={b.booking_reference} className="border-b last:border-0">
+                      <td className="px-4 py-3">{userMap.get(b.user_ref) ?? b.user_ref}</td>
+                      <td className="px-4 py-3">{formatDate(b.start_date, language)}</td>
+                      <td className="px-4 py-3">{formatTime(b.start_date, language)}</td>
+                      <td className="px-4 py-3">{formatTime(b.end_date, language)}</td>
+                      <td className="px-4 py-3">{(b.distance_meters / 1000).toFixed(1)}</td>
+                      <td className="px-4 py-3">{t('status_completed')}</td>
+                    </tr>
+                  ))}
+                  {filteredNonCompleted
+                    .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+                    .map((b) => (
                       <tr key={b.booking_reference} className="border-b last:border-0">
                         <td className="px-4 py-3">{userMap.get(b.user_ref) ?? b.user_ref}</td>
                         <td className="px-4 py-3">{formatDate(b.start_date, language)}</td>
                         <td className="px-4 py-3">{formatTime(b.start_date, language)}</td>
                         <td className="px-4 py-3">{formatTime(b.end_date, language)}</td>
-                        <td className="px-4 py-3">{km !== undefined ? km.toFixed(1) : '—'}</td>
-                        <td className="px-4 py-3">{t(`status_${status}`)}</td>
+                        <td className="px-4 py-3">—</td>
+                        <td className="px-4 py-3">{t(`status_${getStatus(b)}`)}</td>
                       </tr>
-                    )
-                  })}
+                    ))}
                 </tbody>
               </table>
             </div>
 
             <div className="md:hidden grid gap-3">
-              {filteredBookings.map((b) => {
-                const hasDistance = completedBookingMap.has(b.booking_reference)
-                const km = completedBookingMap.get(b.booking_reference)
-                const status = getStatus(b, hasDistance)
-                return (
+              {finishedBookings.map((b) => (
+                <div key={b.booking_reference} className="rounded-lg border bg-card p-4 space-y-1 text-sm">
+                  <div className="flex justify-between items-start">
+                    <span className="font-medium">{userMap.get(b.user_ref) ?? b.user_ref}</span>
+                    <span className="text-xs text-muted-foreground">{t('status_completed')}</span>
+                  </div>
+                  <p className="text-muted-foreground">{formatDate(b.start_date, language)}</p>
+                  <p>{formatTime(b.start_date, language)} – {formatTime(b.end_date, language)}</p>
+                  <p>{(b.distance_meters / 1000).toFixed(1)} km</p>
+                </div>
+              ))}
+              {filteredNonCompleted
+                .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+                .map((b) => (
                   <div key={b.booking_reference} className="rounded-lg border bg-card p-4 space-y-1 text-sm">
                     <div className="flex justify-between items-start">
                       <span className="font-medium">{userMap.get(b.user_ref) ?? b.user_ref}</span>
-                      <span className="text-xs text-muted-foreground">{t(`status_${status}`)}</span>
+                      <span className="text-xs text-muted-foreground">{t(`status_${getStatus(b)}`)}</span>
                     </div>
                     <p className="text-muted-foreground">{formatDate(b.start_date, language)}</p>
                     <p>{formatTime(b.start_date, language)} – {formatTime(b.end_date, language)}</p>
-                    {km !== undefined && <p>{km.toFixed(1)} km</p>}
                   </div>
-                )
-              })}
+                ))}
             </div>
           </>
         )}
