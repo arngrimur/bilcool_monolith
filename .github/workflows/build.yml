@@ -42,7 +42,7 @@ jobs:
           path: vendor
           key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
       - name: Initialize workspace
-        run: go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal ./bilcool-lib
+        run: go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal
       - run: go work vendor
       - name: Lint
         uses: golangci/golangci-lint-action@v9
@@ -119,7 +119,7 @@ jobs:
           path: vendor
           key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
       - name: Initialize workspace
-        run: go work init . ./bookings ./message_broker ./testing ./authentication ./bilcool-lib
+        run: go work init . ./bookings ./message_broker ./testing ./authentication
       - run: go work vendor
       - run: task bookings:build
       - run: task bookings:integration-test
@@ -145,7 +145,7 @@ jobs:
           path: vendor
           key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
       - name: Initialize workspace
-        run: go work init . ./authentication ./message_broker ./testing ./bilcool-lib
+        run: go work init . ./authentication ./message_broker ./testing
       - run: go work vendor
       - run: task authentication:build
       - run: task authentication:integration-test
