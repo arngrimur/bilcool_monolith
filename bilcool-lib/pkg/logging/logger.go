@@ -7,11 +7,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type WithOpts func(c *zerolog.Context)
+type WithOpts func(c zerolog.Context) zerolog.Context
 
 func WithService(value string) WithOpts {
-	return func(c *zerolog.Context) {
-		c.Str("service", value)
+	return func(c zerolog.Context) zerolog.Context {
+		return c.Str("service", value)
 	}
 }
 
@@ -20,7 +20,7 @@ func WithService(value string) WithOpts {
 func NewDefaultLogger(ctx context.Context, opts ...WithOpts) context.Context {
 	c := log.With().Caller().Timestamp()
 	for _, o := range opts {
-		o(&c)
+		c = o(c)
 	}
 	ctx = c.Logger().WithContext(ctx)
 	return ctx
