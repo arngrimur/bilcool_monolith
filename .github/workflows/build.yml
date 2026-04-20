@@ -21,7 +21,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: vendor
-          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum', 'bilcool-lib/go.sum') }}
       - name: Vendor dependencies
         if: steps.cache-vendor.outputs.cache-hit != 'true'
         run: task vendor
@@ -40,7 +40,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: vendor
-          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
       - name: Initialize workspace
         run: go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal
       - run: go work vendor
@@ -68,7 +68,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: vendor
-          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
       - name: Initialize workspace
         run: go work init . ./testing
       - run: go work vendor
@@ -92,7 +92,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: vendor
-          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
       - name: Initialize workspace
         run: go work init . ./message_broker ./testing
       - run: go work vendor
@@ -117,7 +117,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: vendor
-          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
       - name: Initialize workspace
         run: go work init . ./bookings ./message_broker ./testing ./authentication
       - run: go work vendor
@@ -143,7 +143,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: vendor
-          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum') }}
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
       - name: Initialize workspace
         run: go work init . ./authentication ./message_broker ./testing
       - run: go work vendor
