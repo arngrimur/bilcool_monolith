@@ -3,6 +3,7 @@ module github.com/arngrimur/bilcool_monolith/bookings
 go 1.26.0
 
 require (
+	github.com/arngrimur/bilcool-lib v0.0.0-00010101000000-000000000000
 	github.com/arngrimur/bilcool_monolith v0.1.0
 	github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260416092020-364bd8b53ab3
 	github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260402112002-df5a2cfef02b
@@ -139,3 +140,5 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/arngrimur/bilcool-lib => ../bilcool-lib

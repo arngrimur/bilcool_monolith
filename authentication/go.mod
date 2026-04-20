@@ -3,6 +3,7 @@ module github.com/arngrimur/bilcool_monolith/authentication
 go 1.26.0
 
 require (
+	github.com/arngrimur/bilcool-lib v0.0.0-00010101000000-000000000000
 	github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-00010101000000-000000000000
 	github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260324161225-100b97514df9
 	github.com/aws/aws-sdk-go-v2 v1.41.5
@@ -128,6 +129,7 @@ require (
 )
 
 replace (
+	github.com/arngrimur/bilcool-lib => ../bilcool-lib
 	github.com/arngrimur/bilcool_monolith/message_broker => ../message_broker
 	github.com/arngrimur/bilcool_monolith/testing => ../testing
 )
