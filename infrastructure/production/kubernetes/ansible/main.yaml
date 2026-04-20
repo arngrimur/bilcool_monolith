@@ -19,9 +19,9 @@
     - name: Setup hosts
       command: "{{ item }}"
       with_items:
-        - sudo iptables -F
         - update-alternatives --set iptables /usr/sbin/iptables-legacy
         - update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+        - iptables -F
         - echo -n ' cgroup_memory=1 cgroup_enable=memory ' >> /boot/cmdline.txt
       ignore_errors: yes
 
@@ -40,7 +40,7 @@
 
     - name: Uninstall server if it exists
       command: /usr/local/bin/k3s-uninstall.sh
-      when: uninstall_server
+      when: uninstall_server.stat.exists
 
     - name: Create k3s folder
       file:
@@ -78,7 +78,7 @@
 
     - name: Uninstall server if it exists
       command: /usr/local/bin/k3s-agent-uninstall.sh
-      when: uninstall_agent
+      when: uninstall_agent.stat.exists
 
     - name: Install k3s nodes
       shell: "curl -sfL https://get.k3s.io | K3S_URL=https://{{ groups['control_plane'][0] }}:6443 K3S_TOKEN={{ k3s_token }} sh -"
