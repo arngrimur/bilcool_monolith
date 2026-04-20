@@ -7,7 +7,7 @@ vars:
 
 tasks:
   up:
-    dir: '{{.USER_WORKING_DIR}}'
+    dir: infrastructure/dev
     preconditions:
       - test -f docker-compose.yaml
     env:
@@ -16,10 +16,10 @@ tasks:
       FROM_EMAIL: ${FROM_EMAIL}
       BREVO_API_KEY: ${BREVO_API_KEY}
     cmds:
-      - docker-compose up --build journal event-ledger bookings authentication bilcool-ui
+      - docker-compose up --build journal event-ledger bookings authentication bilcool-ui db-seed-authentication
 
   down:
-    dir: '{{.USER_WORKING_DIR}}'
+    dir: infrastructure/dev
     preconditions:
       - test -f docker-compose.yaml
     cmds:

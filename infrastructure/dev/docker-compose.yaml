@@ -66,7 +66,7 @@ services:
     image: amacneil/dbmate
     entrypoint: ["/bin/sh", "-c", "dbmate --migrations-dir /migrations migrate"]
     volumes:
-      - "./bookings/internal/migrations:/migrations"
+      - "../../bookings/internal/migrations:/migrations"
     depends_on:
       bookings-database:
         condition: service_healthy
@@ -79,7 +79,7 @@ services:
     image: amacneil/dbmate
     entrypoint: ["/bin/sh", "-c", "dbmate --migrations-dir /migrations migrate"]
     volumes:
-      - "./authentication/internal/migrations:/migrations"
+      - "../../authentication/internal/migrations:/migrations"
     depends_on:
       authentication-database:
         condition: service_healthy
@@ -107,12 +107,12 @@ services:
 
   bookings:
     build:
-      context: .
+      context: ../..
       dockerfile: bookings/Dockerfile
     restart: unless-stopped
     depends_on:
-      bookings-database:
-        condition: service_healthy
+      db-migration-bookings:
+        condition: service_completed_successfully
       localstack:
         condition: service_healthy
     environment:
@@ -127,12 +127,12 @@ services:
 
   authentication:
     build:
-      context: .
+      context: ../..
       dockerfile: authentication/Dockerfile
     restart: unless-stopped
     depends_on:
-      authentication-database:
-        condition: service_healthy
+      db-migration-authentication:
+        condition: service_completed_successfully
       localstack:
         condition: service_healthy
     environment:
@@ -175,7 +175,7 @@ services:
     image: amacneil/dbmate
     entrypoint: ["/bin/sh", "-c", "dbmate --migrations-dir /migrations migrate"]
     volumes:
-      - "./journal/internal/migrations:/migrations"
+      - "../../journal/internal/migrations:/migrations"
     depends_on:
       journal-database:
         condition: service_healthy
@@ -186,7 +186,7 @@ services:
 
   journal:
     build:
-      context: .
+      context: ../..
       dockerfile: journal/Dockerfile
     restart: unless-stopped
     depends_on:
@@ -208,7 +208,7 @@ services:
 
   event-ledger:
     build:
-      context: .
+      context: ../..
       dockerfile: event_ledger/Dockerfile
     restart: unless-stopped
     depends_on:
@@ -242,7 +242,7 @@ services:
       JOURNAL_SERVICE_URL: http://journal:8080
     ports: ["3000:3000"]
     volumes:
-      - ./ui/bilcool-ui:/app
+      - ../../ui/bilcool-ui:/app
       - bilcool-ui-node-modules:/app/node_modules
     networks:
       - bilcool
