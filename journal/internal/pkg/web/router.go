@@ -69,6 +69,8 @@ func (h *HttpRouter) getFinishedBookings(c *gin.Context) {
 	c.JSON(http.StatusOK, bookings)
 }
 
+func (h *HttpRouter) Engine() *gin.Engine { return h.router }
+
 func (h *HttpRouter) StartRouter(addr string) error {
 	srv := &http.Server{
 		Addr:         addr,

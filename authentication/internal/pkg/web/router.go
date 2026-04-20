@@ -98,6 +98,8 @@ func (h *HttpRouter) requireAdmin() gin.HandlerFunc {
 	}
 }
 
+func (h *HttpRouter) Engine() *gin.Engine { return h.router }
+
 func (h *HttpRouter) StartRouter(addr string) error {
 	srv := &http.Server{
 		Addr:         addr,

@@ -34,7 +34,7 @@ func (c *Consumer) ProcessMessages(ctx context.Context, messages []brokerpostgre
 	ok := make([]brokerpostgres.Message, 0, len(messages))
 
 	for _, m := range messages {
-		item := messageToEventItem(m)
+		item := MessageToEventItem(m)
 		if err := c.store.SaveEvent(processedCtx, item); err != nil {
 			log.Ctx(ctx).Err(err).Str("event_id", item.EventId).Msg("failed to save event")
 			continue
@@ -53,7 +53,7 @@ func (c *Consumer) RetrieveMessages(ctx context.Context) ([]brokerpostgres.Messa
 	return c.handler.RetrieveMessages(ctx)
 }
 
-func messageToEventItem(m brokerpostgres.Message) domain.EventItem {
+func MessageToEventItem(m brokerpostgres.Message) domain.EventItem {
 	emittedAt := ""
 	if m.Message.EmittedAt != nil {
 		emittedAt = m.Message.EmittedAt.UTC().Format(time.RFC3339Nano)

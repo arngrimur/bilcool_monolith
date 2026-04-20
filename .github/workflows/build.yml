@@ -173,6 +173,97 @@ jobs:
       - run: task authentication:build
       - run: task authentication:integration-test
 
+  build-event-ledger:
+    name: event_ledger
+    needs: [vendor, build-testing, build-message-broker, build-bilcool-lib]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: event_ledger/go.mod
+          cache: false
+      - name: Install task
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+      - name: Install mockgen
+        run: go install go.uber.org/mock/mockgen@latest
+      - name: Restore vendor cache
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
+      - name: Initialize workspace
+        run: go work init . ./event_ledger ./message_broker ./testing ./bilcool-lib
+      - run: go work vendor
+      - run: task event_ledger:build
+      - run: task event_ledger:integration-test
+
+  build-journal:
+    name: journal
+    needs: [vendor, build-testing, build-message-broker, build-bilcool-lib]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: journal/go.mod
+          cache: false
+      - name: Install task
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+      - name: Restore vendor cache
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
+      - name: Initialize workspace
+        run: go work init . ./journal ./message_broker ./bookings ./authentication ./testing ./bilcool-lib
+      - run: go work vendor
+      - run: task journal:build
+
+  lambda-build:
+    name: lambda-build
+    needs: [build-bookings, build-authentication, build-event-ledger, build-journal]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: bookings/go.mod
+          cache: false
+      - name: Install task
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+      - name: Restore vendor cache
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: vendor-${{ hashFiles('go.sum', 'testing/go.sum', 'message_broker/go.sum', 'bookings/go.sum','bilcool-lib/go.sum') }}
+      - name: Initialize workspace
+        run: go work init . ./bookings ./authentication ./event_ledger ./journal ./message_broker ./testing ./bilcool-lib
+      - run: go work vendor
+      - run: task lambda-build-all
+      - name: Upload Lambda artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-zips
+          path: dist/*.zip
+          retention-days: 7
+
+  terraform-plan:
+    name: terraform-plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"
+      - name: Terraform init
+        run: terraform init -backend=false
+        working-directory: infrastructure/production/terraform
+      - name: Terraform validate
+        run: terraform validate
+        working-directory: infrastructure/production/terraform
+
   build-ui:
     name: ui
     runs-on: ubuntu-latest

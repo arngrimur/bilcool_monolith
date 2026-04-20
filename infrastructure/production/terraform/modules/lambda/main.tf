@@ -1,0 +1,34 @@
+variable "function_name"         { type = string }
+variable "s3_bucket"             { type = string }
+variable "s3_key"                { type = string }
+variable "role_arn"              { type = string }
+variable "timeout"               { type = number; default = 30 }
+variable "memory_size"           { type = number; default = 256 }
+variable "environment_variables" { type = map(string); default = {} }
+
+resource "aws_cloudwatch_log_group" "fn" {
+  name              = "/aws/lambda/${var.function_name}"
+  retention_in_days = 30
+}
+
+resource "aws_lambda_function" "fn" {
+  function_name = var.function_name
+  s3_bucket     = var.s3_bucket
+  s3_key        = var.s3_key
+  role          = var.role_arn
+  handler       = "bootstrap"
+  runtime       = "provided.al2023"
+  architectures = ["arm64"]
+  timeout       = var.timeout
+  memory_size   = var.memory_size
+
+  environment {
+    variables = var.environment_variables
+  }
+
+  depends_on = [aws_cloudwatch_log_group.fn]
+}
+
+output "function_arn"  { value = aws_lambda_function.fn.arn }
+output "function_name" { value = aws_lambda_function.fn.function_name }
+output "invoke_arn"    { value = aws_lambda_function.fn.invoke_arn }

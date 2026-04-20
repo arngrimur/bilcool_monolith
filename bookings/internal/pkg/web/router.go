@@ -85,6 +85,8 @@ func commandRoutes(h *HttpRouter) {
 	h.router.POST("/api/v1/bookings/:id/end", h.endBooking)
 }
 
+func (h *HttpRouter) Engine() *gin.Engine { return h.router }
+
 func (h *HttpRouter) StartRouter(addr string) error {
 	srv := &http.Server{
 		Addr:         addr,

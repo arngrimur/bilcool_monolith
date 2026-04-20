@@ -55,6 +55,8 @@ func NewRouter(querier EventQuerier) *HttpRouter {
 	return h
 }
 
+func (h *HttpRouter) Engine() *gin.Engine { return h.router }
+
 func (h *HttpRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.router.ServeHTTP(w, r)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net/url"
+	"time"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/rs/zerolog/log"
@@ -20,6 +21,8 @@ import (
 	soutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
+	snspublisher "github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/poller"
 	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
@@ -49,31 +52,41 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error loading AWS config")
 	}
-	dispatcher, err := event_dispatcher.NewSnsDispatcher[*sql.DB](ctx, psqlDb, awsCfg)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating SNS dispatcher")
+	switch config.OutboxMode() {
+	case "polling":
+		publisher, err := snspublisher.NewPublisher(ctx, awsCfg)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error creating SNS publisher")
+		}
+		p := poller.New(psqlDb, publisher, snspublisher.TopicBookings)
+		go p.RunLoop(ctx, 15*time.Second)
+	default: // "replication"
+		dispatcher, err := event_dispatcher.NewSnsDispatcher[*sql.DB](ctx, psqlDb, awsCfg)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error creating SNS dispatcher")
+		}
+		outbox, err := soutbox.NewOutbox(
+			ctx,
+			dbUrl,
+			soutbox.PgOutputPlugin,
+			soutbox.NewCreatePublications(
+				"bookings_pub",
+				"bookings",
+				[]string{coutbox.OutboxTableName},
+				map[soutbox.ActionName]soutbox.Action{
+					soutbox.ActionCommit: dispatcher,
+				},
+			),
+		)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error creating outbox")
+		}
+		closer, err := outbox.StartReplication(ctx)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error starting replication")
+		}
+		defer close(closer)
 	}
-	outbox, err := soutbox.NewOutbox(
-		ctx,
-		dbUrl,
-		soutbox.PgOutputPlugin,
-		soutbox.NewCreatePublications(
-			"bookings_pub",
-			"bookings",
-			[]string{coutbox.OutboxTableName},
-			map[soutbox.ActionName]soutbox.Action{
-				soutbox.ActionCommit: dispatcher,
-			},
-		),
-	)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating outbox")
-	}
-	closer, err := outbox.StartReplication(ctx)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error starting replication")
-	}
-	defer close(closer)
 	repo := postgresql.NewBookingsRepository(psqlDb)
 
 	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, sqs.BookingsSqsQueue)

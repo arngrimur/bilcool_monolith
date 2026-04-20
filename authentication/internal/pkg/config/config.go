@@ -14,6 +14,7 @@ var (
 	webAuthnDisplayName string
 	fromEmail           string
 	brevoAPIKey         string
+	outboxMode          string
 )
 
 func DatabaseUrl() string {
@@ -77,7 +78,16 @@ func Init() error {
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required env vars: %s", strings.Join(missing, ", "))
 	}
+	if mode, set := os.LookupEnv("OUTBOX_MODE"); set {
+		outboxMode = mode
+	} else {
+		outboxMode = "replication"
+	}
 	return nil
+}
+
+func OutboxMode() string {
+	return outboxMode
 }
 
 func FromSenderEmail() string {

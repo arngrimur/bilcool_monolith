@@ -183,6 +183,42 @@ tasks:
     cmds:
       - npm run dev
 
+  bookings:lambda-build:
+    dir: bookings
+    cmds:
+      - mkdir -p ../dist
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/http && zip -j ../dist/bookings-http.zip bootstrap && rm bootstrap
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/sqs && zip -j ../dist/bookings-sqs.zip bootstrap && rm bootstrap
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/outbox && zip -j ../dist/bookings-outbox.zip bootstrap && rm bootstrap
+
+  authentication:lambda-build:
+    dir: authentication
+    cmds:
+      - mkdir -p ../dist
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/http && zip -j ../dist/authentication-http.zip bootstrap && rm bootstrap
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/outbox && zip -j ../dist/authentication-outbox.zip bootstrap && rm bootstrap
+
+  event_ledger:lambda-build:
+    dir: event_ledger
+    cmds:
+      - mkdir -p ../dist
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/http && zip -j ../dist/event-ledger-http.zip bootstrap && rm bootstrap
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/sqs && zip -j ../dist/event-ledger-sqs.zip bootstrap && rm bootstrap
+
+  journal:lambda-build:
+    dir: journal
+    cmds:
+      - mkdir -p ../dist
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/http && zip -j ../dist/journal-http.zip bootstrap && rm bootstrap
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/sqs && zip -j ../dist/journal-sqs.zip bootstrap && rm bootstrap
+
+  lambda-build-all:
+    cmds:
+      - task: bookings:lambda-build
+      - task: authentication:lambda-build
+      - task: event_ledger:lambda-build
+      - task: journal:lambda-build
+
   vendor:
     cmds:
       - go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal ./bilcool-lib
