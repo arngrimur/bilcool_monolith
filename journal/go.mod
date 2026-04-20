@@ -3,7 +3,6 @@ module github.com/arngrimur/bilcool_monolith/journal
 go 1.26.0
 
 require (
-	github.com/arngrimur/bilcool-lib v0.0.0-00010101000000-000000000000
 	github.com/arngrimur/bilcool_monolith/bookings v0.0.0-20260402112002-df5a2cfef02b
 	github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260416092020-364bd8b53ab3
 	github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260402112002-df5a2cfef02b
