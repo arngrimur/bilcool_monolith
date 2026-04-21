@@ -5,3 +5,11 @@ go.work*
 .ai
 .envrc
 a.out
+
+# Terraform
+infrastructure/production/bootstrap/terraform.tfstate
+infrastructure/production/bootstrap/terraform.tfstate.backup
+infrastructure/production/bootstrap/.terraform/
+infrastructure/production/terraform/.terraform/
+infrastructure/production/terraform/*.tfvars
+infrastructure/production/terraform/*.tfvars.json

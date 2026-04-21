@@ -7,8 +7,30 @@ Provisions the full AWS production stack: VPC + NAT Gateway, Neon PostgreSQL, Dy
 - Terraform >= 1.9
 - AWS credentials with admin access to the target account
 - A Neon account and API key
-- An S3 bucket for Terraform state (`bilcool-terraform-state` in `eu-north-1`)
-- An S3 bucket for Lambda ZIP artifacts
+- Two S3 buckets — created by the bootstrap step below
+
+## Bootstrap (run once, before everything else)
+
+The main Terraform config stores its state in S3 and deploys Lambda functions
+from S3. Both buckets must exist before `terraform init` can run — they cannot
+be created by the main config itself because Terraform needs the state bucket
+before it can execute any resource creation.
+
+Run the bootstrap config once from `../bootstrap/`:
+
+```bash
+cd ../bootstrap
+terraform init   # uses local state — intentional
+terraform apply
+cd ../terraform
+```
+
+This creates:
+- `bilcool-terraform-state` — remote backend for the main config (versioned + encrypted)
+- `bilcool-lambda-artifacts` — where CI uploads Lambda ZIPs before `terraform apply`
+
+The bootstrap state file (`../bootstrap/terraform.tfstate`) should be kept but
+never committed to source control — add it to `.gitignore`.
 
 ## First-time setup
 
