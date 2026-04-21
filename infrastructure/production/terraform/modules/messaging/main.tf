@@ -5,12 +5,12 @@ variable "aws_region" { type = string }
 
 resource "aws_sns_topic" "bookings" {
   name = "${var.prefix}-bookings"
-  tags = { Service = "bookings" }
+  tags = { Service = "bookings", Component = "messaging" }
 }
 
 resource "aws_sns_topic" "users" {
   name = "${var.prefix}-users"
-  tags = { Service = "authentication" }
+  tags = { Service = "authentication", Component = "messaging" }
 }
 
 # ── SQS queues + DLQs ────────────────────────────────────────────────────────
@@ -34,13 +34,13 @@ resource "aws_sqs_queue" "bookings" {
 resource "aws_sqs_queue" "event_ledger_dlq" {
   name                      = "${var.prefix}-event-ledger-dlq"
   message_retention_seconds = 1209600
-  tags                      = { Service = "event-ledger" }
+  tags                      = { Service = "event-ledger", Component = "messaging" }
 }
 
 resource "aws_sqs_queue" "event_ledger" {
   name                       = "${var.prefix}-event-ledger"
   visibility_timeout_seconds = 30
-  tags                       = { Service = "event-ledger" }
+  tags                       = { Service = "event-ledger", Component = "messaging" }
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.event_ledger_dlq.arn
     maxReceiveCount     = 5
@@ -50,13 +50,13 @@ resource "aws_sqs_queue" "event_ledger" {
 resource "aws_sqs_queue" "journal_dlq" {
   name                      = "${var.prefix}-journal-dlq"
   message_retention_seconds = 1209600
-  tags                      = { Service = "journal" }
+  tags                      = { Service = "journal", Component = "messaging" }
 }
 
 resource "aws_sqs_queue" "journal" {
   name                       = "${var.prefix}-journal"
   visibility_timeout_seconds = 30
-  tags                       = { Service = "journal" }
+  tags                       = { Service = "journal", Component = "messaging" }
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.journal_dlq.arn
     maxReceiveCount     = 5

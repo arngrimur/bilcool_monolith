@@ -4,6 +4,7 @@ resource "aws_acm_certificate" "bilcool" {
   provider          = aws.us_east_1
   domain_name       = var.domain_name
   validation_method = "DNS"
+  tags              = { Component = "api-gateway" }
 
   lifecycle {
     create_before_destroy = true

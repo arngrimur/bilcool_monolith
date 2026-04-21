@@ -16,8 +16,9 @@ resource "aws_dynamodb_table" "event_ledger" {
   }
 
   tags = {
-    Name    = "${var.prefix}-event-ledger"
-    Service = "event-ledger"
+    Name      = "${var.prefix}-event-ledger"
+    Service   = "event-ledger"
+    Component = "dynamodb"
   }
 }
 
