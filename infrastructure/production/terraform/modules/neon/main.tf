@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    neon = {
+      source  = "kislerdm/neon"
+      version = "~> 0.6"
+    }
+  }
+}
+
 variable "environment"  { type = string }
 variable "neon_api_key" { type = string; sensitive = true }
 variable "allowed_ips"  { type = list(string); default = [] }
