@@ -53,3 +53,9 @@ variable "lambda_artifacts_bucket" {
   description = "S3 bucket holding Lambda ZIP artifacts"
   type        = string
 }
+
+variable "domain_name" {
+  description = "Public hostname for the API (e.g. bilcool.areskiftet44.se)"
+  type        = string
+  default     = "bilcool.areskiftet44.se"
+}
