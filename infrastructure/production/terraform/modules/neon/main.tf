@@ -1,9 +1,18 @@
-variable "environment" { type = string }
+variable "environment"  { type = string }
 variable "neon_api_key" { type = string; sensitive = true }
+variable "allowed_ips"  { type = list(string); default = [] }
 
 resource "neon_project" "bilcool" {
   name      = "bilcool-${var.environment}"
   region_id = "aws-eu-north-1"
+
+  dynamic "allowed_ips" {
+    for_each = length(var.allowed_ips) > 0 ? [1] : []
+    content {
+      ips                     = var.allowed_ips
+      protected_branches_only = false
+    }
+  }
 }
 
 # ── bookings database ─────────────────────────────────────────────────────────

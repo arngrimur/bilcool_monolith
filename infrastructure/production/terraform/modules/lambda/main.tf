@@ -6,6 +6,8 @@ variable "timeout"               { type = number; default = 30 }
 variable "memory_size"           { type = number; default = 256 }
 variable "environment_variables" { type = map(string); default = {} }
 variable "tags"                  { type = map(string); default = {} }
+variable "subnet_ids"            { type = list(string); default = [] }
+variable "security_group_ids"    { type = list(string); default = [] }
 
 resource "aws_cloudwatch_log_group" "fn" {
   name              = "/aws/lambda/${var.function_name}"
@@ -27,6 +29,14 @@ resource "aws_lambda_function" "fn" {
 
   environment {
     variables = var.environment_variables
+  }
+
+  dynamic "vpc_config" {
+    for_each = length(var.subnet_ids) > 0 ? [1] : []
+    content {
+      subnet_ids         = var.subnet_ids
+      security_group_ids = var.security_group_ids
+    }
   }
 
   depends_on = [aws_cloudwatch_log_group.fn]

@@ -31,6 +31,11 @@ resource "aws_iam_role_policy_attachment" "postgres_lambda_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "postgres_lambda_vpc" {
+  role       = aws_iam_role.postgres_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 resource "aws_iam_role_policy" "postgres_lambda_sns_sqs" {
   name = "sns-sqs"
   role = aws_iam_role.postgres_lambda.id
@@ -67,6 +72,11 @@ resource "aws_iam_role" "dynamo_lambda" {
 resource "aws_iam_role_policy_attachment" "dynamo_lambda_logs" {
   role       = aws_iam_role.dynamo_lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "dynamo_lambda_vpc" {
+  role       = aws_iam_role.dynamo_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
 resource "aws_iam_role_policy" "dynamo_lambda_dynamo_sqs" {

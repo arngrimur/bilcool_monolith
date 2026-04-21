@@ -2,12 +2,21 @@ locals {
   prefix = "bilcool-${var.environment}"
 }
 
+# ── Networking (VPC, NAT Gateway, private subnets) ────────────────────────────
+
+module "networking" {
+  source     = "./modules/networking"
+  prefix     = local.prefix
+  aws_region = var.aws_region
+}
+
 # ── Neon databases ────────────────────────────────────────────────────────────
 
 module "neon" {
-  source      = "./modules/neon"
-  environment = var.environment
+  source       = "./modules/neon"
+  environment  = var.environment
   neon_api_key = var.neon_api_key
+  allowed_ips  = ["${module.networking.nat_gateway_public_ip}/32"]
 }
 
 # ── Messaging (SNS + SQS) ─────────────────────────────────────────────────────
@@ -50,12 +59,14 @@ data "aws_caller_identity" "current" {}
 # ── Lambda: bookings ──────────────────────────────────────────────────────────
 
 module "bookings_http" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-bookings-http"
-  s3_bucket     = var.lambda_artifacts_bucket
-  s3_key        = "bookings-http.zip"
-  role_arn      = module.iam.postgres_lambda_role_arn
-  tags          = { Service = "bookings", Component = "http" }
+  source             = "./modules/lambda"
+  function_name      = "${local.prefix}-bookings-http"
+  s3_bucket          = var.lambda_artifacts_bucket
+  s3_key             = "bookings-http.zip"
+  role_arn           = module.iam.postgres_lambda_role_arn
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_sg_id]
+  tags               = { Service = "bookings", Component = "http" }
   environment_variables = {
     DATABASE_URL = module.neon.bookings_connection_string
     OUTBOX_MODE  = "polling"
@@ -63,25 +74,29 @@ module "bookings_http" {
 }
 
 module "bookings_sqs" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-bookings-sqs"
-  s3_bucket     = var.lambda_artifacts_bucket
-  s3_key        = "bookings-sqs.zip"
-  role_arn      = module.iam.postgres_lambda_role_arn
-  tags          = { Service = "bookings", Component = "sqs-consumer" }
+  source             = "./modules/lambda"
+  function_name      = "${local.prefix}-bookings-sqs"
+  s3_bucket          = var.lambda_artifacts_bucket
+  s3_key             = "bookings-sqs.zip"
+  role_arn           = module.iam.postgres_lambda_role_arn
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_sg_id]
+  tags               = { Service = "bookings", Component = "sqs-consumer" }
   environment_variables = {
     DATABASE_URL = module.neon.bookings_connection_string
   }
 }
 
 module "bookings_outbox" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-bookings-outbox"
-  s3_bucket     = var.lambda_artifacts_bucket
-  s3_key        = "bookings-outbox.zip"
-  role_arn      = module.iam.postgres_lambda_role_arn
-  timeout       = 60
-  tags          = { Service = "bookings", Component = "outbox" }
+  source             = "./modules/lambda"
+  function_name      = "${local.prefix}-bookings-outbox"
+  s3_bucket          = var.lambda_artifacts_bucket
+  s3_key             = "bookings-outbox.zip"
+  role_arn           = module.iam.postgres_lambda_role_arn
+  timeout            = 60
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_sg_id]
+  tags               = { Service = "bookings", Component = "outbox" }
   environment_variables = {
     DATABASE_URL = module.neon.bookings_connection_string
   }
@@ -97,12 +112,14 @@ resource "aws_lambda_event_source_mapping" "bookings_sqs" {
 # ── Lambda: authentication ────────────────────────────────────────────────────
 
 module "authentication_http" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-authentication-http"
-  s3_bucket     = var.lambda_artifacts_bucket
-  s3_key        = "authentication-http.zip"
-  role_arn      = module.iam.postgres_lambda_role_arn
-  tags          = { Service = "authentication", Component = "http" }
+  source             = "./modules/lambda"
+  function_name      = "${local.prefix}-authentication-http"
+  s3_bucket          = var.lambda_artifacts_bucket
+  s3_key             = "authentication-http.zip"
+  role_arn           = module.iam.postgres_lambda_role_arn
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_sg_id]
+  tags               = { Service = "authentication", Component = "http" }
   environment_variables = {
     DATABASE_URL          = module.neon.authentication_connection_string
     OUTBOX_MODE           = "polling"
@@ -116,18 +133,20 @@ module "authentication_http" {
 }
 
 module "authentication_outbox" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-authentication-outbox"
-  s3_bucket     = var.lambda_artifacts_bucket
-  s3_key        = "authentication-outbox.zip"
-  role_arn      = module.iam.postgres_lambda_role_arn
-  timeout       = 60
-  tags          = { Service = "authentication", Component = "outbox" }
+  source             = "./modules/lambda"
+  function_name      = "${local.prefix}-authentication-outbox"
+  s3_bucket          = var.lambda_artifacts_bucket
+  s3_key             = "authentication-outbox.zip"
+  role_arn           = module.iam.postgres_lambda_role_arn
+  timeout            = 60
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_sg_id]
+  tags               = { Service = "authentication", Component = "outbox" }
   environment_variables = {
-    DATABASE_URL  = module.neon.authentication_connection_string
-    JWT_SECRET    = var.jwt_secret
-    FROM_EMAIL    = var.from_email
-    BREVO_API_KEY = var.brevo_api_key
+    DATABASE_URL        = module.neon.authentication_connection_string
+    JWT_SECRET          = var.jwt_secret
+    FROM_EMAIL          = var.from_email
+    BREVO_API_KEY       = var.brevo_api_key
     WEBAUTHN_RP_ID      = var.webauthn_rp_id
     WEBAUTHN_RP_ORIGINS = var.webauthn_rp_origins
   }
@@ -136,24 +155,28 @@ module "authentication_outbox" {
 # ── Lambda: event-ledger ──────────────────────────────────────────────────────
 
 module "event_ledger_http" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-event-ledger-http"
-  s3_bucket     = var.lambda_artifacts_bucket
-  s3_key        = "event-ledger-http.zip"
-  role_arn      = module.iam.dynamo_lambda_role_arn
-  tags          = { Service = "event-ledger", Component = "http" }
+  source             = "./modules/lambda"
+  function_name      = "${local.prefix}-event-ledger-http"
+  s3_bucket          = var.lambda_artifacts_bucket
+  s3_key             = "event-ledger-http.zip"
+  role_arn           = module.iam.dynamo_lambda_role_arn
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_sg_id]
+  tags               = { Service = "event-ledger", Component = "http" }
   environment_variables = {
     DYNAMO_TABLE_NAME = module.dynamodb.table_name
   }
 }
 
 module "event_ledger_sqs" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-event-ledger-sqs"
-  s3_bucket     = var.lambda_artifacts_bucket
-  s3_key        = "event-ledger-sqs.zip"
-  role_arn      = module.iam.dynamo_lambda_role_arn
-  tags          = { Service = "event-ledger", Component = "sqs-consumer" }
+  source             = "./modules/lambda"
+  function_name      = "${local.prefix}-event-ledger-sqs"
+  s3_bucket          = var.lambda_artifacts_bucket
+  s3_key             = "event-ledger-sqs.zip"
+  role_arn           = module.iam.dynamo_lambda_role_arn
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_sg_id]
+  tags               = { Service = "event-ledger", Component = "sqs-consumer" }
   environment_variables = {
     DYNAMO_TABLE_NAME = module.dynamodb.table_name
   }
@@ -169,24 +192,28 @@ resource "aws_lambda_event_source_mapping" "event_ledger_sqs" {
 # ── Lambda: journal ───────────────────────────────────────────────────────────
 
 module "journal_http" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-journal-http"
-  s3_bucket     = var.lambda_artifacts_bucket
-  s3_key        = "journal-http.zip"
-  role_arn      = module.iam.postgres_lambda_role_arn
-  tags          = { Service = "journal", Component = "http" }
+  source             = "./modules/lambda"
+  function_name      = "${local.prefix}-journal-http"
+  s3_bucket          = var.lambda_artifacts_bucket
+  s3_key             = "journal-http.zip"
+  role_arn           = module.iam.postgres_lambda_role_arn
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_sg_id]
+  tags               = { Service = "journal", Component = "http" }
   environment_variables = {
     DATABASE_URL = module.neon.journal_connection_string
   }
 }
 
 module "journal_sqs" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-journal-sqs"
-  s3_bucket     = var.lambda_artifacts_bucket
-  s3_key        = "journal-sqs.zip"
-  role_arn      = module.iam.postgres_lambda_role_arn
-  tags          = { Service = "journal", Component = "sqs-consumer" }
+  source             = "./modules/lambda"
+  function_name      = "${local.prefix}-journal-sqs"
+  s3_bucket          = var.lambda_artifacts_bucket
+  s3_key             = "journal-sqs.zip"
+  role_arn           = module.iam.postgres_lambda_role_arn
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_sg_id]
+  tags               = { Service = "journal", Component = "sqs-consumer" }
   environment_variables = {
     DATABASE_URL = module.neon.journal_connection_string
   }
