@@ -9,12 +9,14 @@ variable "journal_lambda_arn"        { type = string }
 resource "aws_apigatewayv2_api" "bilcool" {
   name          = "${var.prefix}-api"
   protocol_type = "HTTP"
+  tags          = { Component = "api-gateway" }
 }
 
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.bilcool.id
   name        = "$default"
   auto_deploy = true
+  tags        = { Component = "api-gateway" }
 }
 
 # ── Lambda integrations ───────────────────────────────────────────────────────

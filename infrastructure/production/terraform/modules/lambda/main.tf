@@ -5,10 +5,12 @@ variable "role_arn"              { type = string }
 variable "timeout"               { type = number; default = 30 }
 variable "memory_size"           { type = number; default = 256 }
 variable "environment_variables" { type = map(string); default = {} }
+variable "tags"                  { type = map(string); default = {} }
 
 resource "aws_cloudwatch_log_group" "fn" {
   name              = "/aws/lambda/${var.function_name}"
   retention_in_days = 30
+  tags              = var.tags
 }
 
 resource "aws_lambda_function" "fn" {
@@ -21,6 +23,7 @@ resource "aws_lambda_function" "fn" {
   architectures = ["arm64"]
   timeout       = var.timeout
   memory_size   = var.memory_size
+  tags          = var.tags
 
   environment {
     variables = var.environment_variables

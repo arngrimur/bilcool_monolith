@@ -23,6 +23,7 @@ data "aws_iam_policy_document" "lambda_assume" {
 resource "aws_iam_role" "postgres_lambda" {
   name               = "${var.prefix}-postgres-lambda"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
+  tags               = { Component = "iam" }
 }
 
 resource "aws_iam_role_policy_attachment" "postgres_lambda_logs" {
@@ -60,6 +61,7 @@ resource "aws_iam_role_policy" "postgres_lambda_sns_sqs" {
 resource "aws_iam_role" "dynamo_lambda" {
   name               = "${var.prefix}-dynamo-lambda"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
+  tags               = { Component = "iam" }
 }
 
 resource "aws_iam_role_policy_attachment" "dynamo_lambda_logs" {
@@ -113,6 +115,7 @@ data "aws_iam_policy_document" "scheduler_assume" {
 resource "aws_iam_role" "scheduler" {
   name               = "${var.prefix}-scheduler"
   assume_role_policy = data.aws_iam_policy_document.scheduler_assume.json
+  tags               = { Component = "iam" }
 }
 
 resource "aws_iam_role_policy" "scheduler_invoke" {

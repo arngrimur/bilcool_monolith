@@ -55,6 +55,7 @@ module "bookings_http" {
   s3_bucket     = var.lambda_artifacts_bucket
   s3_key        = "bookings-http.zip"
   role_arn      = module.iam.postgres_lambda_role_arn
+  tags          = { Service = "bookings", Component = "http" }
   environment_variables = {
     DATABASE_URL = module.neon.bookings_connection_string
     OUTBOX_MODE  = "polling"
@@ -67,6 +68,7 @@ module "bookings_sqs" {
   s3_bucket     = var.lambda_artifacts_bucket
   s3_key        = "bookings-sqs.zip"
   role_arn      = module.iam.postgres_lambda_role_arn
+  tags          = { Service = "bookings", Component = "sqs-consumer" }
   environment_variables = {
     DATABASE_URL = module.neon.bookings_connection_string
   }
@@ -79,6 +81,7 @@ module "bookings_outbox" {
   s3_key        = "bookings-outbox.zip"
   role_arn      = module.iam.postgres_lambda_role_arn
   timeout       = 60
+  tags          = { Service = "bookings", Component = "outbox" }
   environment_variables = {
     DATABASE_URL = module.neon.bookings_connection_string
   }
@@ -99,6 +102,7 @@ module "authentication_http" {
   s3_bucket     = var.lambda_artifacts_bucket
   s3_key        = "authentication-http.zip"
   role_arn      = module.iam.postgres_lambda_role_arn
+  tags          = { Service = "authentication", Component = "http" }
   environment_variables = {
     DATABASE_URL          = module.neon.authentication_connection_string
     OUTBOX_MODE           = "polling"
@@ -118,6 +122,7 @@ module "authentication_outbox" {
   s3_key        = "authentication-outbox.zip"
   role_arn      = module.iam.postgres_lambda_role_arn
   timeout       = 60
+  tags          = { Service = "authentication", Component = "outbox" }
   environment_variables = {
     DATABASE_URL  = module.neon.authentication_connection_string
     JWT_SECRET    = var.jwt_secret
@@ -136,6 +141,7 @@ module "event_ledger_http" {
   s3_bucket     = var.lambda_artifacts_bucket
   s3_key        = "event-ledger-http.zip"
   role_arn      = module.iam.dynamo_lambda_role_arn
+  tags          = { Service = "event-ledger", Component = "http" }
   environment_variables = {
     DYNAMO_TABLE_NAME = module.dynamodb.table_name
   }
@@ -147,6 +153,7 @@ module "event_ledger_sqs" {
   s3_bucket     = var.lambda_artifacts_bucket
   s3_key        = "event-ledger-sqs.zip"
   role_arn      = module.iam.dynamo_lambda_role_arn
+  tags          = { Service = "event-ledger", Component = "sqs-consumer" }
   environment_variables = {
     DYNAMO_TABLE_NAME = module.dynamodb.table_name
   }
@@ -167,6 +174,7 @@ module "journal_http" {
   s3_bucket     = var.lambda_artifacts_bucket
   s3_key        = "journal-http.zip"
   role_arn      = module.iam.postgres_lambda_role_arn
+  tags          = { Service = "journal", Component = "http" }
   environment_variables = {
     DATABASE_URL = module.neon.journal_connection_string
   }
@@ -178,6 +186,7 @@ module "journal_sqs" {
   s3_bucket     = var.lambda_artifacts_bucket
   s3_key        = "journal-sqs.zip"
   role_arn      = module.iam.postgres_lambda_role_arn
+  tags          = { Service = "journal", Component = "sqs-consumer" }
   environment_variables = {
     DATABASE_URL = module.neon.journal_connection_string
   }

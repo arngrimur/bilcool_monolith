@@ -5,10 +5,12 @@ variable "aws_region" { type = string }
 
 resource "aws_sns_topic" "bookings" {
   name = "${var.prefix}-bookings"
+  tags = { Service = "bookings" }
 }
 
 resource "aws_sns_topic" "users" {
   name = "${var.prefix}-users"
+  tags = { Service = "authentication" }
 }
 
 # ── SQS queues + DLQs ────────────────────────────────────────────────────────
@@ -16,11 +18,13 @@ resource "aws_sns_topic" "users" {
 resource "aws_sqs_queue" "bookings_dlq" {
   name                      = "${var.prefix}-bookings-dlq"
   message_retention_seconds = 1209600 # 14 days
+  tags                      = { Service = "bookings" }
 }
 
 resource "aws_sqs_queue" "bookings" {
   name                       = "${var.prefix}-bookings"
   visibility_timeout_seconds = 30
+  tags                       = { Service = "bookings" }
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.bookings_dlq.arn
     maxReceiveCount     = 5
@@ -30,11 +34,13 @@ resource "aws_sqs_queue" "bookings" {
 resource "aws_sqs_queue" "event_ledger_dlq" {
   name                      = "${var.prefix}-event-ledger-dlq"
   message_retention_seconds = 1209600
+  tags                      = { Service = "event-ledger" }
 }
 
 resource "aws_sqs_queue" "event_ledger" {
   name                       = "${var.prefix}-event-ledger"
   visibility_timeout_seconds = 30
+  tags                       = { Service = "event-ledger" }
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.event_ledger_dlq.arn
     maxReceiveCount     = 5
@@ -44,11 +50,13 @@ resource "aws_sqs_queue" "event_ledger" {
 resource "aws_sqs_queue" "journal_dlq" {
   name                      = "${var.prefix}-journal-dlq"
   message_retention_seconds = 1209600
+  tags                      = { Service = "journal" }
 }
 
 resource "aws_sqs_queue" "journal" {
   name                       = "${var.prefix}-journal"
   visibility_timeout_seconds = 30
+  tags                       = { Service = "journal" }
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.journal_dlq.arn
     maxReceiveCount     = 5

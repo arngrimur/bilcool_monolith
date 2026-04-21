@@ -7,6 +7,7 @@ variable "authentication_outbox_lambda_arn"    { type = string }
 resource "aws_scheduler_schedule" "bookings_outbox" {
   name       = "${var.prefix}-bookings-outbox"
   group_name = "default"
+  tags       = { Service = "bookings", Component = "scheduler" }
 
   flexible_time_window {
     mode = "OFF"
@@ -36,6 +37,7 @@ resource "aws_lambda_permission" "scheduler_bookings" {
 resource "aws_scheduler_schedule" "authentication_outbox" {
   name       = "${var.prefix}-authentication-outbox"
   group_name = "default"
+  tags       = { Service = "authentication", Component = "scheduler" }
 
   flexible_time_window {
     mode = "OFF"
