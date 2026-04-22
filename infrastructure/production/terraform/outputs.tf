@@ -23,3 +23,21 @@ output "github_deploy_role_arn" {
   description = "Set this as the AWS_DEPLOY_ROLE_ARN secret in GitHub repository settings"
   value       = module.iam.github_deploy_role_arn
 }
+
+output "bookings_migrate_url" {
+  description = "Set this as the BOOKINGS_MIGRATE_URL secret in GitHub repository settings"
+  value       = module.neon.bookings_migrate_url
+  sensitive   = true
+}
+
+output "authentication_migrate_url" {
+  description = "Set this as the AUTHENTICATION_MIGRATE_URL secret in GitHub repository settings"
+  value       = module.neon.authentication_migrate_url
+  sensitive   = true
+}
+
+output "journal_migrate_url" {
+  description = "Set this as the JOURNAL_MIGRATE_URL secret in GitHub repository settings"
+  value       = module.neon.journal_migrate_url
+  sensitive   = true
+}

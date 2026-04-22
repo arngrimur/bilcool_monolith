@@ -89,3 +89,18 @@ output "journal_connection_string" {
   value     = "postgres://${neon_role.journal.name}:${neon_role.journal.password}@${local.pooler_host}/journal?sslmode=require&pgbouncer=true"
   sensitive = true
 }
+
+output "bookings_migrate_url" {
+  value     = "postgres://${neon_role.bookings.name}:${neon_role.bookings.password}@${neon_project.bilcool.database_host}/bookings?sslmode=require"
+  sensitive = true
+}
+
+output "authentication_migrate_url" {
+  value     = "postgres://${neon_role.authentication.name}:${neon_role.authentication.password}@${neon_project.bilcool.database_host}/authentication?sslmode=require"
+  sensitive = true
+}
+
+output "journal_migrate_url" {
+  value     = "postgres://${neon_role.journal.name}:${neon_role.journal.password}@${neon_project.bilcool.database_host}/journal?sslmode=require"
+  sensitive = true
+}
