@@ -1,7 +1,4 @@
-# ── TLS certificate (must live in us-east-1 for API Gateway) ─────────────────
-
 resource "aws_acm_certificate" "bilcool" {
-  provider          = aws.us_east_1
   domain_name       = var.domain_name
   validation_method = "DNS"
   tags              = { Component = "api-gateway" }
@@ -11,11 +8,7 @@ resource "aws_acm_certificate" "bilcool" {
   }
 }
 
-# Wait for DNS validation to complete before attaching the cert.
-# The apply will block here until you add the CNAME in Loopia.
-# Run: terraform output acm_validation_records  — then add those to Loopia.
 resource "aws_acm_certificate_validation" "bilcool" {
-  provider                = aws.us_east_1
   certificate_arn         = aws_acm_certificate.bilcool.arn
   validation_record_fqdns = [for r in aws_acm_certificate.bilcool.domain_validation_options : r.resource_record_name]
 }

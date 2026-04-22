@@ -13,3 +13,4 @@ infrastructure/production/bootstrap/.terraform/
 infrastructure/production/terraform/.terraform/
 infrastructure/production/terraform/*.tfvars
 infrastructure/production/terraform/*.tfvars.json
+dist/

@@ -16,7 +16,6 @@ module "neon" {
   source       = "./modules/neon"
   environment  = var.environment
   neon_api_key = var.neon_api_key
-  allowed_ips  = ["${module.networking.nat_gateway_public_ip}/32"]
 }
 
 # ── Messaging (SNS + SQS) ─────────────────────────────────────────────────────
@@ -51,7 +50,9 @@ module "iam" {
     module.messaging.event_ledger_queue_arn,
     module.messaging.journal_queue_arn,
   ]
-  dynamodb_table_arn = module.dynamodb.table_arn
+  dynamodb_table_arn      = module.dynamodb.table_arn
+  github_repo             = "arngrimur/bilcool_monolith"
+  lambda_artifacts_bucket = var.lambda_artifacts_bucket
 }
 
 data "aws_caller_identity" "current" {}

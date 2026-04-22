@@ -18,3 +18,8 @@ output "event_ledger_http_lambda_arn" {
 output "journal_http_lambda_arn" {
   value = module.journal_http.function_arn
 }
+
+output "github_deploy_role_arn" {
+  description = "Set this as the AWS_DEPLOY_ROLE_ARN secret in GitHub repository settings"
+  value       = module.iam.github_deploy_role_arn
+}

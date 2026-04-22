@@ -8,95 +8,84 @@ terraform {
 }
 
 variable "environment"  { type = string }
-variable "neon_api_key" { type = string; sensitive = true }
-variable "allowed_ips"  { type = list(string); default = [] }
+variable "neon_api_key" {
+  type      = string
+  sensitive = true
+}
 
 resource "neon_project" "bilcool" {
   name      = "bilcool-${var.environment}"
-  region_id = "aws-eu-north-1"
+  region_id = "aws-eu-central-1"
 
-  dynamic "allowed_ips" {
-    for_each = length(var.allowed_ips) > 0 ? [1] : []
-    content {
-      ips                     = var.allowed_ips
-      protected_branches_only = false
-    }
-  }
+  history_retention_seconds = 21600
+}
+
+locals {
+  host_parts  = split(".", neon_project.bilcool.database_host)
+  pooler_host = join(".", concat(
+    ["${local.host_parts[0]}-pooler"],
+    slice(local.host_parts, 1, length(local.host_parts))
+  ))
 }
 
 # ── bookings database ─────────────────────────────────────────────────────────
 
-resource "neon_branch" "bookings" {
+resource "neon_role" "bookings" {
   project_id = neon_project.bilcool.id
+  branch_id  = neon_project.bilcool.default_branch_id
   name       = "bookings"
 }
 
 resource "neon_database" "bookings" {
   project_id = neon_project.bilcool.id
-  branch_id  = neon_branch.bookings.id
+  branch_id  = neon_project.bilcool.default_branch_id
   name       = "bookings"
   owner_name = neon_role.bookings.name
 }
 
-resource "neon_role" "bookings" {
-  project_id = neon_project.bilcool.id
-  branch_id  = neon_branch.bookings.id
-  name       = "bookings"
-}
-
 # ── authentication database ───────────────────────────────────────────────────
 
-resource "neon_branch" "authentication" {
+resource "neon_role" "authentication" {
   project_id = neon_project.bilcool.id
+  branch_id  = neon_project.bilcool.default_branch_id
   name       = "authentication"
 }
 
 resource "neon_database" "authentication" {
   project_id = neon_project.bilcool.id
-  branch_id  = neon_branch.authentication.id
+  branch_id  = neon_project.bilcool.default_branch_id
   name       = "authentication"
   owner_name = neon_role.authentication.name
 }
 
-resource "neon_role" "authentication" {
-  project_id = neon_project.bilcool.id
-  branch_id  = neon_branch.authentication.id
-  name       = "authentication"
-}
-
 # ── journal database ──────────────────────────────────────────────────────────
 
-resource "neon_branch" "journal" {
+resource "neon_role" "journal" {
   project_id = neon_project.bilcool.id
+  branch_id  = neon_project.bilcool.default_branch_id
   name       = "journal"
 }
 
 resource "neon_database" "journal" {
   project_id = neon_project.bilcool.id
-  branch_id  = neon_branch.journal.id
+  branch_id  = neon_project.bilcool.default_branch_id
   name       = "journal"
   owner_name = neon_role.journal.name
-}
-
-resource "neon_role" "journal" {
-  project_id = neon_project.bilcool.id
-  branch_id  = neon_branch.journal.id
-  name       = "journal"
 }
 
 # ── outputs ───────────────────────────────────────────────────────────────────
 
 output "bookings_connection_string" {
-  value     = "postgres://${neon_role.bookings.name}:${neon_role.bookings.password}@${neon_project.bilcool.database_host}-pooler.${neon_project.bilcool.database_host}/bookings?sslmode=require&pool_mode=transaction"
+  value     = "postgres://${neon_role.bookings.name}:${neon_role.bookings.password}@${local.pooler_host}/bookings?sslmode=require&pgbouncer=true"
   sensitive = true
 }
 
 output "authentication_connection_string" {
-  value     = "postgres://${neon_role.authentication.name}:${neon_role.authentication.password}@${neon_project.bilcool.database_host}-pooler.${neon_project.bilcool.database_host}/authentication?sslmode=require&pool_mode=transaction"
+  value     = "postgres://${neon_role.authentication.name}:${neon_role.authentication.password}@${local.pooler_host}/authentication?sslmode=require&pgbouncer=true"
   sensitive = true
 }
 
 output "journal_connection_string" {
-  value     = "postgres://${neon_role.journal.name}:${neon_role.journal.password}@${neon_project.bilcool.database_host}-pooler.${neon_project.bilcool.database_host}/journal?sslmode=require&pool_mode=transaction"
+  value     = "postgres://${neon_role.journal.name}:${neon_role.journal.password}@${local.pooler_host}/journal?sslmode=require&pgbouncer=true"
   sensitive = true
 }

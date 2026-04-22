@@ -248,6 +248,28 @@ jobs:
           path: dist/*.zip
           retention-days: 7
 
+  lambda-deploy:
+    name: lambda-deploy
+    needs: [lambda-build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download Lambda artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-zips
+          path: dist
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-north-1
+      - name: Upload to S3
+        run: aws s3 sync dist/ s3://bilcool-lambda-artifacts/ --region eu-north-1
+
   terraform-plan:
     name: terraform-plan
     runs-on: ubuntu-latest
