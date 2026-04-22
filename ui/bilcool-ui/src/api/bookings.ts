@@ -5,7 +5,7 @@ import type {
   EndBookingRequest,
 } from '../types/api';
 
-const BASE = '/api/book/api/v1';
+const BASE = '/api/v1';
 
 export const listBookings = () =>
   apiFetch<BookingResponse[]>(`${BASE}/bookings`);
