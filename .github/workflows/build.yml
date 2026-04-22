@@ -357,7 +357,7 @@ jobs:
           name: ui-dist
           path: dist
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v7
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: eu-north-1
