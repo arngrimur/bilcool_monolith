@@ -50,9 +50,11 @@ module "iam" {
     module.messaging.event_ledger_queue_arn,
     module.messaging.journal_queue_arn,
   ]
-  dynamodb_table_arn      = module.dynamodb.table_arn
-  github_repo             = "arngrimur/bilcool_monolith"
-  lambda_artifacts_bucket = var.lambda_artifacts_bucket
+  dynamodb_table_arn          = module.dynamodb.table_arn
+  github_repo                 = "arngrimur/bilcool_monolith"
+  lambda_artifacts_bucket     = var.lambda_artifacts_bucket
+  frontend_bucket_name        = var.frontend_bucket_name
+  cloudfront_distribution_id  = module.frontend.distribution_id
 }
 
 data "aws_caller_identity" "current" {}
@@ -239,6 +241,20 @@ module "api_gateway" {
   authentication_lambda_arn = module.authentication_http.function_arn
   event_ledger_lambda_arn   = module.event_ledger_http.function_arn
   journal_lambda_arn        = module.journal_http.function_arn
+}
+
+# ── Frontend (S3 + CloudFront) ────────────────────────────────────────────────
+
+module "frontend" {
+  source = "./modules/frontend"
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+  prefix                 = local.prefix
+  domain_name            = var.domain_name
+  bucket_name            = var.frontend_bucket_name
+  api_gateway_invoke_url = module.api_gateway.invoke_url
 }
 
 # ── EventBridge Scheduler: outbox dispatchers ─────────────────────────────────
