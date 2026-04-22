@@ -95,6 +95,22 @@ tasks:
       - go generate ./...
       - go test ./...
 
+  journal:build:
+    dir: journal
+    cmds:
+      - go build ./...
+      -
+  journal:test:
+    dir: journal
+    cmds:
+      - go test ./...
+
+  journal:integration-test:
+    dir: journal
+    cmds:
+      - go test -tags=integration ./...
+
+
   message_broker:build:
     dir: message_broker
     cmds:
@@ -160,7 +176,9 @@ tasks:
       - task: authentication:test
       - task: authentication:integration-test
       - task: event_ledger:test
-      - task: event_ledger:integration-test
+      - task: event_ledger:integration-testAUTH
+      - task: journal:test
+      - task: journal:integration-test
 
   ui:build:
     dir: ui/bilcool-ui
@@ -232,6 +250,8 @@ tasks:
       MB_INT: "{{.COVERAGE_OUTPUT_DIR}}/message_broker_int.out"
       EL_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/event_ledger_unit.out"
       EL_INT: "{{.COVERAGE_OUTPUT_DIR}}/event_ledger_int.out"
+      JO_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/journal_unit.out"
+      JO_INT: "{{.COVERAGE_OUTPUT_DIR}}/journal_int.out"
       BK_INT: "{{.COVERAGE_OUTPUT_DIR}}/bookings_int.out"
       AUTH_UNIT: "{{.COVERAGE_OUTPUT_DIR}}/authentication_unit.out"
       AUTH_INT: "{{.COVERAGE_OUTPUT_DIR}}/authentication_int.out"
@@ -247,6 +267,8 @@ tasks:
       - cd bookings && go generate ./... && go test -tags=integration -coverprofile={{.BK_INT}} -covermode=atomic -coverpkg=./... ./...
       - cd authentication && go generate ./... && go test -coverprofile={{.AUTH_UNIT}} -covermode=atomic -coverpkg=./... ./...
       - cd authentication && go generate ./... && go test -tags=integration -coverprofile={{.AUTH_INT}} -covermode=atomic -coverpkg=./... ./...
+      - cd journa && go generate ./... && go test -coverprofile={{.JO_UNIT}} -covermode=atomic -coverpkg=./... ./...
+      - cd journal && go generate ./... && go test -tags=integration -coverprofile={{.JO_INT}} -covermode=atomic -coverpkg=./... ./...
       - "printf 'mode: atomic\\n' > {{.MERGED}}"
       - "tail -n +2 {{.BL_UNIT}} >> {{.MERGED}}"
       - "tail -n +2 {{.MB_UNIT}} >> {{.MERGED}}"
@@ -254,6 +276,8 @@ tasks:
       - "tail -n +2 {{.BK_INT}} >> {{.MERGED}}"
       - "tail -n +2 {{.AUTH_UNIT}} >> {{.MERGED}}"
       - "tail -n +2 {{.AUTH_INT}} >> {{.MERGED}}"
+      - "tail -n +2 {{.JO_UNIT}} >> {{.MERGED}}"
+      - "tail -n +2 {{.JO_INT}} >> {{.MERGED}}"
       - go tool cover -html={{.MERGED}} -o {{.HTML}}
       - echo "Coverage profile -> {{.MERGED}}"
       - echo "HTML report      -> {{.HTML}}"
