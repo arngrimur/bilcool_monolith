@@ -59,3 +59,9 @@ variable "domain_name" {
   type        = string
   default     = "bilcool.areskiftet44.se"
 }
+
+variable "frontend_bucket_name" {
+  description = "S3 bucket name for the React SPA assets"
+  type        = string
+  default     = "bilcool-frontend"
+}

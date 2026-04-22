@@ -41,3 +41,22 @@ output "journal_migrate_url" {
   value       = module.neon.journal_migrate_url
   sensitive   = true
 }
+
+output "cloudfront_domain_name" {
+  description = "Point bilcool.areskiftet44.se CNAME to this hostname in Loopia"
+  value       = module.frontend.cloudfront_domain_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "Set this as the CLOUDFRONT_DISTRIBUTION_ID secret in GitHub repository settings"
+  value       = module.frontend.distribution_id
+}
+
+output "frontend_bucket_name" {
+  value = module.frontend.bucket_name
+}
+
+output "acm_validation_records" {
+  description = "Add these CNAME records in Loopia to validate the TLS certificate"
+  value       = module.frontend.acm_validation_records
+}

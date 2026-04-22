@@ -1,11 +1,13 @@
-variable "prefix"                  { type = string }
-variable "aws_region"              { type = string }
-variable "aws_account"             { type = string }
-variable "sns_topic_arns"          { type = list(string) }
-variable "sqs_queue_arns"          { type = list(string) }
-variable "dynamodb_table_arn"      { type = string }
-variable "github_repo"             { type = string }
-variable "lambda_artifacts_bucket" { type = string }
+variable "prefix"                     { type = string }
+variable "aws_region"                 { type = string }
+variable "aws_account"                { type = string }
+variable "sns_topic_arns"             { type = list(string) }
+variable "sqs_queue_arns"             { type = list(string) }
+variable "dynamodb_table_arn"         { type = string }
+variable "github_repo"                { type = string }
+variable "lambda_artifacts_bucket"    { type = string }
+variable "frontend_bucket_name"       { type = string }
+variable "cloudfront_distribution_id" { type = string }
 
 # ── Trust policy shared by all Lambda roles ───────────────────────────────────
 
@@ -202,6 +204,21 @@ resource "aws_iam_role_policy" "github_deploy" {
         Effect   = "Allow"
         Action   = ["lambda:UpdateFunctionCode"]
         Resource = "arn:aws:lambda:${var.aws_region}:${var.aws_account}:function:${var.prefix}-*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:DeleteObject", "s3:GetObject"]
+        Resource = "arn:aws:s3:::${var.frontend_bucket_name}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = "arn:aws:s3:::${var.frontend_bucket_name}"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["cloudfront:CreateInvalidation"]
+        Resource = "arn:aws:cloudfront::${var.aws_account}:distribution/${var.cloudfront_distribution_id}"
       },
     ]
   })
