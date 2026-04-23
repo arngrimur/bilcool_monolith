@@ -24,6 +24,7 @@
   "form_error_overlap": "This time slot overlaps an existing booking",
   "form_error_end_before_start": "End time must be after start time",
   "form_error_min_duration": "Minimum booking duration is 15 minutes",
+  "form_error_generic": "Something went wrong, please try again",
   "end_booking_title": "End Booking",
   "end_booking_start_odo": "Start Odometer (km)",
   "end_booking_end_odo": "End Odometer (km)",

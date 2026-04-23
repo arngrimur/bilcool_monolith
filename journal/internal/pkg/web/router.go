@@ -38,7 +38,7 @@ func NewRouter(querier BookingQuerier) *HttpRouter {
 	h.router.GET("/ping", func(c *gin.Context) {
 		c.String(http.StatusOK, "pong")
 	})
-	h.router.GET("/api/v1/bookings", h.getFinishedBookings)
+	h.router.GET("/api/v1/journal/bookings", h.getFinishedBookings)
 
 	return h
 }

@@ -41,6 +41,12 @@ resource "aws_apigatewayv2_integration" "services" {
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+resource "aws_apigatewayv2_route" "bookings_root" {
+  api_id    = aws_apigatewayv2_api.bilcool.id
+  route_key = "ANY /api/v1/bookings"
+  target    = "integrations/${aws_apigatewayv2_integration.services["bookings"].id}"
+}
+
 resource "aws_apigatewayv2_route" "bookings" {
   api_id    = aws_apigatewayv2_api.bilcool.id
   route_key = "ANY /api/v1/bookings/{proxy+}"
@@ -57,6 +63,12 @@ resource "aws_apigatewayv2_route" "authentication_root" {
   api_id    = aws_apigatewayv2_api.bilcool.id
   route_key = "ANY /api/v1/users"
   target    = "integrations/${aws_apigatewayv2_integration.services["authentication"].id}"
+}
+
+resource "aws_apigatewayv2_route" "event_ledger_root" {
+  api_id    = aws_apigatewayv2_api.bilcool.id
+  route_key = "ANY /api/v1/events"
+  target    = "integrations/${aws_apigatewayv2_integration.services["event_ledger"].id}"
 }
 
 resource "aws_apigatewayv2_route" "event_ledger" {
