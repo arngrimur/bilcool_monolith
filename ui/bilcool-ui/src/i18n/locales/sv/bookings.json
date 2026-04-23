@@ -24,7 +24,6 @@
   "form_error_overlap": "Det här tidsintervallet överlappar en befintlig bokning",
   "form_error_end_before_start": "Sluttiden måste vara efter starttiden",
   "form_error_min_duration": "Minsta bokningstid är 15 minuter",
-  "form_error_generic": "Något gick fel, försök igen",
   "end_booking_title": "Avsluta bokning",
   "end_booking_start_odo": "Startmätarställning (km)",
   "end_booking_end_odo": "Slutmätarställning (km)",

@@ -152,7 +152,7 @@ export default function BookingForm({
 
           {upsert.error && (
             <p className="text-sm text-destructive" role="alert">
-              {(upsert.error as { body?: { message?: string } }).body?.message ?? t('form_error_generic')}
+              {(upsert.error as { body?: { message?: string } }).body?.message ?? t('form_cancel')}
             </p>
           )}
         </form>
