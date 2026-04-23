@@ -11,7 +11,7 @@ import type {
   ChangeUserRoleRequest,
 } from '../types/api';
 
-const BASE = '/api/v1';
+const BASE = '/api/auth/api/v1';
 
 export const beginLogin = (body: LoginBeginRequest) =>
   apiFetch<LoginBeginResponse>(`${BASE}/users/login`, { method: 'POST', body: JSON.stringify(body) });
