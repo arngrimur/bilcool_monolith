@@ -2,7 +2,7 @@ import { apiFetch } from './client';
 import type { EventQueryParams, EventResponse, FinishedBooking, FinishedBookingParams } from '../types/api';
 
 const BASE = '/api/v1';
-const JOURNAL_BASE = '/api/v1';
+const JOURNAL_BASE = '/api/v1/journal';
 
 export const listEvents = (params: EventQueryParams) => {
   const qs = new URLSearchParams(
