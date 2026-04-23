@@ -14,6 +14,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance/postgresql"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/web"
+	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
 func main() {
@@ -25,6 +26,9 @@ func main() {
 	}
 
 	db := postgresql.SetupPostgresDatabase()
+	if err := coutbox.CreateTable(db); err != nil {
+		log.Fatal().Err(err).Msg("error creating outbox table")
+	}
 	repo := postgresql.NewBookingsRepository(db)
 	app := application.New(repo)
 	ginLambda := ginadapter.NewV2(web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler).Engine())

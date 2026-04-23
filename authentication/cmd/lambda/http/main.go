@@ -16,6 +16,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/persistance/postgresql"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/web"
 	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
+	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
 func main() {
@@ -36,6 +37,9 @@ func main() {
 	}
 
 	db := postgresql.SetupPostgresDatabase()
+	if err := coutbox.CreateTable(db); err != nil {
+		log.Fatal().Err(err).Msg("error creating outbox table")
+	}
 	repo := postgresql.NewUsersRepository(db)
 	mailSender := brevo.NewSender()
 	app := application.New(repo, mailSender, wauthn, config.JWTSecret())

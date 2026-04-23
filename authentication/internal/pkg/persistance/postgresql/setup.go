@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"database/sql"
+	"os"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -21,10 +22,17 @@ func SetupPostgresDatabase() *sql.DB {
 			log.Err(err).Msgf("error pinging database, attempt: %d", i)
 		} else {
 			log.Info().Msg("database connection successful")
-			psqlDb.SetMaxOpenConns(5)
-			psqlDb.SetMaxIdleConns(5)
-			psqlDb.SetConnMaxLifetime(4 * time.Minute)
-			psqlDb.SetConnMaxIdleTime(2 * time.Minute)
+			if os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != "" {
+				psqlDb.SetMaxOpenConns(2)
+				psqlDb.SetMaxIdleConns(0)
+				psqlDb.SetConnMaxLifetime(30 * time.Second)
+				psqlDb.SetConnMaxIdleTime(0)
+			} else {
+				psqlDb.SetMaxOpenConns(5)
+				psqlDb.SetMaxIdleConns(5)
+				psqlDb.SetConnMaxLifetime(4 * time.Minute)
+				psqlDb.SetConnMaxIdleTime(2 * time.Minute)
+			}
 			return psqlDb
 		}
 	}
