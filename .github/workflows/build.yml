@@ -318,6 +318,38 @@ jobs:
         run: terraform validate
         working-directory: infrastructure/production/terraform
 
+  terraform-apply:
+    name: terraform-apply
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.9"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-north-1
+      - name: Terraform init
+        run: terraform init
+        working-directory: infrastructure/production/terraform
+      - name: Terraform apply
+        run: terraform apply -auto-approve
+        working-directory: infrastructure/production/terraform
+        env:
+          TF_VAR_neon_api_key: ${{ secrets.TF_VAR_NEON_API_KEY }}
+          TF_VAR_jwt_secret: ${{ secrets.TF_VAR_JWT_SECRET }}
+          TF_VAR_brevo_api_key: ${{ secrets.TF_VAR_BREVO_API_KEY }}
+          TF_VAR_from_email: ${{ secrets.TF_VAR_FROM_EMAIL }}
+          TF_VAR_webauthn_rp_id: ${{ secrets.TF_VAR_WEBAUTHN_RP_ID }}
+          TF_VAR_webauthn_rp_origins: ${{ secrets.TF_VAR_WEBAUTHN_RP_ORIGINS }}
+          TF_VAR_lambda_artifacts_bucket: bilcool-lambda-artifacts
+
   build-ui:
     name: ui
     runs-on: ubuntu-latest
