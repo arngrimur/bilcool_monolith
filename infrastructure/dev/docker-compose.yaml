@@ -121,6 +121,7 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
       AWS_ENDPOINT_URL: http://localstack:4566
+      OUTBOX_MODE: replication
     ports: ["8081:8080"]
     networks:
       - bilcool
@@ -141,6 +142,7 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
       AWS_ENDPOINT_URL: http://localstack:4566
+      OUTBOX_MODE: replication
       JWT_SECRET: ${JWT_SECRET:-changeme}
       FROM_EMAIL: ${FROM_EMAIL}
       BREVO_API_KEY: ${BREVO_API_KEY}
