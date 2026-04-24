@@ -113,13 +113,12 @@ export default function BookingForm({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" id="booking-form">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" id="booking-form" noValidate>
           <div className="space-y-2">
             <Label htmlFor="booking-start">{t('form_start')}</Label>
             <Input
               id="booking-start"
               type="datetime-local"
-              step={900}
               {...register('start')}
               aria-describedby={errors.start ? 'start-error' : undefined}
             />
@@ -135,7 +134,6 @@ export default function BookingForm({
             <Input
               id="booking-end"
               type="datetime-local"
-              step={900}
               {...register('end')}
               aria-describedby={errors.end ? 'end-error' : undefined}
             />
