@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -52,6 +52,10 @@ export default function BookingStartEndDialog({
   const deleteBooking = useDeleteBooking()
   const endBooking = useEndBooking()
   const [confirmCancel, setConfirmCancel] = useState(false)
+
+  useEffect(() => {
+    if (!open) setConfirmCancel(false)
+  }, [open])
 
   const now = new Date()
   const startDate = new Date(booking.start_date)
