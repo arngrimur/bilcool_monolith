@@ -82,8 +82,7 @@ export default function CalendarView({ completedBookingMap }: CalendarViewProps)
 
   function handleEventClick(arg: EventClickArg) {
     const booking = arg.event.extendedProps['booking'] as BookingResponse
-    const isOwn = arg.event.extendedProps['isOwn'] as boolean
-    if (!isOwn) return
+    if (!booking || booking.user_ref !== userRef) return
     setSelectedBooking(booking)
     setDetailOpen(true)
   }
