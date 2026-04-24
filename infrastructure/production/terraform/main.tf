@@ -102,6 +102,7 @@ module "bookings_outbox" {
   tags               = { Service = "bookings", Component = "outbox" }
   environment_variables = {
     DATABASE_URL = module.neon.bookings_connection_string
+    OUTBOX_MODE  = "polling"
   }
 }
 
@@ -147,6 +148,7 @@ module "authentication_outbox" {
   tags               = { Service = "authentication", Component = "outbox" }
   environment_variables = {
     DATABASE_URL        = module.neon.authentication_connection_string
+    OUTBOX_MODE         = "polling"
     JWT_SECRET          = var.jwt_secret
     FROM_EMAIL          = var.from_email
     BREVO_API_KEY       = var.brevo_api_key
