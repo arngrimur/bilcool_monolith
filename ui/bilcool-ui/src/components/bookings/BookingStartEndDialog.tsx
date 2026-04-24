@@ -36,6 +36,7 @@ interface BookingStartEndDialogProps {
   booking: BookingResponse
   hasDistance: boolean
   distanceKm?: number
+  onEdit?: () => void
 }
 
 export default function BookingStartEndDialog({
@@ -44,6 +45,7 @@ export default function BookingStartEndDialog({
   booking,
   hasDistance,
   distanceKm,
+  onEdit,
 }: BookingStartEndDialogProps) {
   const { t } = useTranslation('bookings')
   const language = useSettingsStore((s) => s.language)
@@ -107,7 +109,16 @@ export default function BookingStartEndDialog({
         </div>
 
         {isFuture && !confirmCancel && (
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
+            {onEdit && (
+              <Button
+                variant="outline"
+                onClick={() => { onEdit(); onOpenChange(false) }}
+                className="min-h-[44px]"
+              >
+                {t('edit_booking')}
+              </Button>
+            )}
             <Button
               variant="destructive"
               onClick={() => setConfirmCancel(true)}

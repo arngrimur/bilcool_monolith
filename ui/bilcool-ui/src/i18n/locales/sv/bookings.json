@@ -30,6 +30,7 @@
   "end_booking_end_odo": "Slutmätarställning (km)",
   "end_booking_submit": "Bekräfta avslut",
   "end_booking_error_odo": "Slutmätarställningen måste vara minst lika hög som startmätarställningen",
+  "edit_booking": "Redigera bokning",
   "cancel_booking": "Avboka",
   "cancel_booking_confirm": "Avboka den här bokningen?",
   "filter_month": "Månad",
