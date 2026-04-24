@@ -3,12 +3,24 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
+	"io"
+	"io/fs"
+	"net/url"
+	"os"
+	"path/filepath"
 
+	"github.com/amacneil/dbmate/v2/pkg/dbmate"
+	pgdriver "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
 	"github.com/lib/pq"
 )
 
 const OutboxTableName = "outbox"
+const migrationsTableName = "outbox_schema_migrations"
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
 
 type Connector interface {
 	*sql.DB | *sql.Tx
@@ -17,24 +29,38 @@ type Connector interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-func CreateTable[T Connector](c T) error {
+func CreateTable(u *url.URL) error {
+	dbmate.RegisterDriver(pgdriver.NewDriver, "postgres")
+	dbm := dbmate.New(u)
+	dbm.AutoDumpSchema = false
+	dbm.Log = io.Discard
+	dbm.MigrationsTableName = migrationsTableName
 
-	q := `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`
-	_, err := c.Exec(q)
+	entries, err := fs.ReadDir(migrationsFS, "migrations")
 	if err != nil {
 		return err
 	}
-	q = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS 
-%s (id serial PRIMARY KEY,
-event_id uuid NOT NULL UNIQUE,
-type varchar NOT NULL ,
-correlation_id uuid NOT NULL,
-producer varchar NOT NULL,
-emitted_at timestamp,
-payload jsonb NOT NULL
-)`, OutboxTableName)
-	_, err = c.Exec(q)
-	return err
+	tmpDir, err := os.MkdirTemp("", "outbox_migrations")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		data, err := fs.ReadFile(migrationsFS, "migrations/"+entry.Name())
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(tmpDir, entry.Name()), data, 0644); err != nil {
+			return err
+		}
+	}
+
+	dbm.MigrationsDir = []string{tmpDir}
+	return dbm.Migrate()
 }
 
 func DropTable[T Connector](c T) error {

@@ -99,7 +99,7 @@ func (suite *outBoxTestSuite) TestCreatePublicationAfterStop() {
 func (suite *outBoxTestSuite) TestProcessData() {
 	mockCtrl := gomock.NewController(suite.T())
 
-	postgres.CreateTable(suite.outboxDB.Db)
+	postgres.CreateTable(suite.outboxDB.ConnString)
 
 	actions := NewActions()
 	insertAction := NewMockAction(mockCtrl)

@@ -49,7 +49,7 @@ resource "aws_scheduler_schedule" "authentication_outbox" {
   }
 
   schedule_expression = "rate(1 minute)"
-
+Logging
   target {
     arn      = var.authentication_outbox_lambda_arn
     role_arn = var.scheduler_role_arn

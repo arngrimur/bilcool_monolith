@@ -42,7 +42,7 @@ type snsDispatcherTestSuite struct {
 func (suite *snsDispatcherTestSuite) SetupSuite() {
 	suite.cloud = aws.SetupLocalCloud(suite.T(), "sns")
 	suite.db = testdb.SetupDatabase(suite.T(), migrations.FS, "bookings")
-	err := postgres.CreateTable(suite.db.Db)
+	err := postgres.CreateTable(suite.db.ConnString)
 	suite.Require().NoError(err)
 	suite.dispatcher, err = NewSnsDispatcher(context.Background(), suite.db.Db, suite.cloud.CreateConfig(suite.T()))
 	suite.Require().NoError(err)

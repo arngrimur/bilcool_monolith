@@ -36,16 +36,15 @@ func main() {
 		log.Fatal().Err(err).Msg("error reading config")
 	}
 
-	psqlDb := postgresql.SetupPostgresDatabase()
-
-	err = coutbox.CreateTable(psqlDb)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error creating outbox table")
-	}
-
 	dbUrl, err := url.Parse(config.DatabaseUrl())
 	if err != nil {
 		log.Fatal().Err(err).Msg("error parsing database url")
+	}
+	psqlDb := postgresql.SetupPostgresDatabase()
+
+	err = coutbox.CreateTable(dbUrl)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error creating outbox table")
 	}
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)

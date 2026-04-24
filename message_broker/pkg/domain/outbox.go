@@ -86,7 +86,7 @@ func newOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin,
 	standbyMessageTimeout := time.Second * 10
 	return &Outbox{
 		Publication:                p,
-		clientXLogPos:              sysident.XLogPos,
+		clientXLogPos:              0,
 		standbyMessageTimeout:      standbyMessageTimeout,
 		nextStandbyMessageDeadline: time.Now().Add(standbyMessageTimeout),
 		relationsV2:                map[uint32]*pglogrepl.RelationMessageV2{},

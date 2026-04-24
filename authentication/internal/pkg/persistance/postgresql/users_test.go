@@ -30,7 +30,7 @@ type usersTestSuite struct {
 
 func (suite *usersTestSuite) SetupSuite() {
 	suite.SuiteDbIntegration = testdb.SetupDatabase(suite.T(), migrations.FS, "authentication_test")
-	err := coutbox.CreateTable(suite.Db)
+	err := coutbox.CreateTable(suite.ConnString)
 	suite.Require().NoError(err)
 	suite.username = "testuser"
 	suite.email = "test@example.com"

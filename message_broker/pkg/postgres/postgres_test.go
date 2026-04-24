@@ -25,7 +25,7 @@ type postgresTestSuite struct {
 // region setup
 func (suite *postgresTestSuite) SetupSuite() {
 	suite.dbIntegration = testdb.SetupDatabase(suite.T(), embed.FS{}, OutboxTableName)
-	err := CreateTable(suite.dbIntegration.Db)
+	err := CreateTable(suite.dbIntegration.ConnString)
 	suite.Require().NoError(err)
 }
 func (suite *postgresTestSuite) TearDownSuite() {

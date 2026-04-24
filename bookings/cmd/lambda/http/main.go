@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -25,8 +26,12 @@ func main() {
 		log.Fatal().Err(err).Msg("error reading config")
 	}
 
+	dbUrl, err := url.Parse(config.DatabaseUrl())
+	if err != nil {
+		log.Fatal().Err(err).Msg("error parsing database url")
+	}
 	db := postgresql.SetupPostgresDatabase()
-	if err := coutbox.CreateTable(db); err != nil {
+	if err := coutbox.CreateTable(dbUrl); err != nil {
 		log.Fatal().Err(err).Msg("error creating outbox table")
 	}
 	repo := postgresql.NewBookingsRepository(db)

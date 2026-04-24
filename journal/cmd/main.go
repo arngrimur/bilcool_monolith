@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/url"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/rs/zerolog/log"
@@ -26,8 +27,12 @@ func main() {
 		log.Fatal().Err(err).Msg("Error reading config")
 	}
 	// Create Db Connection
+	dbUrl, err := url.Parse(config.DatabaseUrl())
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error parsing database url")
+	}
 	psqlDb := postgres.SetupPostgresDatabase()
-	err = brokerpostgres.CreateTable(psqlDb)
+	err = brokerpostgres.CreateTable(dbUrl)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating outbox table")
 	}
