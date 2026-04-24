@@ -3,12 +3,13 @@ import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import type { DateSelectArg, EventClickArg, EventInput } from '@fullcalendar/core'
+import type { DateSelectArg, EventClickArg, EventDropArg, EventInput } from '@fullcalendar/core'
+import type { EventResizeDoneArg } from '@fullcalendar/interaction'
 import enGbLocale from '@fullcalendar/core/locales/en-gb'
 import svLocale from '@fullcalendar/core/locales/sv'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useAuthStore } from '../../stores/authStore'
-import { useBookings } from '../../hooks/useBookings'
+import { useBookings, useUpsertBooking } from '../../hooks/useBookings'
 import { useUsers } from '../../hooks/useUsers'
 import BookingForm from '../bookings/BookingForm'
 import BookingStartEndDialog from '../bookings/BookingStartEndDialog'
@@ -43,6 +44,8 @@ export default function CalendarView({ completedBookingMap }: CalendarViewProps)
       .map((u) => [u!.user_ref, u!.username])
   )
 
+  const upsert = useUpsertBooking()
+
   const isMobile = useIsMobile()
   const [view, setView] = useState<ViewType>(isMobile ? 'timeGridDay' : 'timeGridWeek')
   const calendarRef = useRef<FullCalendar>(null)
@@ -58,12 +61,14 @@ export default function CalendarView({ completedBookingMap }: CalendarViewProps)
   const events: EventInput[] = bookings.map((b) => {
     const isOwn = b.user_ref === userRef
     const username = userMap.get(b.user_ref) ?? b.user_ref
+    const isFuture = new Date(b.start_date) > new Date()
     return {
       id: b.booking_reference,
       title: username,
       start: b.start_date,
       end: b.end_date,
       color: isOwn ? bookingColor : getColorForUserRef(b.user_ref, bookingColor),
+      editable: isOwn && isFuture,
       extendedProps: { booking: b, isOwn },
     }
   })
@@ -81,6 +86,44 @@ export default function CalendarView({ completedBookingMap }: CalendarViewProps)
     if (!isOwn) return
     setSelectedBooking(booking)
     setDetailOpen(true)
+  }
+
+  async function handleEventDrop(arg: EventDropArg) {
+    const booking = arg.event.extendedProps['booking'] as BookingResponse
+    if (!arg.event.start || !arg.event.end) { arg.revert(); return }
+    try {
+      await upsert.mutateAsync({
+        user_ref: booking.user_ref,
+        booking_reference: booking.booking_reference,
+        start_date: arg.event.start.toISOString(),
+        end_date: arg.event.end.toISOString(),
+      })
+    } catch {
+      arg.revert()
+    }
+  }
+
+  async function handleEventResize(arg: EventResizeDoneArg) {
+    const booking = arg.event.extendedProps['booking'] as BookingResponse
+    if (!arg.event.start || !arg.event.end) { arg.revert(); return }
+    try {
+      await upsert.mutateAsync({
+        user_ref: booking.user_ref,
+        booking_reference: booking.booking_reference,
+        start_date: arg.event.start.toISOString(),
+        end_date: arg.event.end.toISOString(),
+      })
+    } catch {
+      arg.revert()
+    }
+  }
+
+  function handleEditBooking() {
+    if (!selectedBooking) return
+    setEditingBooking(selectedBooking)
+    setFormStart(new Date(selectedBooking.start_date))
+    setFormEnd(new Date(selectedBooking.end_date))
+    setFormOpen(true)
   }
 
   function changeView(v: ViewType) {
@@ -135,6 +178,9 @@ export default function CalendarView({ completedBookingMap }: CalendarViewProps)
           headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
           select={handleSelect}
           eventClick={handleEventClick}
+          eventDrop={handleEventDrop}
+          eventResize={handleEventResize}
+          editable
           eventContent={(arg) => <CalendarEvent {...arg} />}
           height="auto"
         />
@@ -156,6 +202,7 @@ export default function CalendarView({ completedBookingMap }: CalendarViewProps)
           booking={selectedBooking}
           hasDistance={completedBookingMap.has(selectedBooking.booking_reference)}
           distanceKm={completedBookingMap.get(selectedBooking.booking_reference)}
+          onEdit={handleEditBooking}
         />
       )}
     </div>
