@@ -35,6 +35,7 @@ type Outbox struct {
 	inStream                   bool
 	outputPlugin               OutputPlugin
 	conn                       *pgconn.PgConn
+	connStr                    string // replication DSN, used for reconnection
 	ActionMap                  *Actions
 	Publication                Publication
 }
@@ -52,8 +53,9 @@ func newOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin,
 	q := connStr.Query()
 	q.Add("replication", "database")
 	connStr.RawQuery = q.Encode()
+	connStrFull := connStr.String()
 
-	conn, err := pgconn.Connect(context.Background(), connStr.String())
+	conn, err := pgconn.Connect(context.Background(), connStrFull)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +88,7 @@ func newOutbox(ctx context.Context, connStr *url.URL, outputPlugin OutputPlugin,
 	standbyMessageTimeout := time.Second * 10
 	return &Outbox{
 		Publication:                p,
+		connStr:                    connStrFull,
 		clientXLogPos:              0,
 		standbyMessageTimeout:      standbyMessageTimeout,
 		nextStandbyMessageDeadline: time.Now().Add(standbyMessageTimeout),
@@ -125,10 +128,10 @@ func (o *Outbox) StartReplication(ctx context.Context) (chan struct{}, error) {
 	}
 	log.Debug().Msgf("Logical replication started on slot %s", o.Publication.Name())
 	go func() {
-		defer o.conn.Close(context.Background())
 		for {
 			select {
 			case <-stopCh:
+				o.conn.Close(context.Background())
 				return
 			default:
 			}
@@ -160,6 +163,27 @@ func (o *Outbox) StartReplication(ctx context.Context) (chan struct{}, error) {
 					continue
 				}
 				log.Error().Msgf("ReceiveMessage failed: %s", err)
+				o.conn.Close(context.Background())
+				select {
+				case <-stopCh:
+					return
+				case <-time.After(5 * time.Second):
+				}
+				newConn, reconnErr := pgconn.Connect(context.Background(), o.connStr)
+				if reconnErr != nil {
+					log.Error().Err(reconnErr).Msg("replication reconnect failed, stopping")
+					return
+				}
+				o.conn = newConn
+				o.inStream = false
+				o.relationsV2 = make(map[uint32]*pglogrepl.RelationMessageV2)
+				if restartErr := pglogrepl.StartReplication(context.Background(), o.conn, o.Publication.Name(), o.clientXLogPos, pglogrepl.StartReplicationOptions{PluginArgs: pluginArguments}); restartErr != nil {
+					log.Error().Err(restartErr).Msg("failed to restart replication after reconnect, stopping")
+					o.conn.Close(context.Background())
+					return
+				}
+				log.Info().Msg("replication reconnected and resumed")
+				continue
 			}
 
 			if errMsg, ok := rawMsg.(*pgproto3.ErrorResponse); ok {
@@ -292,7 +316,13 @@ func (o *Outbox) processV2(ctx context.Context, walData []byte, relations map[ui
 		break
 	case *pglogrepl.StreamCommitMessageV2:
 		log.Debug().Msgf("Stream commit message: xid %d", logicalMsg.Xid)
-		break
+		for _, rel := range relations {
+			t := Table{
+				SchemaName: rel.Namespace,
+				TableName:  rel.RelationName,
+			}
+			executeActions(ctx, o.ActionMap.actions[ActionCommit], t)
+		}
 	case *pglogrepl.StreamAbortMessageV2:
 		log.Debug().Msgf("Stream abort message: xid %d", logicalMsg.Xid)
 		break
