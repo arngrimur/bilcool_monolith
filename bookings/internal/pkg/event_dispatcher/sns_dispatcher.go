@@ -42,15 +42,9 @@ func (s SnsDispatcher[T]) Execute(ctx context.Context, table soutbox_domain.Tabl
 		return err
 	}
 
-	successfulEvents := make([]postgres.Event, 0, len(messages.Successful))
-	for _, m := range messages.Successful {
-		uid, err := uuid.Parse(*m.Id)
-		if err != nil {
-			continue
-		}
-		successfulEvents = append(successfulEvents, postgres.Event{
-			EventId: uid,
-		})
+	successfulEvents := make([]postgres.Event, len(messages.Successful))
+	for i, m := range messages.Successful {
+		successfulEvents[i] = postgres.Event{EventId: uuid.MustParse(*m.Id)}
 	}
 	return postgres.MarkAsEmitted(ctx, s.connector, successfulEvents)
 }
