@@ -228,9 +228,9 @@ services:
 
 
   bilcool-ui:
-    image: node:lts-alpine
-    working_dir: /app
-    command: sh -c "npm install && npm run dev -- --host"
+    build:
+      context: ../../ui/bilcool-ui
+      target: dev
     restart: unless-stopped
     depends_on:
       - authentication
