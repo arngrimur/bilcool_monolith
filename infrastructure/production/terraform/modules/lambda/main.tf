@@ -2,29 +2,25 @@ variable "function_name"         { type = string }
 variable "s3_bucket"             { type = string }
 variable "s3_key"                { type = string }
 variable "role_arn"              { type = string }
-variable "timeout"               {
-  type = number
+variable "timeout" {
+  type    = number
   default = 30
 }
-variable "memory_size"           {
-  type = number
+variable "memory_size" {
+  type    = number
   default = 256
 }
 variable "environment_variables" {
-  type = map(string)
+  type    = map(string)
   default = {}
 }
-variable "tags"                  {
-  type = map(string)
+variable "tags" {
+  type    = map(string)
   default = {}
 }
-variable "subnet_ids"            {
-  type = list(string)
-  default = []
-}
-variable "security_group_ids"    {
-  type = list(string)
-  default = []
+variable "create_function_url" {
+  type    = bool
+  default = false
 }
 
 resource "aws_cloudwatch_log_group" "fn" {
@@ -49,17 +45,25 @@ resource "aws_lambda_function" "fn" {
     variables = var.environment_variables
   }
 
-  dynamic "vpc_config" {
-    for_each = length(var.subnet_ids) > 0 ? [1] : []
-    content {
-      subnet_ids         = var.subnet_ids
-      security_group_ids = var.security_group_ids
-    }
-  }
-
   depends_on = [aws_cloudwatch_log_group.fn]
 }
 
-output "function_arn"  { value = aws_lambda_function.fn.arn }
-output "function_name" { value = aws_lambda_function.fn.function_name }
-output "invoke_arn"    { value = aws_lambda_function.fn.invoke_arn }
+resource "aws_lambda_function_url" "fn" {
+  count              = var.create_function_url ? 1 : 0
+  function_name      = aws_lambda_function.fn.function_name
+  authorization_type = "NONE"
+
+  cors {
+    allow_origins = ["*"]
+    allow_methods = ["*"]
+    allow_headers = ["*"]
+  }
+}
+
+output "function_arn"        { value = aws_lambda_function.fn.arn }
+output "function_name"       { value = aws_lambda_function.fn.function_name }
+output "invoke_arn"          { value = aws_lambda_function.fn.invoke_arn }
+output "function_url"        { value = var.create_function_url ? aws_lambda_function_url.fn[0].function_url : "" }
+output "function_url_domain" {
+  value = var.create_function_url ? replace(replace(aws_lambda_function_url.fn[0].function_url, "https://", ""), "/", "") : ""
+}

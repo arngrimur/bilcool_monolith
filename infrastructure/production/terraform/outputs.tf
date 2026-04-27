@@ -1,6 +1,21 @@
-output "api_gateway_url" {
-  description = "Base URL of the HTTP API Gateway"
-  value       = module.api_gateway.invoke_url
+output "bookings_function_url" {
+  description = "Lambda Function URL for the bookings HTTP handler"
+  value       = module.bookings_http.function_url
+}
+
+output "authentication_function_url" {
+  description = "Lambda Function URL for the authentication HTTP handler"
+  value       = module.authentication_http.function_url
+}
+
+output "event_ledger_function_url" {
+  description = "Lambda Function URL for the event-ledger HTTP handler"
+  value       = module.event_ledger_http.function_url
+}
+
+output "journal_function_url" {
+  description = "Lambda Function URL for the journal HTTP handler"
+  value       = module.journal_http.function_url
 }
 
 output "bookings_http_lambda_arn" {
