@@ -1,0 +1,345 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1100" width="1400" height="1100" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#8b5cf6"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#22c55e"/>
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#00000025"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="1100" fill="#f8fafc"/>
+
+  <!-- Title -->
+  <text x="700" y="38" text-anchor="middle" font-size="22" font-weight="700" fill="#1e293b">BilCool Monolith — Production Architecture</text>
+  <text x="700" y="58" text-anchor="middle" font-size="13" fill="#64748b">Event-driven, CQRS, outbox pattern • Go multi-module workspace + React SPA</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ZONE: CLIENT TIER -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="20" y="75" width="260" height="80" rx="10" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="150" y="100" text-anchor="middle" font-size="12" font-weight="700" fill="#0369a1">Client Browser</text>
+  <rect x="45" y="110" width="190" height="34" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1"/>
+  <text x="140" y="123" text-anchor="middle" font-size="11" font-weight="600" fill="#0369a1">bilcool-ui (React 18 + Vite)</text>
+  <text x="140" y="137" text-anchor="middle" font-size="10" fill="#475569">nginx :3000  •  TypeScript + SWC</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ZONE: SERVICE TIER (center column) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- ── Authentication Service ── -->
+  <rect x="20" y="200" width="260" height="195" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="20" y="200" width="260" height="30" rx="10" fill="#f59e0b"/>
+  <rect x="20" y="220" width="260" height="10" fill="#f59e0b"/>
+  <text x="150" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Authentication Service :8082</text>
+  <text x="35" y="248" font-size="10" fill="#44403c">POST  /api/v1/users/login</text>
+  <text x="35" y="263" font-size="10" fill="#44403c">POST  /api/v1/users/login/token</text>
+  <text x="35" y="278" font-size="10" fill="#44403c">POST  /api/v1/users/login/complete</text>
+  <text x="35" y="293" font-size="10" fill="#44403c">POST  /api/v1/users   [admin]</text>
+  <text x="35" y="308" font-size="10" fill="#44403c">DELETE /api/v1/users/:id   [admin]</text>
+  <text x="35" y="323" font-size="10" fill="#44403c">PATCH  /api/v1/users/:id/role   [admin]</text>
+  <line x1="30" y1="333" x2="270" y2="333" stroke="#f59e0b" stroke-width="0.8" stroke-dasharray="4,3"/>
+  <text x="35" y="348" font-size="10" fill="#78350f">JWT auth  •  WebAuthn/Passkeys</text>
+  <text x="35" y="362" font-size="10" fill="#78350f">Brevo / AWS SES email  •  RBAC</text>
+  <text x="35" y="377" font-size="10" fill="#78350f">Publishes: user.created, user.deleted</text>
+
+  <!-- Auth DB -->
+  <rect x="20" y="413" width="260" height="50" rx="8" fill="#fef9c3" stroke="#f59e0b" stroke-width="1" filter="url(#shadow)"/>
+  <text x="150" y="432" text-anchor="middle" font-size="11" font-weight="700" fill="#713f12">PostgreSQL authentication-db :54322</text>
+  <text x="150" y="450" text-anchor="middle" font-size="10" fill="#44403c">users • security_tokens • passkeys • webauthn_sessions</text>
+
+  <!-- Auth outbox -->
+  <rect x="20" y="477" width="260" height="28" rx="6" fill="#fff7ed" stroke="#f59e0b" stroke-width="1"/>
+  <text x="150" y="495" text-anchor="middle" font-size="10" fill="#78350f">outbox table (WAL replication / polling)</text>
+
+  <!-- ── Bookings Service ── -->
+  <rect x="570" y="200" width="260" height="195" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="570" y="200" width="260" height="30" rx="10" fill="#16a34a"/>
+  <rect x="570" y="220" width="260" height="10" fill="#16a34a"/>
+  <text x="700" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Bookings Service :8081</text>
+  <text x="585" y="248" font-size="10" fill="#14532d">GET    /api/v1/bookings</text>
+  <text x="585" y="263" font-size="10" fill="#14532d">GET    /api/v1/bookings/:id</text>
+  <text x="585" y="278" font-size="10" fill="#14532d">PUT    /api/v1/bookings   [auth]</text>
+  <text x="585" y="293" font-size="10" fill="#14532d">DELETE /api/v1/bookings/:id   [auth]</text>
+  <text x="585" y="308" font-size="10" fill="#14532d">POST   /api/v1/bookings/:id/end   [auth]</text>
+  <line x1="580" y1="320" x2="820" y2="320" stroke="#16a34a" stroke-width="0.8" stroke-dasharray="4,3"/>
+  <text x="585" y="338" font-size="10" fill="#14532d">CQRS application layer</text>
+  <text x="585" y="353" font-size="10" fill="#14532d">Consumes: user.created, user.deleted</text>
+  <text x="585" y="368" font-size="10" fill="#14532d">Publishes: booking.ended</text>
+  <text x="585" y="383" font-size="10" fill="#14532d">JWT middleware on command routes</text>
+
+  <!-- Bookings DB -->
+  <rect x="570" y="413" width="260" height="50" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1" filter="url(#shadow)"/>
+  <text x="700" y="432" text-anchor="middle" font-size="11" font-weight="700" fill="#14532d">PostgreSQL bookings-db :54321</text>
+  <text x="700" y="450" text-anchor="middle" font-size="10" fill="#166534">users • bookings • distances • inbox</text>
+
+  <!-- Bookings outbox -->
+  <rect x="570" y="477" width="260" height="28" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+  <text x="700" y="495" text-anchor="middle" font-size="10" fill="#14532d">outbox table (WAL replication / polling)</text>
+
+  <!-- ── Event Ledger Service ── -->
+  <rect x="1115" y="200" width="265" height="145" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="1115" y="200" width="265" height="30" rx="10" fill="#7c3aed"/>
+  <rect x="1115" y="220" width="265" height="10" fill="#7c3aed"/>
+  <text x="1247" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Event Ledger :8083</text>
+  <text x="1130" y="248" font-size="10" fill="#3b0764">GET  /api/v1/events   (query + filter)</text>
+  <text x="1130" y="263" font-size="10" fill="#3b0764">GET  /metrics   (Prometheus)</text>
+  <text x="1130" y="278" font-size="10" fill="#3b0764">GET  /health</text>
+  <line x1="1125" y1="290" x2="1370" y2="290" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="4,3"/>
+  <text x="1130" y="308" font-size="10" fill="#3b0764">Consumes: ALL events</text>
+  <text x="1130" y="323" font-size="10" fill="#3b0764">Read-only universal event ledger</text>
+  <text x="1130" y="338" font-size="10" fill="#3b0764">Idempotent (event_id dedup)</text>
+
+  <!-- Event Ledger DB -->
+  <rect x="1115" y="362" width="265" height="50" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1" filter="url(#shadow)"/>
+  <text x="1247" y="381" text-anchor="middle" font-size="11" font-weight="700" fill="#4c1d95">DynamoDB  event-ledger</text>
+  <text x="1247" y="399" text-anchor="middle" font-size="10" fill="#5b21b6">event_id (PK) • event_type • producer</text>
+  <text x="1247" y="413" text-anchor="middle" font-size="10" fill="#5b21b6">emitted_at • correlation_id • payload</text>
+
+  <!-- ── Journal Service ── -->
+  <rect x="1115" y="530" width="265" height="145" rx="10" fill="#fce7f3" stroke="#db2777" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="1115" y="530" width="265" height="30" rx="10" fill="#db2777"/>
+  <rect x="1115" y="550" width="265" height="10" fill="#db2777"/>
+  <text x="1247" y="550" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Journal Service :8084</text>
+  <text x="1130" y="578" font-size="10" fill="#500724">GET  /api/v1/journal/bookings</text>
+  <text x="1130" y="593" font-size="10" fill="#500724">  ?year=&amp;month=&amp;user_ref=</text>
+  <line x1="1125" y1="608" x2="1370" y2="608" stroke="#db2777" stroke-width="0.8" stroke-dasharray="4,3"/>
+  <text x="1130" y="626" font-size="10" fill="#500724">Consumes: user.*, booking.ended</text>
+  <text x="1130" y="641" font-size="10" fill="#500724">Read model (CQRS query side)</text>
+  <text x="1130" y="656" font-size="10" fill="#500724">Idempotent (inbox dedup table)</text>
+
+  <!-- Journal DB -->
+  <rect x="1115" y="692" width="265" height="50" rx="8" fill="#fdf2f8" stroke="#db2777" stroke-width="1" filter="url(#shadow)"/>
+  <text x="1247" y="711" text-anchor="middle" font-size="11" font-weight="700" fill="#831843">PostgreSQL journal-db :54323</text>
+  <text x="1247" y="729" text-anchor="middle" font-size="10" fill="#9d174d">inbox • users • booking_ended_events</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ZONE: MESSAGE BUS — SNS + SQS (LocalStack / AWS) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="290" y="180" width="275" height="550" rx="12" fill="#fff7ed" stroke="#f97316" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="427" y="202" text-anchor="middle" font-size="12" font-weight="700" fill="#9a3412">AWS / LocalStack :4566</text>
+  <text x="427" y="218" text-anchor="middle" font-size="10" fill="#c2410c">SNS • SQS • DynamoDB  (eu-north-1)</text>
+
+  <!-- SNS bilcool_users -->
+  <rect x="305" y="230" width="245" height="50" rx="8" fill="#fff" stroke="#f97316" stroke-width="1.2"/>
+  <text x="427" y="252" text-anchor="middle" font-size="11" font-weight="700" fill="#c2410c">SNS Topic: bilcool_users</text>
+  <text x="427" y="269" text-anchor="middle" font-size="10" fill="#44403c">user.created  •  user.deleted</text>
+
+  <!-- SNS bilcool_bookings -->
+  <rect x="305" y="295" width="245" height="50" rx="8" fill="#fff" stroke="#f97316" stroke-width="1.2"/>
+  <text x="427" y="317" text-anchor="middle" font-size="11" font-weight="700" fill="#c2410c">SNS Topic: bilcool_bookings</text>
+  <text x="427" y="334" text-anchor="middle" font-size="10" fill="#44403c">booking.ended</text>
+
+  <!-- SQS bookings -->
+  <rect x="305" y="365" width="245" height="55" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.2"/>
+  <text x="427" y="385" text-anchor="middle" font-size="10" font-weight="700" fill="#713f12">SQS: bilcool-monolith-bookings</text>
+  <text x="427" y="400" text-anchor="middle" font-size="9.5" fill="#44403c">Sub: bilcool_users</text>
+  <text x="427" y="413" text-anchor="middle" font-size="9" fill="#78716c">DLQ: …_dlq  (5 retries)</text>
+
+  <!-- SQS event_ledger -->
+  <rect x="305" y="435" width="245" height="55" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.2"/>
+  <text x="427" y="455" text-anchor="middle" font-size="10" font-weight="700" fill="#4c1d95">SQS: bilcool-monolith-event_ledger</text>
+  <text x="427" y="470" text-anchor="middle" font-size="9.5" fill="#44403c">Sub: bilcool_users + bilcool_bookings</text>
+  <text x="427" y="483" text-anchor="middle" font-size="9" fill="#78716c">DLQ: …_dlq  (5 retries)</text>
+
+  <!-- SQS journal -->
+  <rect x="305" y="505" width="245" height="55" rx="8" fill="#fce7f3" stroke="#db2777" stroke-width="1.2"/>
+  <text x="427" y="525" text-anchor="middle" font-size="10" font-weight="700" fill="#831843">SQS: bilcool-monolith-journal</text>
+  <text x="427" y="540" text-anchor="middle" font-size="9.5" fill="#44403c">Sub: bilcool_users + bilcool_bookings</text>
+  <text x="427" y="553" text-anchor="middle" font-size="9" fill="#78716c">DLQ: …_dlq  (5 retries)</text>
+
+  <!-- message_broker label -->
+  <rect x="305" y="573" width="245" height="40" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="427" y="589" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">message_broker (shared lib)</text>
+  <text x="427" y="604" text-anchor="middle" font-size="9.5" fill="#64748b">outbox • inbox • SnsDispatcher • pg logical replication</text>
+
+  <!-- Worker counts -->
+  <rect x="305" y="623" width="245" height="40" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="427" y="639" text-anchor="middle" font-size="10" fill="#475569">Workers: 5 concurrent per queue</text>
+  <text x="427" y="654" text-anchor="middle" font-size="9.5" fill="#475569">Visibility timeout: configurable</text>
+
+  <!-- LocalStack init section -->
+  <rect x="305" y="673" width="245" height="40" rx="6" fill="#fff7ed" stroke="#f97316" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="427" y="689" text-anchor="middle" font-size="10" font-weight="600" fill="#9a3412">localstack/ready/init-aws.sh</text>
+  <text x="427" y="704" text-anchor="middle" font-size="9.5" fill="#78350f">Bootstraps topics, queues, subscriptions</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ZONE: External services -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="20" y="780" width="260" height="75" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="150" y="800" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">External Services</text>
+  <text x="35" y="820" font-size="10" fill="#6b7280">Brevo API — transactional email</text>
+  <text x="35" y="835" font-size="10" fill="#6b7280">AWS SES — transactional email (fallback)</text>
+  <text x="35" y="850" font-size="10" fill="#6b7280">WebAuthn — passkey auth (FIDO2)</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- OUTBOX PATTERN DETAIL -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="570" y="535" width="530" height="90" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="5,3" filter="url(#shadow)"/>
+  <text x="835" y="558" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">Outbox Pattern (both producer services)</text>
+  <text x="590" y="580" font-size="10" fill="#475569">1.  Command handler writes domain row + outbox row atomically in one DB transaction</text>
+  <text x="590" y="597" font-size="10" fill="#475569">2.  message_broker tails WAL via pg_output logical replication slot (or polls outbox table)</text>
+  <text x="590" y="614" font-size="10" fill="#475569">3.  SnsDispatcher publishes event to SNS topic on commit (marks outbox row produced=true)</text>
+
+  <!-- Lambda deployment note -->
+  <rect x="570" y="640" width="530" height="60" rx="8" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.2" stroke-dasharray="5,3" filter="url(#shadow)"/>
+  <text x="835" y="660" text-anchor="middle" font-size="11" font-weight="700" fill="#0369a1">AWS Deployment (CI/CD → Lambda)</text>
+  <text x="590" y="680" font-size="10" fill="#0369a1">bookings-http/sqs/outbox  •  authentication-http/outbox</text>
+  <text x="590" y="695" font-size="10" fill="#0369a1">event-ledger-http/sqs  •  journal-http/sqs      (ARM64 binaries via GitHub Actions)</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ARROWS — UI → Services (HTTP) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- UI → Auth -->
+  <path d="M 150 154 L 150 200" stroke="#0ea5e9" stroke-width="1.8" fill="none" marker-end="url(#arrow-blue)"/>
+  <text x="115" y="183" font-size="9" fill="#0ea5e9">HTTP</text>
+
+  <!-- UI → Bookings (diagonal) -->
+  <path d="M 250 130 Q 500 100 570 230" stroke="#0ea5e9" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#arrow-blue)"/>
+  <text x="390" y="108" font-size="9" fill="#0ea5e9">HTTP :8081</text>
+
+  <!-- UI → Event Ledger (top) -->
+  <path d="M 265 125 Q 900 70 1130 230" stroke="#0ea5e9" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#arrow-blue)"/>
+  <text x="720" y="78" font-size="9" fill="#0ea5e9">HTTP :8083</text>
+
+  <!-- UI → Journal -->
+  <path d="M 265 145 Q 900 155 1130 580" stroke="#0ea5e9" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#arrow-blue)"/>
+  <text x="850" y="155" font-size="9" fill="#0ea5e9">HTTP :8084</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ARROWS — Services → DB -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- Auth → Auth DB -->
+  <path d="M 150 395 L 150 413" stroke="#f59e0b" stroke-width="1.8" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Auth DB → Auth outbox -->
+  <path d="M 150 463 L 150 477" stroke="#f59e0b" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Bookings → Bookings DB -->
+  <path d="M 700 395 L 700 413" stroke="#16a34a" stroke-width="1.8" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Bookings DB → Bookings outbox -->
+  <path d="M 700 463 L 700 477" stroke="#16a34a" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- EventLedger → DynamoDB -->
+  <path d="M 1247 345 L 1247 362" stroke="#7c3aed" stroke-width="1.8" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Journal → Journal DB -->
+  <path d="M 1247 675 L 1247 692" stroke="#db2777" stroke-width="1.8" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ARROWS — Auth outbox → SNS bilcool_users -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <path d="M 280 491 Q 290 491 305 255" stroke="#f97316" stroke-width="1.8" fill="none" marker-end="url(#arrow-orange)"/>
+  <text x="282" y="380" font-size="9" fill="#f97316" transform="rotate(-80,282,380)">publish</text>
+
+  <!-- Bookings outbox → SNS bilcool_bookings -->
+  <path d="M 570 491 Q 555 491 550 320" stroke="#f97316" stroke-width="1.8" fill="none" marker-end="url(#arrow-orange)"/>
+  <text x="540" y="400" font-size="9" fill="#f97316" transform="rotate(85,540,400)">publish</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ARROWS — SNS → SQS fan-out -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- bilcool_users → SQS bookings -->
+  <path d="M 427 280 L 427 365" stroke="#f97316" stroke-width="1.4" fill="none" stroke-dasharray="4,2" marker-end="url(#arrow-orange)"/>
+
+  <!-- bilcool_users → SQS event_ledger -->
+  <path d="M 440 280 Q 460 350 440 435" stroke="#f97316" stroke-width="1.4" fill="none" stroke-dasharray="4,2" marker-end="url(#arrow-orange)"/>
+
+  <!-- bilcool_users → SQS journal -->
+  <path d="M 450 280 Q 480 400 450 505" stroke="#f97316" stroke-width="1.4" fill="none" stroke-dasharray="4,2" marker-end="url(#arrow-orange)"/>
+
+  <!-- bilcool_bookings → SQS event_ledger -->
+  <path d="M 427 345 L 427 435" stroke="#f97316" stroke-width="1.4" fill="none" stroke-dasharray="4,2" marker-end="url(#arrow-orange)"/>
+
+  <!-- bilcool_bookings → SQS journal -->
+  <path d="M 440 345 Q 455 430 440 505" stroke="#f97316" stroke-width="1.4" fill="none" stroke-dasharray="4,2" marker-end="url(#arrow-orange)"/>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ARROWS — SQS → Consumers -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- SQS bookings → Bookings (consume) -->
+  <path d="M 550 390 Q 560 390 570 310" stroke="#22c55e" stroke-width="1.8" fill="none" marker-end="url(#arrow-green)"/>
+  <text x="545" y="345" font-size="9" fill="#22c55e" transform="rotate(-75,545,345)">consume</text>
+
+  <!-- SQS event_ledger → EventLedger -->
+  <path d="M 550 460 Q 800 460 1115 280" stroke="#8b5cf6" stroke-width="1.8" fill="none" marker-end="url(#arrow-purple)"/>
+  <text x="820" y="448" font-size="9" fill="#8b5cf6">consume</text>
+
+  <!-- SQS journal → Journal -->
+  <path d="M 550 532 Q 800 532 1115 600" stroke="#db2777" stroke-width="1.8" fill="none" marker-end="url(#arrow)"/>
+  <text x="800" y="522" font-size="9" fill="#db2777">consume</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ARROWS — Auth → External -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <path d="M 150 395 L 150 780" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
+  <text x="155" y="620" font-size="9" fill="#6b7280">email / WebAuthn</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- LEGEND -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="570" y="750" width="530" height="120" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.2"/>
+  <text x="835" y="771" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">Legend</text>
+
+  <line x1="590" y1="790" x2="635" y2="790" stroke="#0ea5e9" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow-blue)"/>
+  <text x="645" y="794" font-size="10" fill="#374151">HTTP (sync)</text>
+
+  <line x1="590" y1="810" x2="635" y2="810" stroke="#f97316" stroke-width="2" marker-end="url(#arrow-orange)"/>
+  <text x="645" y="814" font-size="10" fill="#374151">SNS publish / fan-out</text>
+
+  <line x1="590" y1="830" x2="635" y2="830" stroke="#22c55e" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <text x="645" y="834" font-size="10" fill="#374151">SQS consume (async)</text>
+
+  <line x1="590" y1="850" x2="635" y2="850" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="645" y="854" font-size="10" fill="#374151">DB / storage write</text>
+
+  <line x1="780" y1="790" x2="825" y2="790" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
+  <text x="835" y="794" font-size="10" fill="#374151">Outbox → SNS (WAL / poll)</text>
+
+  <line x1="780" y1="810" x2="825" y2="810" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
+  <text x="835" y="814" font-size="10" fill="#374151">External API call</text>
+
+  <rect x="780" y="822" width="14" height="14" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+  <text x="835" y="834" font-size="10" fill="#374151">Service (Gin HTTP, CQRS app layer)</text>
+
+  <rect x="780" y="842" width="14" height="14" rx="3" fill="#fef9c3" stroke="#eab308" stroke-width="1"/>
+  <text x="835" y="854" font-size="10" fill="#374151">PostgreSQL database</text>
+
+  <rect x="990" y="786" width="14" height="14" rx="3" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1"/>
+  <text x="1010" y="798" font-size="10" fill="#374151">DynamoDB table</text>
+
+  <rect x="990" y="806" width="14" height="14" rx="3" fill="#fff7ed" stroke="#f97316" stroke-width="1"/>
+  <text x="1010" y="818" font-size="10" fill="#374151">AWS / LocalStack (message bus)</text>
+
+  <rect x="990" y="826" width="14" height="14" rx="3" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"/>
+  <text x="1010" y="838" font-size="10" fill="#374151">External service / Shared lib</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- CI/CD note bottom -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="20" y="900" width="1360" height="40" rx="8" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="700" y="917" text-anchor="middle" font-size="10" fill="#374151" font-weight="700">CI/CD (.github/workflows/build.yml):</text>
+  <text x="700" y="932" text-anchor="middle" font-size="10" fill="#475569">vendor → build-testing → build-message-broker → build-bookings / build-authentication / build-event-ledger (parallel) → build-ui → Lambda deploy (ARM64)</text>
+
+  <!-- Footer -->
+  <text x="700" y="970" text-anchor="middle" font-size="10" fill="#94a3b8">Go multi-module workspace (go.work) • Gin v1.12 • PostgreSQL 18 (WAL logical replication) • LocalStack 2026.3.0 • React 18 + Vite + SWC</text>
+  <text x="700" y="985" text-anchor="middle" font-size="10" fill="#94a3b8">Ginkgo/Gomega (event_ledger tests) • testify + testcontainers (all other services) • dbmate migrations • golangci-lint</text>
+</svg>
