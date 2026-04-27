@@ -2,6 +2,15 @@ locals {
   prefix = "bilcool-${var.environment}"
 }
 
+# ── Networking (kept for targeted destroy of legacy VPC resources) ────────────
+# Remove this block after `terraform destroy -target=module.networking` succeeds.
+
+module "networking" {
+  source     = "./modules/networking"
+  prefix     = local.prefix
+  aws_region = var.aws_region
+}
+
 # ── Neon databases ────────────────────────────────────────────────────────────
 
 module "neon" {
