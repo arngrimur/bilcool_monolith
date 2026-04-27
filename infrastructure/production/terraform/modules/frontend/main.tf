@@ -7,10 +7,13 @@ terraform {
   }
 }
 
-variable "prefix"                  { type = string }
-variable "domain_name"             { type = string }
-variable "bucket_name"             { type = string }
-variable "api_gateway_invoke_url"  { type = string }
+variable "prefix"                             { type = string }
+variable "domain_name"                        { type = string }
+variable "bucket_name"                        { type = string }
+variable "bookings_function_url_domain"       { type = string }
+variable "authentication_function_url_domain" { type = string }
+variable "event_ledger_function_url_domain"   { type = string }
+variable "journal_function_url_domain"        { type = string }
 
 # ── S3 bucket ─────────────────────────────────────────────────────────────────
 
@@ -81,9 +84,20 @@ resource "aws_acm_certificate_validation" "frontend" {
 # ── CloudFront distribution ───────────────────────────────────────────────────
 
 locals {
-  s3_origin_id      = "s3-frontend"
-  api_gateway_origin_id = "api-gateway"
-  api_gateway_domain = replace(replace(var.api_gateway_invoke_url, "https://", ""), "/", "")
+  s3_origin_id              = "s3-frontend"
+  bookings_origin_id        = "bookings-lambda"
+  authentication_origin_id  = "authentication-lambda"
+  event_ledger_origin_id    = "event-ledger-lambda"
+  journal_origin_id         = "journal-lambda"
+
+  lambda_custom_origin = {
+    http_port              = 80
+    https_port             = 443
+    origin_protocol_policy = "https-only"
+    origin_ssl_protocols   = ["TLSv1.2"]
+  }
+
+  api_forwarded_headers = ["Authorization", "Content-Type", "Accept", "Origin"]
 }
 
 resource "aws_cloudfront_distribution" "frontend" {
@@ -93,6 +107,8 @@ resource "aws_cloudfront_distribution" "frontend" {
   aliases             = [var.domain_name]
   tags                = { Component = "frontend" }
 
+  # ── Origins ────────────────────────────────────────────────────────────────
+
   origin {
     origin_id                = local.s3_origin_id
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
@@ -100,16 +116,50 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   origin {
-    origin_id   = local.api_gateway_origin_id
-    domain_name = local.api_gateway_domain
-
+    origin_id   = local.bookings_origin_id
+    domain_name = var.bookings_function_url_domain
     custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "https-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
+      http_port              = local.lambda_custom_origin.http_port
+      https_port             = local.lambda_custom_origin.https_port
+      origin_protocol_policy = local.lambda_custom_origin.origin_protocol_policy
+      origin_ssl_protocols   = local.lambda_custom_origin.origin_ssl_protocols
     }
   }
+
+  origin {
+    origin_id   = local.authentication_origin_id
+    domain_name = var.authentication_function_url_domain
+    custom_origin_config {
+      http_port              = local.lambda_custom_origin.http_port
+      https_port             = local.lambda_custom_origin.https_port
+      origin_protocol_policy = local.lambda_custom_origin.origin_protocol_policy
+      origin_ssl_protocols   = local.lambda_custom_origin.origin_ssl_protocols
+    }
+  }
+
+  origin {
+    origin_id   = local.event_ledger_origin_id
+    domain_name = var.event_ledger_function_url_domain
+    custom_origin_config {
+      http_port              = local.lambda_custom_origin.http_port
+      https_port             = local.lambda_custom_origin.https_port
+      origin_protocol_policy = local.lambda_custom_origin.origin_protocol_policy
+      origin_ssl_protocols   = local.lambda_custom_origin.origin_ssl_protocols
+    }
+  }
+
+  origin {
+    origin_id   = local.journal_origin_id
+    domain_name = var.journal_function_url_domain
+    custom_origin_config {
+      http_port              = local.lambda_custom_origin.http_port
+      https_port             = local.lambda_custom_origin.https_port
+      origin_protocol_policy = local.lambda_custom_origin.origin_protocol_policy
+      origin_ssl_protocols   = local.lambda_custom_origin.origin_ssl_protocols
+    }
+  }
+
+  # ── Default: serve SPA from S3 ─────────────────────────────────────────────
 
   default_cache_behavior {
     target_origin_id       = local.s3_origin_id
@@ -128,9 +178,11 @@ resource "aws_cloudfront_distribution" "frontend" {
     max_ttl     = 31536000
   }
 
+  # ── /api/v1/bookings* → bookings Lambda ────────────────────────────────────
+
   ordered_cache_behavior {
-    path_pattern           = "/api/*"
-    target_origin_id       = local.api_gateway_origin_id
+    path_pattern           = "/api/v1/bookings*"
+    target_origin_id       = local.bookings_origin_id
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
@@ -138,7 +190,70 @@ resource "aws_cloudfront_distribution" "frontend" {
 
     forwarded_values {
       query_string = true
-      headers      = ["Authorization", "Content-Type", "Accept", "Origin"]
+      headers      = local.api_forwarded_headers
+      cookies { forward = "all" }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+  # ── /api/v1/users* → authentication Lambda ─────────────────────────────────
+
+  ordered_cache_behavior {
+    path_pattern           = "/api/v1/users*"
+    target_origin_id       = local.authentication_origin_id
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    forwarded_values {
+      query_string = true
+      headers      = local.api_forwarded_headers
+      cookies { forward = "all" }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+  # ── /api/v1/events* → event-ledger Lambda ──────────────────────────────────
+
+  ordered_cache_behavior {
+    path_pattern           = "/api/v1/events*"
+    target_origin_id       = local.event_ledger_origin_id
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    forwarded_values {
+      query_string = true
+      headers      = local.api_forwarded_headers
+      cookies { forward = "all" }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+  # ── /api/v1/journal* → journal Lambda ──────────────────────────────────────
+
+  ordered_cache_behavior {
+    path_pattern           = "/api/v1/journal*"
+    target_origin_id       = local.journal_origin_id
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    forwarded_values {
+      query_string = true
+      headers      = local.api_forwarded_headers
       cookies { forward = "all" }
     }
 
