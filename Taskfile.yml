@@ -208,6 +208,7 @@ tasks:
       - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/http && zip -j ../dist/bookings-http.zip bootstrap && rm bootstrap
       - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/sqs && zip -j ../dist/bookings-sqs.zip bootstrap && rm bootstrap
       - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/outbox && zip -j ../dist/bookings-outbox.zip bootstrap && rm bootstrap
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/migrate && zip -j ../dist/bookings-migrate.zip bootstrap && rm bootstrap
 
   authentication:lambda-build:
     dir: authentication
@@ -215,6 +216,7 @@ tasks:
       - mkdir -p ../dist
       - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/http && zip -j ../dist/authentication-http.zip bootstrap && rm bootstrap
       - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/outbox && zip -j ../dist/authentication-outbox.zip bootstrap && rm bootstrap
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/migrate && zip -j ../dist/authentication-migrate.zip bootstrap && rm bootstrap
 
   event_ledger:lambda-build:
     dir: event_ledger
@@ -229,6 +231,7 @@ tasks:
       - mkdir -p ../dist
       - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/http && zip -j ../dist/journal-http.zip bootstrap && rm bootstrap
       - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/sqs && zip -j ../dist/journal-sqs.zip bootstrap && rm bootstrap
+      - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/migrate && zip -j ../dist/journal-migrate.zip bootstrap && rm bootstrap
 
   lambda-build-all:
     cmds:

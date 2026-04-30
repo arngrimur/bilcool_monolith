@@ -210,6 +210,11 @@ resource "aws_iam_role_policy" "github_deploy" {
         Action   = ["cloudfront:CreateInvalidation"]
         Resource = "arn:aws:cloudfront::${var.aws_account}:distribution/${var.cloudfront_distribution_id}"
       },
+      {
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = "arn:aws:lambda:${var.aws_region}:${var.aws_account}:function:${var.prefix}-*-migrate"
+      },
     ]
   })
 }
