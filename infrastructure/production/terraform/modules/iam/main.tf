@@ -43,8 +43,13 @@ resource "aws_iam_role_policy" "postgres_lambda_sns_sqs" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["sns:Publish", "sns:ListTopics"]
+        Action   = ["sns:Publish"]
         Resource = var.sns_topic_arns
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["sns:ListTopics"]
+        Resource = "*"
       },
       {
         Effect = "Allow"
