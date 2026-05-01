@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { startAuthentication } from '@simplewebauthn/browser'
-import { beginLogin, completeLogin, getUser } from '../../api/auth'
+import { beginLogin, completeLogin, getUser, requestLoginReset } from '../../api/auth'
 import { useAuthStore, storeAuthToken, decodeUserRefFromToken } from '../../stores/authStore'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -16,10 +16,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showResetLink, setShowResetLink] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    setShowResetLink(false)
     setLoading(true)
 
     try {
@@ -42,9 +45,26 @@ export default function LoginPage() {
         setError(t('auth.error_user_not_found'))
       } else if (apiErr.status === 401) {
         setError(t('auth.error_passkey_failed'))
+        setShowResetLink(true)
       } else {
         setError(t('auth.error_generic'))
+        setShowResetLink(true)
       }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleReset() {
+    setError(null)
+    setLoading(true)
+    try {
+      await requestLoginReset({ email })
+      setResetSent(true)
+      setShowResetLink(false)
+      navigate('/login/otp', { state: { email } })
+    } catch {
+      setError(t('auth.error_generic'))
     } finally {
       setLoading(false)
     }
@@ -88,10 +108,27 @@ export default function LoginPage() {
             </p>
           )}
 
+          {resetSent && (
+            <p className="text-sm text-muted-foreground">{t('auth.reset_passkey_sent')}</p>
+          )}
+
           <Button type="submit" className="w-full min-h-[44px]" disabled={loading || !email}>
             {loading ? '...' : t('auth.sign_in')}
           </Button>
         </form>
+
+        {showResetLink && email && (
+          <p className="text-center text-sm">
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={loading}
+              className="underline underline-offset-4 hover:text-primary disabled:opacity-50"
+            >
+              {t('auth.reset_passkey_link')}
+            </button>
+          </p>
+        )}
       </div>
     </div>
   )

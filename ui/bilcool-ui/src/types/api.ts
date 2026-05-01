@@ -18,6 +18,10 @@ export interface LoginBeginRequest {
   email: string;
 }
 
+export interface ResetLoginRequest {
+  email: string;
+}
+
 export type LoginNextStep = 'verify_token' | 'passkey_assertion';
 
 export interface LoginBeginResponse {
