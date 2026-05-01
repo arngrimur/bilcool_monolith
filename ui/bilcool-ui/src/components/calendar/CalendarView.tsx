@@ -171,8 +171,8 @@ export default function CalendarView({ completedBookingMap }: CalendarViewProps)
           selectable
           selectMirror
           slotDuration="00:15:00"
-          slotMinTime="06:00:00"
-          slotMaxTime="22:00:00"
+          slotMinTime="00:00:00"
+          slotMaxTime="24:00:00"
           allDaySlot={false}
           headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
           select={handleSelect}
