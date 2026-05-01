@@ -173,13 +173,19 @@ func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndB
 	if err != nil {
 		return err
 	}
-	q := "INSERT INTO distances (fk_booking_id, start_distance, end_distance) VALUES ($1, $2, $3)"
-	_, err = local_bdb.ExecContext(ctx, q, booking.id, request.StartDistance, request.EndDistance)
+	var lat, lon *float64
+	if request.Position != nil {
+		lat = &request.Position.Lat
+		lon = &request.Position.Lon
+	}
+	q := "INSERT INTO distances (fk_booking_id, start_distance, end_distance, lat, lon) VALUES ($1, $2, $3, $4, $5)"
+	_, err = local_bdb.ExecContext(ctx, q, booking.id, request.StartDistance, request.EndDistance, lat, lon)
 	if err != nil {
 		return err
 	}
 	// insert msg in outbox
 	booking.completed.Distance = request.Distance
+	booking.completed.Position = request.Position
 
 	bytes, err := json.Marshal(booking.completed)
 	if err != nil {

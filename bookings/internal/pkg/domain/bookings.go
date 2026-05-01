@@ -22,6 +22,7 @@ type BookingRequest struct {
 type EndBookingRequest struct {
 	BookingRequest
 	extdomain.Distance
+	Position *extdomain.Position
 }
 
 func NewBookingResponse(bookingRef uuid.UUID, startTime time.Time, endTime time.Time, userRef uuid.UUID, distance *extdomain.Distance) extdomain.BookingResponse {
