@@ -20,6 +20,7 @@ import (
 
 	_ "github.com/lib/pq"
 
+	extdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
 )
 
@@ -35,6 +36,8 @@ type bookingsTestSuite struct {
 
 func (suite *bookingsTestSuite) SetupSuite() {
 	suite.SuiteDbIntegration = testdb.SetupDatabase(suite.T(), migrations.FS, "bookings_test")
+	err := brokerpostgres.CreateTable(suite.ConnString)
+	suite.Require().NoError(err)
 	suite.bookingRef = uuid.New()
 	suite.userRef = uuid.New()
 	suite.startTime = time.Now().Add(time.Hour).UTC()
@@ -61,7 +64,7 @@ func (suite *bookingsTestSuite) BeforeTest(suiteName, testName string) {
 }
 
 func (suite *bookingsTestSuite) AfterTest(suiteName, testName string) {
-	_, err := suite.Db.Exec("TRUNCATE TABLE users, inbox CASCADE")
+	_, err := suite.Db.Exec("TRUNCATE TABLE users, inbox, outbox CASCADE")
 	suite.Require().NoError(err)
 }
 
@@ -314,6 +317,54 @@ func (suite *bookingsTestSuite) TestDeleteUserDuplicateMessageID() {
 
 	err = database.DeleteUser(context.Background(), makeUserMessage(userRef, messageID))
 	suite.Require().Error(err)
+}
+
+func (suite *bookingsTestSuite) TestEndBookingWithPosition() {
+	database := NewBookingsRepository(suite.Db)
+	pos := &extdomain.Position{Lat: 64.128288, Lon: -21.827774}
+
+	err := database.EndBooking(context.Background(), domain.EndBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Distance:       extdomain.Distance{StartDistance: 0, EndDistance: 12500},
+		Position:       pos,
+	})
+	suite.Require().NoError(err)
+
+	var startDist, endDist int
+	err = suite.Db.QueryRow(`
+		SELECT d.start_distance, d.end_distance
+		FROM distances d JOIN bookings b ON d.fk_booking_id = b.id
+		WHERE b.booking_reference = $1`, suite.bookingRef).Scan(&startDist, &endDist)
+	suite.Require().NoError(err)
+	suite.Require().Equal(0, startDist)
+	suite.Require().Equal(12500, endDist)
+
+	var lat, lon float64
+	err = suite.Db.QueryRow(`
+		SELECT p.lat, p.lon
+		FROM positions p JOIN bookings b ON p.fk_booking_id = b.id
+		WHERE b.booking_reference = $1`, suite.bookingRef).Scan(&lat, &lon)
+	suite.Require().NoError(err)
+	suite.Require().InDelta(pos.Lat, lat, 0.000001)
+	suite.Require().InDelta(pos.Lon, lon, 0.000001)
+}
+
+func (suite *bookingsTestSuite) TestEndBookingWithoutPosition() {
+	database := NewBookingsRepository(suite.Db)
+
+	err := database.EndBooking(context.Background(), domain.EndBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Distance:       extdomain.Distance{StartDistance: 0, EndDistance: 8000},
+	})
+	suite.Require().NoError(err)
+
+	var count int
+	err = suite.Db.QueryRow(`
+		SELECT COUNT(*)
+		FROM positions p JOIN bookings b ON p.fk_booking_id = b.id
+		WHERE b.booking_reference = $1`, suite.bookingRef).Scan(&count)
+	suite.Require().NoError(err)
+	suite.Require().Equal(0, count)
 }
 
 func makeUserMessage(userRef uuid.UUID, messageID string) brokerpostgres.Message {

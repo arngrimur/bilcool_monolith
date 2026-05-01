@@ -226,15 +226,19 @@ func (h *HttpRouter) endBooking(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
 		return
 	}
-	distance := extdomain.Distance{}
-	err = c.ShouldBindBodyWithJSON(&distance)
+	var body struct {
+		extdomain.Distance
+		Position *extdomain.Position `json:"position,omitempty"`
+	}
+	err = c.ShouldBindBodyWithJSON(&body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
 		return
 	}
 	err = h.commands.EndBooking(c.Request.Context(), domain.EndBookingRequest{
 		BookingRequest: domain.BookingRequest{BookingReference: id},
-		Distance:       distance,
+		Distance:       body.Distance,
+		Position:       body.Position,
 	})
 	if err != nil {
 		e := NewHttpError(err)
