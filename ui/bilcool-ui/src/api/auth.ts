@@ -2,6 +2,7 @@ import { apiFetch } from './client';
 import type {
   LoginBeginRequest,
   LoginBeginResponse,
+  ResetLoginRequest,
   VerifyTokenRequest,
   VerifyTokenResponse,
   LoginCompleteRequest,
@@ -15,6 +16,9 @@ const BASE = '/api/v1';
 
 export const beginLogin = (body: LoginBeginRequest) =>
   apiFetch<LoginBeginResponse>(`${BASE}/users/login`, { method: 'POST', body: JSON.stringify(body) });
+
+export const requestLoginReset = (body: ResetLoginRequest) =>
+  apiFetch<void>(`${BASE}/users/login/reset`, { method: 'POST', body: JSON.stringify(body) });
 
 export const verifyToken = (body: VerifyTokenRequest) =>
   apiFetch<VerifyTokenResponse>(`${BASE}/users/login/token`, { method: 'POST', body: JSON.stringify(body) });

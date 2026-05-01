@@ -303,3 +303,11 @@ func (r UsersRepository) StorePasskey(ctx context.Context, userRef uuid.UUID, pa
 	)
 	return err
 }
+
+func (r UsersRepository) DeletePasskeys(ctx context.Context, userRef uuid.UUID) error {
+	_, err := r.ExecContext(ctx,
+		`DELETE FROM passkeys WHERE user_ref = $1`,
+		userRef,
+	)
+	return err
+}

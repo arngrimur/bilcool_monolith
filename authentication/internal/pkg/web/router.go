@@ -43,6 +43,7 @@ func NewRouter(commands application.Commands, queries application.Queries, jwtSe
 	h.router.POST("/api/v1/users/login", h.loginBegin)
 	h.router.POST("/api/v1/users/login/token", h.verifyToken)
 	h.router.POST("/api/v1/users/login/complete", h.loginComplete)
+	h.router.POST("/api/v1/users/login/reset", h.resetLogin)
 
 	admin := h.router.Group("/api/v1", h.jwtMiddleware(), h.requireAdmin())
 	admin.POST("/users", h.createUser)
@@ -238,6 +239,23 @@ func (h *HttpRouter) verifyToken(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+func (h *HttpRouter) resetLogin(c *gin.Context) {
+	var req domain.ResetLoginRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		NewError(c, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Locale == "" {
+		req.Locale = c.GetHeader("Accept-Language")
+	}
+	if err := h.commands.ResetLogin(c.Request.Context(), req); err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, e.Message)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (h *HttpRouter) loginComplete(c *gin.Context) {

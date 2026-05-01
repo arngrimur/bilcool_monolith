@@ -24,7 +24,9 @@
     "error_user_not_found": "Inget konto hittades med den e-postadressen",
     "error_invalid_token": "Koden är ogiltig eller har gått ut",
     "error_passkey_failed": "Autentisering med nyckel misslyckades",
-    "error_generic": "Något gick fel. Försök igen."
+    "error_generic": "Något gick fel. Försök igen.",
+    "reset_passkey_link": "Saknar du din nyckel?",
+    "reset_passkey_sent": "En återställningskod har skickats till din e-post"
   },
   "profile": {
     "title": "Profil",
