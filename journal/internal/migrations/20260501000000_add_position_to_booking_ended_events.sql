@@ -1,7 +1,10 @@
 -- migrate:up
-ALTER TABLE booking_ended_events ADD COLUMN lat DOUBLE PRECISION;
-ALTER TABLE booking_ended_events ADD COLUMN lon DOUBLE PRECISION;
+CREATE TABLE positions (
+    id                        SERIAL PRIMARY KEY,
+    fk_booking_ended_event_id INT NOT NULL REFERENCES booking_ended_events(id),
+    lat                       DOUBLE PRECISION NOT NULL,
+    lon                       DOUBLE PRECISION NOT NULL
+);
 
 -- migrate:down
-ALTER TABLE booking_ended_events DROP COLUMN lat;
-ALTER TABLE booking_ended_events DROP COLUMN lon;
+DROP TABLE positions;

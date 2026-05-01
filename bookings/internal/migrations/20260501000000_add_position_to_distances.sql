@@ -1,7 +1,10 @@
 -- migrate:up
-ALTER TABLE distances ADD COLUMN lat DOUBLE PRECISION;
-ALTER TABLE distances ADD COLUMN lon DOUBLE PRECISION;
+CREATE TABLE positions (
+    id           SERIAL PRIMARY KEY,
+    fk_booking_id INT NOT NULL REFERENCES bookings(id),
+    lat          DOUBLE PRECISION NOT NULL,
+    lon          DOUBLE PRECISION NOT NULL
+);
 
 -- migrate:down
-ALTER TABLE distances DROP COLUMN lat;
-ALTER TABLE distances DROP COLUMN lon;
+DROP TABLE positions;

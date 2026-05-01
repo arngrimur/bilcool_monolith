@@ -18,13 +18,12 @@ import (
 var ErrDuplicateEvent = errors.New("duplicate event")
 
 type FinishedBooking struct {
-	BookingRef     uuid.UUID `json:"booking_reference"`
-	UserRef        uuid.UUID `json:"user_ref"`
-	StartDate      time.Time `json:"start_date"`
-	EndDate        time.Time `json:"end_date"`
-	DistanceMeters int       `json:"distance_meters"`
-	Lat            *float64  `json:"lat,omitempty"`
-	Lon            *float64  `json:"lon,omitempty"`
+	BookingRef     uuid.UUID        `json:"booking_reference"`
+	UserRef        uuid.UUID        `json:"user_ref"`
+	StartDate      time.Time        `json:"start_date"`
+	EndDate        time.Time        `json:"end_date"`
+	DistanceMeters int              `json:"distance_meters"`
+	Position       *domain.Position `json:"position,omitempty"`
 }
 
 type EventRepository struct {
@@ -143,15 +142,22 @@ func (r EventRepository) handleBookingEnded(ctx context.Context, payload json.Ra
 		return err
 	}
 
-	var lat, lon *float64
-	if completedBooking.Position != nil {
-		lat = &completedBooking.Position.Lat
-		lon = &completedBooking.Position.Lon
+	var eventId int64
+	q := `INSERT INTO booking_ended_events (fk_user, booking_ref, start_date, end_date, distance_meters) VALUES ($1, $2, $3, $4, $5) RETURNING id`
+	err = r.QueryRowContext(ctx, q, userId, completedBooking.Booking.BookingReference, completedBooking.Booking.StartDate, completedBooking.Booking.EndDate, completedBooking.Distance.Distance()).Scan(&eventId)
+	if err != nil {
+		return err
 	}
 
-	q := `INSERT INTO booking_ended_events (fk_user, booking_ref, start_date, end_date, distance_meters, lat, lon) VALUES ($1, $2, $3, $4, $5, $6, $7)`
-	_, err = r.ExecContext(ctx, q, userId, completedBooking.Booking.BookingReference, completedBooking.Booking.StartDate, completedBooking.Booking.EndDate, completedBooking.Distance.Distance(), lat, lon)
-	return err
+	if completedBooking.Position != nil {
+		_, err = r.ExecContext(ctx,
+			`INSERT INTO positions (fk_booking_ended_event_id, lat, lon) VALUES ($1, $2, $3)`,
+			eventId, completedBooking.Position.Lat, completedBooking.Position.Lon)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type FinishedBookingFilter struct {
@@ -162,9 +168,10 @@ type FinishedBookingFilter struct {
 
 func (r EventRepository) GetFinishedBookings(ctx context.Context, f FinishedBookingFilter) ([]FinishedBooking, error) {
 	const query = `
-SELECT b.booking_ref, u.user_ref, b.start_date, b.end_date, b.distance_meters, b.lat, b.lon
+SELECT b.booking_ref, u.user_ref, b.start_date, b.end_date, b.distance_meters, p.lat, p.lon
 FROM booking_ended_events b
 INNER JOIN users u ON b.fk_user = u.id
+LEFT JOIN positions p ON p.fk_booking_ended_event_id = b.id
 WHERE ($1::int IS NULL OR EXTRACT(YEAR  FROM b.start_date) = $1)
   AND ($2::int IS NULL OR EXTRACT(MONTH FROM b.start_date) = $2)
   AND ($3::uuid IS NULL OR u.user_ref = $3)
@@ -178,9 +185,16 @@ ORDER BY b.start_date DESC`
 
 	bookings := make([]FinishedBooking, 0)
 	for rows.Next() {
-		var fb FinishedBooking
-		if err := rows.Scan(&fb.BookingRef, &fb.UserRef, &fb.StartDate, &fb.EndDate, &fb.DistanceMeters, &fb.Lat, &fb.Lon); err != nil {
+		var (
+			fb  FinishedBooking
+			lat sql.NullFloat64
+			lon sql.NullFloat64
+		)
+		if err := rows.Scan(&fb.BookingRef, &fb.UserRef, &fb.StartDate, &fb.EndDate, &fb.DistanceMeters, &lat, &lon); err != nil {
 			return nil, err
+		}
+		if lat.Valid && lon.Valid {
+			fb.Position = &domain.Position{Lat: lat.Float64, Lon: lon.Float64}
 		}
 		bookings = append(bookings, fb)
 	}
