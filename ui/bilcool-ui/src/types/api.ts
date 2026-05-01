@@ -67,6 +67,7 @@ export interface UpdateBookingRequest {
 export interface EndBookingRequest {
   start_distance: number;
   end_distance: number;
+  position?: { lat: number; lon: number };
 }
 
 export interface EventResponse {

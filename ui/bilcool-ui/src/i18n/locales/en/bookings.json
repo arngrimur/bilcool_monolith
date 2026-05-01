@@ -36,5 +36,10 @@
   "filter_month": "Month",
   "filter_user": "User",
   "filter_all_users": "All users",
-  "no_bookings": "No bookings found"
+  "no_bookings": "No bookings found",
+  "active_booking_title": "Your Active Booking",
+  "start_tracking": "Start",
+  "stop_tracking": "Stop",
+  "tracking_distance_label": "Distance tracked",
+  "other_booking_active": "Another booking is currently active"
 }
