@@ -58,12 +58,23 @@ export function useGpsTracking() {
         const now = pos.timestamp
 
         // When the screen is locked iOS stops firing callbacks. On unlock the gap between
-        // this update and the last one will be large. Reset the low-speed pause state so the
-        // straight-line distance covered while locked is not silently discarded.
+        // this update and the last one will be large. Credit the straight-line displacement
+        // unconditionally (the user definitely moved) and reset pause state. Return early
+        // so the normal speed logic does not double-count this segment or mark it tentative.
         if (lastPosRef.current && now - lastPosRef.current.ts > SCREEN_LOCK_GAP_MS) {
+          const gapDist = haversineMeters(lastPosRef.current.lat, lastPosRef.current.lon, lat, lon)
+          distanceRef.current += gapDist
           isPausedRef.current = false
           lowSpeedSinceRef.current = null
           lowSpeedAccumRef.current = 0
+          lastPosRef.current = { lat, lon, ts: now }
+          setState((s) => ({
+            ...s,
+            distanceMeters: distanceRef.current,
+            currentPosition: { lat, lon },
+            error: null,
+          }))
+          return
         }
 
         // Derive speed in km/h; fall back to calculating from consecutive points
