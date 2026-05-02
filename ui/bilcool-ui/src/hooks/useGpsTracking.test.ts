@@ -177,6 +177,43 @@ describe('useGpsTracking', () => {
     expect(result.current.distanceMeters).toBeGreaterThan(distWhenPaused + 1_000)
   })
 
+  it('records first and second drive segments but not a 15-minute walk between them', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+
+    let t = 0
+
+    // First drive
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, t))
+    t += 1_000
+    sendPosition(makePosition(1, HIGH_SPEED_KMH, t))
+    t += 1_000
+    sendPosition(makePosition(2, HIGH_SPEED_KMH, t))
+    const distanceAfterFirstDrive = result.current.distanceMeters
+    expect(distanceAfterFirstDrive).toBeGreaterThan(0)
+
+    // 15-minute walk — three ~5-minute steps, each gap < 6 min to avoid screen-lock detection
+    t += 1_000
+    sendPosition(makePosition(3, LOW_SPEED_KMH, t))       // start walking
+    t += FIVE_MIN_MS + 1_000                               // 5 min → retroactive removal fires
+    sendPosition(makePosition(4, LOW_SPEED_KMH, t))
+    t += FIVE_MIN_MS - 1_000                               // another 5 min
+    sendPosition(makePosition(5, LOW_SPEED_KMH, t))
+    t += FIVE_MIN_MS - 1_000                               // another 5 min (15 min total)
+    sendPosition(makePosition(6, LOW_SPEED_KMH, t))
+
+    // Walk distance must have been stripped
+    expect(result.current.distanceMeters).toBeCloseTo(distanceAfterFirstDrive, 2)
+
+    // Second drive
+    t += 1_000
+    sendPosition(makePosition(7, HIGH_SPEED_KMH, t))
+    t += 1_000
+    sendPosition(makePosition(8, HIGH_SPEED_KMH, t))
+
+    expect(result.current.distanceMeters).toBeGreaterThan(distanceAfterFirstDrive)
+  })
+
   it('discards trailing low-speed distance when stopping before the 5-minute threshold', () => {
     const { result } = renderHook(() => useGpsTracking())
     act(() => result.current.startTracking())
