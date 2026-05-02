@@ -28,12 +28,12 @@ export default function ActiveBookingTracker({ booking, allBookings }: Props) {
   )
 
   async function handleStop() {
-    stopTracking()
+    const finalDistance = stopTracking()
     await endBooking.mutateAsync({
       id: booking.booking_reference,
       body: {
         start_distance: 0,
-        end_distance: Math.round(distanceMeters),
+        end_distance: Math.round(finalDistance),
         position: currentPosition ?? undefined,
       },
     })

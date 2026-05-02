@@ -137,12 +137,18 @@ export function useGpsTracking() {
     setState((s) => ({ ...s, isTracking: true, distanceMeters: 0, error: null }))
   }
 
-  function stopTracking() {
+  function stopTracking(): number {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current)
       watchIdRef.current = null
     }
-    setState((s) => ({ ...s, isTracking: false }))
+    // Discard any tentative low-speed distance that never crossed the 5-minute threshold.
+    // This prevents a short walk (< 5 min) from being counted when the user stops tracking.
+    const finalDistance = Math.max(0, distanceRef.current - lowSpeedAccumRef.current)
+    distanceRef.current = finalDistance
+    lowSpeedAccumRef.current = 0
+    setState((s) => ({ ...s, isTracking: false, distanceMeters: finalDistance }))
+    return finalDistance
   }
 
   useEffect(() => {

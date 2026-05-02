@@ -177,6 +177,37 @@ describe('useGpsTracking', () => {
     expect(result.current.distanceMeters).toBeGreaterThan(distWhenPaused + 1_000)
   })
 
+  it('discards trailing low-speed distance when stopping before the 5-minute threshold', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, 0))
+    sendPosition(makePosition(1, HIGH_SPEED_KMH, 1_000))
+    const distanceAfterDriving = result.current.distanceMeters
+
+    // Walk for 2 minutes — tentative accumulation, threshold not yet crossed
+    sendPosition(makePosition(2, LOW_SPEED_KMH, 2_000))
+    sendPosition(makePosition(3, LOW_SPEED_KMH, 2_000 + 2 * 60_000))
+
+    // Stop while still in the tentative low-speed window
+    act(() => result.current.stopTracking())
+
+    expect(result.current.distanceMeters).toBeCloseTo(distanceAfterDriving, 2)
+  })
+
+  it('records zero when the entire session is a walk (< 5 min)', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+
+    sendPosition(makePosition(0, LOW_SPEED_KMH, 0))
+    sendPosition(makePosition(1, LOW_SPEED_KMH, 1_000))
+    sendPosition(makePosition(2, LOW_SPEED_KMH, 2_000))
+
+    act(() => result.current.stopTracking())
+
+    expect(result.current.distanceMeters).toBe(0)
+  })
+
   it('does not reset pause state for a short gap (< 6 min)', () => {
     const { result } = renderHook(() => useGpsTracking())
     act(() => result.current.startTracking())
