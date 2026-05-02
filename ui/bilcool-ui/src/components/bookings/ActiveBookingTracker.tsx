@@ -23,6 +23,7 @@ export default function ActiveBookingTracker({ booking, allBookings }: Props) {
     (b) =>
       b.booking_reference !== booking.booking_reference &&
       new Date(b.start_date) <= now &&
+      new Date(b.end_date) > now &&
       !b.distance,
   )
 
