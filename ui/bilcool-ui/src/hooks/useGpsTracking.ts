@@ -9,6 +9,8 @@ interface TrackingState {
 
 const LOW_SPEED_THRESHOLD_KMH = 7
 const LOW_SPEED_PAUSE_MS = 5 * 60 * 1000 // 5 minutes
+// A gap this large between callbacks means the screen was locked (iOS suspends watchPosition)
+const SCREEN_LOCK_GAP_MS = 6 * 60 * 1000
 
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000
@@ -54,6 +56,26 @@ export function useGpsTracking() {
       (pos) => {
         const { latitude: lat, longitude: lon, speed } = pos.coords
         const now = pos.timestamp
+
+        // When the screen is locked iOS stops firing callbacks. On unlock the gap between
+        // this update and the last one will be large. Credit the straight-line displacement
+        // unconditionally (the user definitely moved) and reset pause state. Return early
+        // so the normal speed logic does not double-count this segment or mark it tentative.
+        if (lastPosRef.current && now - lastPosRef.current.ts > SCREEN_LOCK_GAP_MS) {
+          const gapDist = haversineMeters(lastPosRef.current.lat, lastPosRef.current.lon, lat, lon)
+          distanceRef.current += gapDist
+          isPausedRef.current = false
+          lowSpeedSinceRef.current = null
+          lowSpeedAccumRef.current = 0
+          lastPosRef.current = { lat, lon, ts: now }
+          setState((s) => ({
+            ...s,
+            distanceMeters: distanceRef.current,
+            currentPosition: { lat, lon },
+            error: null,
+          }))
+          return
+        }
 
         // Derive speed in km/h; fall back to calculating from consecutive points
         let speedKmh: number
