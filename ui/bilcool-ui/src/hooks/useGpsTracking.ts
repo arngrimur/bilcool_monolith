@@ -10,7 +10,7 @@ interface TrackingState {
 const LOW_SPEED_THRESHOLD_KMH = 7
 const LOW_SPEED_PAUSE_MS = 5 * 60 * 1000 // 5 minutes
 // A gap this large between callbacks means the screen was locked (iOS suspends watchPosition)
-const SCREEN_LOCK_GAP_MS = 30 * 1000
+const SCREEN_LOCK_GAP_MS = 6 * 60 * 1000
 
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000

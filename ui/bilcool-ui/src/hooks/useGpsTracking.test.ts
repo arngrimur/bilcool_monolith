@@ -177,7 +177,7 @@ describe('useGpsTracking', () => {
     expect(result.current.distanceMeters).toBeGreaterThan(distWhenPaused + 1_000)
   })
 
-  it('does not reset pause state for a short gap (< 30 s)', () => {
+  it('does not reset pause state for a short gap (< 6 min)', () => {
     const { result } = renderHook(() => useGpsTracking())
     act(() => result.current.startTracking())
 
@@ -192,7 +192,7 @@ describe('useGpsTracking', () => {
     sendPosition(makePosition(0, LOW_SPEED_KMH, t))
     const distWhenPaused = result.current.distanceMeters
 
-    // Short gap (20 s) — must not reset paused state
+    // Short gap (20 s) — well under the 6-min threshold, must not reset paused state
     t += 20_000
     sendPosition(makePosition(1, LOW_SPEED_KMH, t))
 
