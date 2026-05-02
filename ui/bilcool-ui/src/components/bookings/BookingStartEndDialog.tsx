@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
 import { useDeleteBooking, useEndBooking } from '../../hooks/useBookings'
+import { useGpsTracking } from '../../hooks/useGpsTracking'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
@@ -51,6 +52,8 @@ export default function BookingStartEndDialog({
   const language = useSettingsStore((s) => s.language)
   const deleteBooking = useDeleteBooking()
   const endBooking = useEndBooking()
+  const { isTracking, distanceMeters, currentPosition, error: gpsError, startTracking, stopTracking } =
+    useGpsTracking()
   const [confirmCancel, setConfirmCancel] = useState(false)
 
   useEffect(() => {
@@ -72,6 +75,19 @@ export default function BookingStartEndDialog({
 
   async function handleDelete() {
     await deleteBooking.mutateAsync(booking.booking_reference)
+    onOpenChange(false)
+  }
+
+  async function handleStopGps() {
+    stopTracking()
+    await endBooking.mutateAsync({
+      id: booking.booking_reference,
+      body: {
+        start_distance: 0,
+        end_distance: Math.round(distanceMeters),
+        position: currentPosition ?? undefined,
+      },
+    })
     onOpenChange(false)
   }
 
@@ -153,47 +169,90 @@ export default function BookingStartEndDialog({
         )}
 
         {isActive && (
-          <form onSubmit={handleSubmit(handleEnd)} className="space-y-4" id="end-booking-form">
-            <div className="space-y-2">
-              <Label htmlFor="start-odo">{t('end_booking_start_odo')}</Label>
-              <Input
-                id="start-odo"
-                type="number"
-                min={0}
-                step={1}
-                {...register('startOdo', { valueAsNumber: true })}
-                aria-describedby={errors.startOdo ? 'start-odo-error' : undefined}
-              />
-              {errors.startOdo && (
-                <p id="start-odo-error" className="text-sm text-destructive" role="alert">
-                  {errors.startOdo.message}
-                </p>
-              )}
-            </div>
+          <div className="space-y-4">
+            {gpsError && (
+              <p className="text-sm text-destructive">{gpsError}</p>
+            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="end-odo">{t('end_booking_end_odo')}</Label>
-              <Input
-                id="end-odo"
-                type="number"
-                min={0}
-                step={1}
-                {...register('endOdo', { valueAsNumber: true })}
-                aria-describedby={errors.endOdo ? 'end-odo-error' : undefined}
-              />
-              {errors.endOdo && (
-                <p id="end-odo-error" className="text-sm text-destructive" role="alert">
-                  {t('end_booking_error_odo')}
-                </p>
-              )}
-            </div>
+            {isTracking ? (
+              <div className="space-y-3">
+                <div className="text-center py-2">
+                  <p className="text-3xl font-bold tabular-nums">
+                    {(distanceMeters / 1000).toFixed(2)} km
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('tracking_distance_label')}</p>
+                </div>
+                <Button
+                  className="w-full min-h-[52px] text-base"
+                  variant="destructive"
+                  onClick={handleStopGps}
+                  disabled={endBooking.isPending}
+                >
+                  {endBooking.isPending ? '...' : t('stop_tracking')}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button
+                  className="w-full min-h-[52px] text-base"
+                  onClick={startTracking}
+                >
+                  {t('start_tracking')}
+                </Button>
 
-            <DialogFooter>
-              <Button type="submit" form="end-booking-form" disabled={isSubmitting} className="min-h-[44px]">
-                {isSubmitting ? '...' : t('end_booking_submit')}
-              </Button>
-            </DialogFooter>
-          </form>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">or</span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSubmit(handleEnd)} className="space-y-4" id="end-booking-form">
+                  <div className="space-y-2">
+                    <Label htmlFor="start-odo">{t('end_booking_start_odo')}</Label>
+                    <Input
+                      id="start-odo"
+                      type="number"
+                      min={0}
+                      step={1}
+                      {...register('startOdo', { valueAsNumber: true })}
+                      aria-describedby={errors.startOdo ? 'start-odo-error' : undefined}
+                    />
+                    {errors.startOdo && (
+                      <p id="start-odo-error" className="text-sm text-destructive" role="alert">
+                        {errors.startOdo.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="end-odo">{t('end_booking_end_odo')}</Label>
+                    <Input
+                      id="end-odo"
+                      type="number"
+                      min={0}
+                      step={1}
+                      {...register('endOdo', { valueAsNumber: true })}
+                      aria-describedby={errors.endOdo ? 'end-odo-error' : undefined}
+                    />
+                    {errors.endOdo && (
+                      <p id="end-odo-error" className="text-sm text-destructive" role="alert">
+                        {t('end_booking_error_odo')}
+                      </p>
+                    )}
+                  </div>
+
+                  <DialogFooter>
+                    <Button type="submit" form="end-booking-form" disabled={isSubmitting} className="min-h-[44px]">
+                      {isSubmitting ? '...' : t('end_booking_submit')}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </>
+            )}
+          </div>
         )}
       </DialogContent>
     </Dialog>
