@@ -28,7 +28,7 @@ describe('useGpsTracking', () => {
   beforeEach(() => {
     Object.defineProperty(global.navigator, 'geolocation', {
       value: {
-        watchPosition: vi.fn((successCb: PositionCallback) => {
+        watchPosition: vi.fn((successCb: (position: GeolocationPosition) => void) => {
           sendPosition = (pos) => act(() => successCb(pos))
           return 1
         }),
