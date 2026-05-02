@@ -99,6 +99,7 @@ export interface FinishedBooking {
   start_date: string
   end_date: string
   distance_meters: number
+  position?: { lat: number; lon: number }
 }
 
 export interface FinishedBookingParams {
