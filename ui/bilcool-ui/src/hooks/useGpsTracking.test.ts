@@ -22,7 +22,7 @@ function makePosition(step: number, speedKmh: number, timestamp: number): Geoloc
   } as GeolocationPosition
 }
 
-describe('useGpsTracking – low-speed distance filtering', () => {
+describe('useGpsTracking', () => {
   let sendPosition: (pos: GeolocationPosition) => void
 
   beforeEach(() => {
@@ -129,5 +129,73 @@ describe('useGpsTracking – low-speed distance filtering', () => {
     sendPosition(makePosition(5, HIGH_SPEED_KMH, 2_000 + FIVE_MIN_MS + 3_000))
 
     expect(result.current.distanceMeters).toBeGreaterThan(distanceAfterPause)
+  })
+
+  it('resumes accumulation after a screen-lock gap at low speed even when paused', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+
+    let t = 0
+
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, t))
+    t += 1_000
+    sendPosition(makePosition(1, HIGH_SPEED_KMH, t))
+    t += 1_000
+
+    // Sit still for >5 min → retroactive removal + isPaused = true
+    sendPosition(makePosition(1, LOW_SPEED_KMH, t))
+    t += FIVE_MIN_MS + 1_000
+    sendPosition(makePosition(1, LOW_SPEED_KMH, t))
+    const distWhenPaused = result.current.distanceMeters
+
+    // Screen locks for 10 minutes while driving ~1.5 km north (15 steps)
+    t += 10 * 60_000
+    sendPosition(makePosition(16, LOW_SPEED_KMH, t))
+
+    expect(result.current.distanceMeters).toBeGreaterThan(distWhenPaused + 1_000)
+  })
+
+  it('resumes accumulation after a screen-lock gap at high speed', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+
+    let t = 0
+
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, t))
+    t += 1_000
+
+    // Trigger pause
+    sendPosition(makePosition(0, LOW_SPEED_KMH, t))
+    t += FIVE_MIN_MS + 1_000
+    sendPosition(makePosition(0, LOW_SPEED_KMH, t))
+    const distWhenPaused = result.current.distanceMeters
+
+    // Screen locked for 8 min, unlocked while still driving at speed
+    t += 8 * 60_000
+    sendPosition(makePosition(12, HIGH_SPEED_KMH, t))
+
+    expect(result.current.distanceMeters).toBeGreaterThan(distWhenPaused + 1_000)
+  })
+
+  it('does not reset pause state for a short gap (< 30 s)', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+
+    let t = 0
+
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, t))
+    t += 1_000
+
+    // Trigger pause
+    sendPosition(makePosition(0, LOW_SPEED_KMH, t))
+    t += FIVE_MIN_MS + 1_000
+    sendPosition(makePosition(0, LOW_SPEED_KMH, t))
+    const distWhenPaused = result.current.distanceMeters
+
+    // Short gap (20 s) — must not reset paused state
+    t += 20_000
+    sendPosition(makePosition(1, LOW_SPEED_KMH, t))
+
+    expect(result.current.distanceMeters).toBeCloseTo(distWhenPaused, 0)
   })
 })
