@@ -36,6 +36,8 @@ export function useGpsTracking() {
   // whether accumulation is paused due to sustained low speed
   const isPausedRef = useRef(false)
   const distanceRef = useRef(0)
+  // distance accumulated since speed dropped below threshold (may be retroactively removed)
+  const lowSpeedAccumRef = useRef(0)
 
   function startTracking() {
     if (!navigator.geolocation) {
@@ -46,6 +48,7 @@ export function useGpsTracking() {
     lastPosRef.current = null
     lowSpeedSinceRef.current = null
     isPausedRef.current = false
+    lowSpeedAccumRef.current = 0
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
@@ -67,6 +70,7 @@ export function useGpsTracking() {
         if (speedKmh >= LOW_SPEED_THRESHOLD_KMH) {
           // Speed ok: reset low-speed timer and resume accumulation
           lowSpeedSinceRef.current = null
+          lowSpeedAccumRef.current = 0
           isPausedRef.current = false
 
           if (lastPosRef.current) {
@@ -80,12 +84,17 @@ export function useGpsTracking() {
           }
           const lowSpeedDuration = now - lowSpeedSinceRef.current
           if (lowSpeedDuration >= LOW_SPEED_PAUSE_MS) {
-            // Sustained low speed: pause accumulation
-            isPausedRef.current = true
+            if (!isPausedRef.current) {
+              // Threshold just crossed: retroactively remove distance accumulated during low-speed window
+              distanceRef.current = Math.max(0, distanceRef.current - lowSpeedAccumRef.current)
+              lowSpeedAccumRef.current = 0
+              isPausedRef.current = true
+            }
           } else if (!isPausedRef.current && lastPosRef.current) {
-            // Low speed but under the 5-minute threshold: still accumulate
+            // Low speed but under the 5-minute threshold: accumulate tentatively
             const dist = haversineMeters(lastPosRef.current.lat, lastPosRef.current.lon, lat, lon)
             distanceRef.current += dist
+            lowSpeedAccumRef.current += dist
           }
         }
 
