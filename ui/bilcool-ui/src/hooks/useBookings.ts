@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { listBookings, upsertBooking, deleteBooking, endBooking, pauseBooking, resumeBooking } from '../api/bookings'
-import type { UpdateBookingRequest, EndBookingRequest, PauseBookingRequest, PauseBookingResponse } from '../types/api'
+import type { UpdateBookingRequest, EndBookingRequest, PauseBookingRequest } from '../types/api'
 
 export function useBookings() {
   return useQuery({
