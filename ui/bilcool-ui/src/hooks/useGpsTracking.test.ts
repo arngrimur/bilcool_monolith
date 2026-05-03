@@ -245,6 +245,128 @@ describe('useGpsTracking', () => {
     expect(result.current.distanceMeters).toBe(0)
   })
 
+  // Manual pause / resume
+
+  it('isPaused is false before any manual pause', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+    expect(result.current.isPaused).toBe(false)
+  })
+
+  it('isPaused becomes true after calling pauseTracking', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, 0))
+    act(() => { result.current.pauseTracking() })
+    expect(result.current.isPaused).toBe(true)
+  })
+
+  it('pauseTracking returns the last known GPS position', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+    sendPosition(makePosition(2, HIGH_SPEED_KMH, 0))
+
+    let savedPos: ReturnType<typeof result.current.pauseTracking> = null
+    act(() => { savedPos = result.current.pauseTracking() })
+
+    expect(savedPos).not.toBeNull()
+    expect(savedPos!.lat).toBeCloseTo(59.002, 5)
+    expect(savedPos!.lon).toBeCloseTo(18.0, 5)
+  })
+
+  it('distance does not change while manually paused', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, 0))
+    sendPosition(makePosition(1, HIGH_SPEED_KMH, 1_000))
+    const distBeforePause = result.current.distanceMeters
+
+    act(() => { result.current.pauseTracking() })
+
+    sendPosition(makePosition(2, HIGH_SPEED_KMH, 2_000))
+    sendPosition(makePosition(3, HIGH_SPEED_KMH, 3_000))
+
+    expect(result.current.distanceMeters).toBeCloseTo(distBeforePause, 2)
+  })
+
+  it('isPaused becomes false after resumeTracking', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, 0))
+    act(() => { result.current.pauseTracking() })
+    act(() => { result.current.resumeTracking({ lat: 59.0, lon: 18.0 }) })
+    expect(result.current.isPaused).toBe(false)
+  })
+
+  it('distance accumulates again after resumeTracking', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, 0))
+    sendPosition(makePosition(1, HIGH_SPEED_KMH, 1_000))
+    const distBeforePause = result.current.distanceMeters
+
+    act(() => { result.current.pauseTracking() })
+    act(() => { result.current.resumeTracking({ lat: 59.001, lon: 18.0 }) })
+
+    sendPosition(makePosition(2, HIGH_SPEED_KMH, 2_000))
+
+    expect(result.current.distanceMeters).toBeGreaterThan(distBeforePause)
+  })
+
+  it('resumeTracking uses the saved position as the reference, not the latest GPS position', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, 0))
+    sendPosition(makePosition(1, HIGH_SPEED_KMH, 1_000))
+    const distAfterDriving = result.current.distanceMeters
+
+    // Pause — savedPos is at step 1 (lat 59.001)
+    let savedPos: ReturnType<typeof result.current.pauseTracking> = null
+    act(() => { savedPos = result.current.pauseTracking() })
+
+    // GPS fires at step 2 while paused — must not accumulate distance
+    sendPosition(makePosition(2, HIGH_SPEED_KMH, 2_000))
+    expect(result.current.distanceMeters).toBeCloseTo(distAfterDriving, 2)
+
+    // Resume from the saved position (step 1, lat 59.001)
+    act(() => { result.current.resumeTracking(savedPos!) })
+
+    // Step 3 (lat 59.003): distance from saved pos (59.001→59.003) ≈ 222 m
+    // If lastPos was step 2 (59.002) instead, it would only be ≈ 111 m
+    sendPosition(makePosition(3, HIGH_SPEED_KMH, 3_000))
+    const addedAfterResume = result.current.distanceMeters - distAfterDriving
+    expect(addedAfterResume).toBeGreaterThan(150) // must be ~222 m, not ~111 m
+  })
+
+  it('stopTracking resets isPaused to false', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, 0))
+    act(() => { result.current.pauseTracking() })
+    act(() => { result.current.stopTracking() })
+    expect(result.current.isPaused).toBe(false)
+    expect(result.current.isTracking).toBe(false)
+  })
+
+  it('currentSpeedKmh is updated from GPS speed', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, 0))
+    expect(result.current.currentSpeedKmh).toBeCloseTo(HIGH_SPEED_KMH, 0)
+  })
+
+  it('currentSpeedKmh reflects low speed while paused', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+    sendPosition(makePosition(0, HIGH_SPEED_KMH, 0))
+    act(() => { result.current.pauseTracking() })
+    sendPosition(makePosition(1, LOW_SPEED_KMH, 1_000))
+    expect(result.current.currentSpeedKmh).toBeCloseTo(LOW_SPEED_KMH, 0)
+  })
+
   it('does not reset pause state for a short gap (< 6 min)', () => {
     const { result } = renderHook(() => useGpsTracking())
     act(() => result.current.startTracking())

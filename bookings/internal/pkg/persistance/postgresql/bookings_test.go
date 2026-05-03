@@ -367,6 +367,115 @@ func (suite *bookingsTestSuite) TestEndBookingWithoutPosition() {
 	suite.Require().Equal(0, count)
 }
 
+func (suite *bookingsTestSuite) TestPauseBooking() {
+	database := NewBookingsRepository(suite.Db)
+	pos := extdomain.Position{Lat: 59.334591, Lon: 18.063240}
+
+	err := database.PauseBooking(context.Background(), domain.PauseBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Position:       pos,
+	})
+	suite.Require().NoError(err)
+
+	var lat, lon float64
+	var resumedAt *time.Time
+	err = suite.Db.QueryRow(`
+		SELECT bp.lat, bp.lon, bp.resumed_at
+		FROM booking_pauses bp
+		JOIN bookings b ON bp.fk_booking_id = b.id
+		WHERE b.booking_reference = $1 AND bp.resumed_at IS NULL`, suite.bookingRef).Scan(&lat, &lon, &resumedAt)
+	suite.Require().NoError(err)
+	suite.Require().InDelta(pos.Lat, lat, 0.000001)
+	suite.Require().InDelta(pos.Lon, lon, 0.000001)
+	suite.Require().Nil(resumedAt)
+}
+
+func (suite *bookingsTestSuite) TestPauseBooking_AlreadyPaused() {
+	database := NewBookingsRepository(suite.Db)
+	pos := extdomain.Position{Lat: 59.334591, Lon: 18.063240}
+
+	err := database.PauseBooking(context.Background(), domain.PauseBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Position:       pos,
+	})
+	suite.Require().NoError(err)
+
+	err = database.PauseBooking(context.Background(), domain.PauseBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Position:       pos,
+	})
+	suite.Require().ErrorIs(err, domain.ErrBookingAlreadyPaused)
+}
+
+func (suite *bookingsTestSuite) TestResumeBooking() {
+	database := NewBookingsRepository(suite.Db)
+	pos := extdomain.Position{Lat: 59.334591, Lon: 18.063240}
+
+	err := database.PauseBooking(context.Background(), domain.PauseBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Position:       pos,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := database.ResumeBooking(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().NoError(err)
+	suite.Require().InDelta(pos.Lat, resp.Position.Lat, 0.000001)
+	suite.Require().InDelta(pos.Lon, resp.Position.Lon, 0.000001)
+
+	// resumed_at must now be set — no open pause remains
+	var count int
+	err = suite.Db.QueryRow(`
+		SELECT COUNT(*) FROM booking_pauses bp
+		JOIN bookings b ON bp.fk_booking_id = b.id
+		WHERE b.booking_reference = $1 AND bp.resumed_at IS NULL`, suite.bookingRef).Scan(&count)
+	suite.Require().NoError(err)
+	suite.Require().Equal(0, count)
+}
+
+func (suite *bookingsTestSuite) TestResumeBooking_NotPaused() {
+	database := NewBookingsRepository(suite.Db)
+
+	_, err := database.ResumeBooking(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().ErrorIs(err, domain.ErrBookingNotPaused)
+}
+
+func (suite *bookingsTestSuite) TestPauseAndResumeMultipleTimes() {
+	database := NewBookingsRepository(suite.Db)
+	ctx := context.Background()
+	pos1 := extdomain.Position{Lat: 59.334591, Lon: 18.063240}
+	pos2 := extdomain.Position{Lat: 59.335000, Lon: 18.064000}
+
+	err := database.PauseBooking(ctx, domain.PauseBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Position:       pos1,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := database.ResumeBooking(ctx, domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().NoError(err)
+	suite.Require().InDelta(pos1.Lat, resp.Position.Lat, 0.000001)
+
+	err = database.PauseBooking(ctx, domain.PauseBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Position:       pos2,
+	})
+	suite.Require().NoError(err)
+
+	resp, err = database.ResumeBooking(ctx, domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().NoError(err)
+	suite.Require().InDelta(pos2.Lat, resp.Position.Lat, 0.000001)
+	suite.Require().InDelta(pos2.Lon, resp.Position.Lon, 0.000001)
+
+	// All pauses must be closed
+	var count int
+	err = suite.Db.QueryRow(`
+		SELECT COUNT(*) FROM booking_pauses bp
+		JOIN bookings b ON bp.fk_booking_id = b.id
+		WHERE b.booking_reference = $1 AND bp.resumed_at IS NULL`, suite.bookingRef).Scan(&count)
+	suite.Require().NoError(err)
+	suite.Require().Equal(0, count)
+}
+
 func makeUserMessage(userRef uuid.UUID, messageID string) brokerpostgres.Message {
 	payload, _ := json.Marshal(authdomain.UserResponse{UserRef: userRef})
 	return brokerpostgres.Message{
