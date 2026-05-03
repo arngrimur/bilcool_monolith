@@ -83,6 +83,8 @@ func commandRoutes(h *HttpRouter) {
 	h.router.PUT("/api/v1/bookings", h.updateBooking)
 	h.router.DELETE("/api/v1/bookings/:id", h.deleteBooking)
 	h.router.POST("/api/v1/bookings/:id/end", h.endBooking)
+	h.router.POST("/api/v1/bookings/:id/pause", h.pauseBooking)
+	h.router.POST("/api/v1/bookings/:id/resume", h.resumeBooking)
 }
 
 func (h *HttpRouter) Engine() *gin.Engine { return h.router }
@@ -220,21 +222,87 @@ func (h *HttpRouter) deleteBooking(c *gin.Context) {
 	c.Status(http.StatusAccepted)
 }
 
+// pauseBooking godoc
+// @Summary Pause a booking
+// @Description Pause an active booking. Requires speed below 7 km/h. Saves the current GPS position.
+// @Tags bookings
+// @Accept JSON
+// @Produce JSON
+// @Param id path string true "Booking reference"
+// @Param body body extdomain.Position true "Current GPS position"
+// @Success 202
+// @Failure 400 {object} HTTPError
+// @Failure 404 {object} HTTPError
+// @Failure 422 {object} HTTPError
+// @Router /bookings/{id}/pause [post]
+func (h *HttpRouter) pauseBooking(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
+		return
+	}
+	var pos extdomain.Position
+	if err = c.ShouldBindBodyWithJSON(&pos); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+	err = h.commands.PauseBooking(c.Request.Context(), domain.PauseBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: id},
+		Position:       pos,
+	})
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, fmt.Errorf("failed to pause booking %s", e.Message))
+		return
+	}
+	c.Status(http.StatusAccepted)
+}
+
+// resumeBooking godoc
+// @Summary Resume a paused booking
+// @Description Resume a previously paused booking. Returns the saved pause position to resume GPS tracking from.
+// @Tags bookings
+// @Produce JSON
+// @Param id path string true "Booking reference"
+// @Success 200 {object} domain.PauseBookingResponse
+// @Failure 400 {object} HTTPError
+// @Failure 404 {object} HTTPError
+// @Failure 422 {object} HTTPError
+// @Router /bookings/{id}/resume [post]
+func (h *HttpRouter) resumeBooking(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
+		return
+	}
+	resp, err := h.commands.ResumeBooking(c.Request.Context(), domain.BookingRequest{BookingReference: id})
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, fmt.Errorf("failed to resume booking %s", e.Message))
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func (h *HttpRouter) endBooking(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
 		return
 	}
-	distance := extdomain.Distance{}
-	err = c.ShouldBindBodyWithJSON(&distance)
+	var body struct {
+		extdomain.Distance
+		Position *extdomain.Position `json:"position,omitempty"`
+	}
+	err = c.ShouldBindBodyWithJSON(&body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
 		return
 	}
 	err = h.commands.EndBooking(c.Request.Context(), domain.EndBookingRequest{
 		BookingRequest: domain.BookingRequest{BookingReference: id},
-		Distance:       distance,
+		Distance:       body.Distance,
+		Position:       body.Position,
 	})
 	if err != nil {
 		e := NewHttpError(err)

@@ -18,8 +18,9 @@ variable "journal_function_url_domain"        { type = string }
 # ── S3 bucket ─────────────────────────────────────────────────────────────────
 
 resource "aws_s3_bucket" "frontend" {
-  bucket = var.bucket_name
-  tags   = { Component = "frontend" }
+  bucket        = var.bucket_name
+  force_destroy = true
+  tags          = { Component = "frontend" }
 }
 
 resource "aws_s3_bucket_versioning" "frontend" {
@@ -81,6 +82,23 @@ resource "aws_acm_certificate_validation" "frontend" {
   validation_record_fqdns = [for r in aws_acm_certificate.frontend.domain_validation_options : r.resource_record_name]
 }
 
+# ── CloudFront Function: SPA path rewriting ───────────────────────────────────
+
+resource "aws_cloudfront_function" "spa_router" {
+  name    = "${var.prefix}-spa-router"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code    = <<-EOF
+    function handler(event) {
+      var uri = event.request.uri;
+      if (!/\.[^/]+$/.test(uri)) {
+        event.request.uri = '/index.html';
+      }
+      return event.request;
+    }
+  EOF
+}
+
 # ── CloudFront distribution ───────────────────────────────────────────────────
 
 locals {
@@ -97,7 +115,7 @@ locals {
     origin_ssl_protocols   = ["TLSv1.2"]
   }
 
-  api_forwarded_headers = ["Authorization", "Content-Type", "Accept", "Origin"]
+  api_forwarded_headers = ["Authorization", "Content-Type", "Accept", "Origin", "Correlation-Id", "Access-Control-Request-Headers", "Access-Control-Request-Method"]
 }
 
 resource "aws_cloudfront_distribution" "frontend" {
@@ -176,6 +194,11 @@ resource "aws_cloudfront_distribution" "frontend" {
     min_ttl     = 0
     default_ttl = 86400
     max_ttl     = 31536000
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.spa_router.arn
+    }
   }
 
   # ── /api/v1/bookings* → bookings Lambda ────────────────────────────────────
@@ -260,20 +283,6 @@ resource "aws_cloudfront_distribution" "frontend" {
     min_ttl     = 0
     default_ttl = 0
     max_ttl     = 0
-  }
-
-  custom_error_response {
-    error_code            = 403
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 10
-  }
-
-  custom_error_response {
-    error_code            = 404
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 10
   }
 
   viewer_certificate {

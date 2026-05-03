@@ -1,0 +1,15 @@
+{
+  "title": "Where is it?",
+  "last_seen": "Last recorded position: {{date}}",
+  "find_me": "My location",
+  "locating": "Locating…",
+  "navigate": "Navigate there",
+  "device_position": "Last known position",
+  "your_position": "Your position",
+  "distance_meters": "{{meters}} m away",
+  "distance_km": "{{km}} km away",
+  "loading": "Loading positions…",
+  "error": "Failed to load booking data",
+  "no_position": "No position recorded yet. End a booking with GPS tracking enabled to record a position.",
+  "geo_not_supported": "GPS is not supported on this device"
+}

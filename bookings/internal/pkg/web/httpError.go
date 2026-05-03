@@ -40,6 +40,16 @@ func NewHttpError(err error) HTTPError {
 			Message: "user not found",
 			Code:    http.StatusNotFound,
 		}
+	case domain.ErrBookingAlreadyPaused:
+		return HTTPError{
+			Message: "booking is already paused",
+			Code:    http.StatusUnprocessableEntity,
+		}
+	case domain.ErrBookingNotPaused:
+		return HTTPError{
+			Message: "booking is not paused",
+			Code:    http.StatusUnprocessableEntity,
+		}
 	default:
 		return HTTPError{
 			Message: err.Error(),

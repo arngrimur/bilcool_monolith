@@ -204,6 +204,9 @@ func (h LoginCompleteHandler) LoginComplete(ctx context.Context, req domain.Logi
 		if err != nil {
 			return domain.LoginCompleteResponse{}, err
 		}
+		if err = h.users.DeletePasskeys(ctx, user.UserRef); err != nil {
+			return domain.LoginCompleteResponse{}, err
+		}
 		if err = h.users.StorePasskey(ctx, user.UserRef, domain.Passkey{
 			CredentialID: credential.ID,
 			Data:         credData,
@@ -227,6 +230,30 @@ func (h LoginCompleteHandler) LoginComplete(ctx context.Context, req domain.Logi
 	}
 
 	return domain.LoginCompleteResponse{Token: token}, nil
+}
+
+type ResetLoginHandler struct {
+	users *domain.Users
+}
+
+func NewResetLoginHandler(users *domain.Users) ResetLoginHandler {
+	return ResetLoginHandler{users: users}
+}
+
+func (h ResetLoginHandler) ResetLogin(ctx context.Context, req domain.ResetLoginRequest) error {
+	user, err := h.users.FindByEmail(ctx, req.Email)
+	if err != nil {
+		return err
+	}
+	token, err := domain.GenerateSecurityToken()
+	if err != nil {
+		return err
+	}
+	expiresAt := time.Now().Add(10 * time.Minute)
+	if err = h.users.CreateSecurityToken(ctx, user.UserRef, token, expiresAt); err != nil {
+		return err
+	}
+	return h.users.SendToken(ctx, user.Email, token, req.Locale)
 }
 
 func (h LoginCompleteHandler) generateJWT(userRef uuid.UUID, role string) (string, error) {

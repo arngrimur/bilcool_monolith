@@ -32,20 +32,21 @@ func main() {
 	dynamoClient := dynstore.NewClientFromConfig(awsCfg)
 	store := dynstore.NewEventRepository(dynamoClient, config.DynamoTableName())
 
-	lambda.Start(func(ctx context.Context, event events.SQSEvent) (events.SQSEventResponse, error) {
+	lambda.Start(func(lambdaCtx context.Context, event events.SQSEvent) (events.SQSEventResponse, error) {
+		handlerCtx := log.Logger.WithContext(lambdaCtx)
 		response := events.SQSEventResponse{}
 		for _, record := range event.Records {
 			var body brokerpostgres.MessageBody
 			if err := json.Unmarshal([]byte(record.Body), &body); err != nil {
-				log.Ctx(ctx).Err(err).Str("message_id", record.MessageId).Msg("failed to parse message")
+				log.Ctx(handlerCtx).Err(err).Str("message_id", record.MessageId).Msg("failed to parse message")
 				response.BatchItemFailures = append(response.BatchItemFailures,
 					events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
 				continue
 			}
 			msg := brokerpostgres.Message{ReceiptHandle: record.ReceiptHandle, MessageBody: body}
 			item := inbox.MessageToEventItem(msg)
-			if err := store.SaveEvent(ctx, item); err != nil {
-				log.Ctx(ctx).Err(err).Str("event_id", item.EventId).Msg("failed to save event")
+			if err := store.SaveEvent(handlerCtx, item); err != nil {
+				log.Ctx(handlerCtx).Err(err).Str("event_id", item.EventId).Msg("failed to save event")
 				response.BatchItemFailures = append(response.BatchItemFailures,
 					events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
 			}

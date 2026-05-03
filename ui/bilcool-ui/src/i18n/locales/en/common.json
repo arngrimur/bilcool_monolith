@@ -5,6 +5,7 @@
     "bookings": "Bookings",
     "profile": "Profile",
     "admin_users": "Users",
+    "where_is": "Where is it?",
     "sign_out": "Sign out",
     "settings": "Settings"
   },
@@ -24,7 +25,9 @@
     "error_user_not_found": "No account found with that email address",
     "error_invalid_token": "The code is invalid or has expired",
     "error_passkey_failed": "Passkey authentication failed",
-    "error_generic": "Something went wrong. Please try again."
+    "error_generic": "Something went wrong. Please try again.",
+    "reset_passkey_link": "Lost your passkey?",
+    "reset_passkey_sent": "A reset code has been sent to your email"
   },
   "profile": {
     "title": "Profile",

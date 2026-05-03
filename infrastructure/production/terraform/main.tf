@@ -226,6 +226,65 @@ module "frontend" {
   journal_function_url_domain        = module.journal_http.function_url_domain
 }
 
+# ── Lambda: migrations ───────────────────────────────────────────────────────
+
+module "bookings_migrate" {
+  source        = "./modules/lambda"
+  function_name = "${local.prefix}-bookings-migrate"
+  s3_bucket     = var.lambda_artifacts_bucket
+  s3_key        = "bookings-migrate.zip"
+  role_arn      = module.iam.postgres_lambda_role_arn
+  timeout       = 60
+  tags          = { Service = "bookings", Component = "migrate" }
+  environment_variables = {
+    DATABASE_URL = module.neon.bookings_migrate_url
+  }
+}
+
+module "authentication_migrate" {
+  source        = "./modules/lambda"
+  function_name = "${local.prefix}-authentication-migrate"
+  s3_bucket     = var.lambda_artifacts_bucket
+  s3_key        = "authentication-migrate.zip"
+  role_arn      = module.iam.postgres_lambda_role_arn
+  timeout       = 60
+  tags          = { Service = "authentication", Component = "migrate" }
+  environment_variables = {
+    DATABASE_URL = module.neon.authentication_migrate_url
+  }
+}
+
+module "journal_migrate" {
+  source        = "./modules/lambda"
+  function_name = "${local.prefix}-journal-migrate"
+  s3_bucket     = var.lambda_artifacts_bucket
+  s3_key        = "journal-migrate.zip"
+  role_arn      = module.iam.postgres_lambda_role_arn
+  timeout       = 60
+  tags          = { Service = "journal", Component = "migrate" }
+  environment_variables = {
+    DATABASE_URL = module.neon.journal_migrate_url
+  }
+}
+
+resource "aws_lambda_invocation" "bookings_migrate" {
+  function_name = module.bookings_migrate.function_name
+  input         = "{}"
+  depends_on    = [module.bookings_migrate, module.neon]
+}
+
+resource "aws_lambda_invocation" "authentication_migrate" {
+  function_name = module.authentication_migrate.function_name
+  input         = "{}"
+  depends_on    = [module.authentication_migrate, module.neon]
+}
+
+resource "aws_lambda_invocation" "journal_migrate" {
+  function_name = module.journal_migrate.function_name
+  input         = "{}"
+  depends_on    = [module.journal_migrate, module.neon]
+}
+
 # ── EventBridge Scheduler: outbox dispatchers ─────────────────────────────────
 
 module "outbox_scheduler" {

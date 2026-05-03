@@ -25,6 +25,7 @@ type (
 		LoginBegin(ctx context.Context, req domain.LoginBeginRequest) (domain.LoginBeginResponse, error)
 		VerifyToken(ctx context.Context, req domain.VerifyTokenRequest) (domain.VerifyTokenResponse, error)
 		LoginComplete(ctx context.Context, req domain.LoginCompleteRequest) (domain.LoginCompleteResponse, error)
+		ResetLogin(ctx context.Context, req domain.ResetLoginRequest) error
 	}
 
 	Queries interface {
@@ -45,6 +46,7 @@ type (
 		commands.LoginBeginHandler
 		commands.VerifyTokenHandler
 		commands.LoginCompleteHandler
+		commands.ResetLoginHandler
 	}
 	appQueries struct {
 		queries.ListUsersHandler
@@ -63,12 +65,13 @@ func New(
 	users := domain.NewUsers(usersRepo, mailSender)
 	return &Application{
 		appCommands: appCommands{
-			CreateUserHandler:    commands.NewCreateUserHandler(users),
-			DeleteUserHandler:    commands.NewDeleteUserHandler(users),
+			CreateUserHandler:     commands.NewCreateUserHandler(users),
+			DeleteUserHandler:     commands.NewDeleteUserHandler(users),
 			ChangeUserRoleHandler: commands.NewChangeUserRoleHandler(users),
-			LoginBeginHandler:    commands.NewLoginBeginHandler(users, webAuthn),
-			VerifyTokenHandler:   commands.NewVerifyTokenHandler(users, webAuthn),
-			LoginCompleteHandler: commands.NewLoginCompleteHandler(users, webAuthn, jwtSecret),
+			LoginBeginHandler:     commands.NewLoginBeginHandler(users, webAuthn),
+			VerifyTokenHandler:    commands.NewVerifyTokenHandler(users, webAuthn),
+			LoginCompleteHandler:  commands.NewLoginCompleteHandler(users, webAuthn, jwtSecret),
+			ResetLoginHandler:     commands.NewResetLoginHandler(users),
 		},
 		appQueries: appQueries{
 			ListUsersHandler: queries.NewListUsersHandler(users),

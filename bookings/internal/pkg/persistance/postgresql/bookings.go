@@ -178,8 +178,17 @@ func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndB
 	if err != nil {
 		return err
 	}
+	if request.Position != nil {
+		_, err = local_bdb.ExecContext(ctx,
+			"INSERT INTO positions (fk_booking_id, lat, lon) VALUES ($1, $2, $3)",
+			booking.id, request.Position.Lat, request.Position.Lon)
+		if err != nil {
+			return err
+		}
+	}
 	// insert msg in outbox
 	booking.completed.Distance = request.Distance
+	booking.completed.Position = request.Position
 
 	bytes, err := json.Marshal(booking.completed)
 	if err != nil {
@@ -199,6 +208,68 @@ func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndB
 	}
 	// Commit
 	return tx.Commit()
+}
+
+func (bdb BookingRepository) PauseBooking(ctx context.Context, request domain.PauseBookingRequest) error {
+	var bookingID int
+	err := bdb.QueryRowContext(ctx,
+		`SELECT b.id FROM bookings b WHERE b.booking_reference = $1`,
+		request.BookingReference,
+	).Scan(&bookingID)
+	if err != nil {
+		return err
+	}
+
+	var alreadyPaused bool
+	err = bdb.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM booking_pauses WHERE fk_booking_id = $1 AND resumed_at IS NULL)`,
+		bookingID,
+	).Scan(&alreadyPaused)
+	if err != nil {
+		return err
+	}
+	if alreadyPaused {
+		return domain.ErrBookingAlreadyPaused
+	}
+
+	_, err = bdb.ExecContext(ctx,
+		`INSERT INTO booking_pauses (fk_booking_id, lat, lon) VALUES ($1, $2, $3)`,
+		bookingID, request.Position.Lat, request.Position.Lon,
+	)
+	return err
+}
+
+func (bdb BookingRepository) ResumeBooking(ctx context.Context, request domain.BookingRequest) (domain.PauseBookingResponse, error) {
+	var bookingID int
+	err := bdb.QueryRowContext(ctx,
+		`SELECT b.id FROM bookings b WHERE b.booking_reference = $1`,
+		request.BookingReference,
+	).Scan(&bookingID)
+	if err != nil {
+		return domain.PauseBookingResponse{}, err
+	}
+
+	var lat, lon float64
+	err = bdb.QueryRowContext(ctx,
+		`UPDATE booking_pauses SET resumed_at = NOW()
+		 WHERE id = (
+		   SELECT id FROM booking_pauses
+		   WHERE fk_booking_id = $1 AND resumed_at IS NULL
+		   ORDER BY paused_at DESC LIMIT 1
+		 )
+		 RETURNING lat, lon`,
+		bookingID,
+	).Scan(&lat, &lon)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.PauseBookingResponse{}, domain.ErrBookingNotPaused
+	}
+	if err != nil {
+		return domain.PauseBookingResponse{}, err
+	}
+
+	return domain.PauseBookingResponse{
+		Position: extdomain.Position{Lat: lat, Lon: lon},
+	}, nil
 }
 
 func (bdb BookingRepository) createTransaction(ctx context.Context) (BookingRepository, *sql.Tx, error) {

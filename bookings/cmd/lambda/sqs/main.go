@@ -27,12 +27,13 @@ func main() {
 	db := postgresql.SetupPostgresDatabase()
 	repo := postgresql.NewBookingsRepository(db)
 
-	lambda.Start(func(ctx context.Context, event events.SQSEvent) (events.SQSEventResponse, error) {
+	lambda.Start(func(lambdaCtx context.Context, event events.SQSEvent) (events.SQSEventResponse, error) {
+		handlerCtx := log.Logger.WithContext(lambdaCtx)
 		response := events.SQSEventResponse{}
 		for _, record := range event.Records {
 			var body brokerpostgres.MessageBody
 			if err := json.Unmarshal([]byte(record.Body), &body); err != nil {
-				log.Ctx(ctx).Err(err).Str("message_id", record.MessageId).Msg("failed to parse message")
+				log.Ctx(handlerCtx).Err(err).Str("message_id", record.MessageId).Msg("failed to parse message")
 				response.BatchItemFailures = append(response.BatchItemFailures,
 					events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
 				continue
@@ -41,14 +42,14 @@ func main() {
 			var err error
 			switch body.Message.Type {
 			case authdomain.EventUserCreated:
-				err = repo.AddUser(ctx, msg)
+				err = repo.AddUser(handlerCtx, msg)
 			case authdomain.EventUserDeleted:
-				err = repo.DeleteUser(ctx, msg)
+				err = repo.DeleteUser(handlerCtx, msg)
 			default:
 				continue
 			}
 			if err != nil {
-				log.Ctx(ctx).Err(err).Str("type", body.Message.Type).Msg("failed to process message")
+				log.Ctx(handlerCtx).Err(err).Str("type", body.Message.Type).Msg("failed to process message")
 				response.BatchItemFailures = append(response.BatchItemFailures,
 					events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
 			}

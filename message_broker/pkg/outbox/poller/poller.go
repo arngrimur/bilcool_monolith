@@ -60,6 +60,11 @@ func (p *Poller) Poll(ctx context.Context) error {
 		return nil
 	}
 
+	now := time.Now().UTC()
+	for i := range events {
+		events[i].EmittedAt = &now
+	}
+
 	results, err := p.publisher.SendBatchMessages(ctx, events, p.topic)
 	if err != nil {
 		return err
@@ -72,7 +77,7 @@ func (p *Poller) Poll(ctx context.Context) error {
 			log.Ctx(ctx).Warn().Str("id", *m.Id).Msg("failed to parse successful message id")
 			continue
 		}
-		successful = append(successful, postgres.Event{EventId: uid})
+		successful = append(successful, postgres.Event{EventId: uid, EmittedAt: &now})
 	}
 
 	if len(successful) == 0 {

@@ -7,6 +7,7 @@ import CalendarPage from './pages/CalendarPage'
 import BookingsPage from './pages/BookingsPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminUsersPage from './pages/AdminUsersPage'
+import WhereIsPage from './pages/WhereIsPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function RequireAuth() {
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
           { path: '/', element: <CalendarPage /> },
           { path: '/bookings', element: <BookingsPage /> },
           { path: '/profile', element: <ProfilePage /> },
+          { path: '/where-is', element: <WhereIsPage /> },
           {
             element: <RequireAdmin />,
             children: [{ path: '/admin/users', element: <AdminUsersPage /> }],

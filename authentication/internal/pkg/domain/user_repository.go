@@ -23,5 +23,6 @@ type UsersRepository interface {
 	DeleteWebAuthnSession(ctx context.Context, sessionID uuid.UUID) error
 	GetPasskeys(ctx context.Context, userRef uuid.UUID) ([]Passkey, error)
 	StorePasskey(ctx context.Context, userRef uuid.UUID, passkey Passkey) error
+	DeletePasskeys(ctx context.Context, userRef uuid.UUID) error
 	ChangeUserRole(ctx context.Context, targetRef uuid.UUID, newRole string) error
 }

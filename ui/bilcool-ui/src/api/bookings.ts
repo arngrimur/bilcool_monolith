@@ -3,6 +3,8 @@ import type {
   BookingResponse,
   UpdateBookingRequest,
   EndBookingRequest,
+  PauseBookingRequest,
+  PauseBookingResponse,
 } from '../types/api';
 
 const BASE = '/api/v1';
@@ -21,3 +23,9 @@ export const deleteBooking = (id: string) =>
 
 export const endBooking = (id: string, body: EndBookingRequest) =>
   apiFetch<void>(`${BASE}/bookings/${id}/end`, { method: 'POST', body: JSON.stringify(body) });
+
+export const pauseBooking = (id: string, body: PauseBookingRequest) =>
+  apiFetch<void>(`${BASE}/bookings/${id}/pause`, { method: 'POST', body: JSON.stringify(body) });
+
+export const resumeBooking = (id: string) =>
+  apiFetch<PauseBookingResponse>(`${BASE}/bookings/${id}/resume`, { method: 'POST' });
