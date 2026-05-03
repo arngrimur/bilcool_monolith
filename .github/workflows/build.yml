@@ -258,15 +258,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v5
-      - name: Install dbmate
-        run: |
-          curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64
-          chmod +x /usr/local/bin/dbmate
-      - name: Run migrations
-        run: |
-          dbmate --url "${{ secrets.BOOKINGS_MIGRATE_URL }}" --migrations-dir bookings/internal/migrations up
-          dbmate --url "${{ secrets.AUTHENTICATION_MIGRATE_URL }}" --migrations-dir authentication/internal/migrations up
-          dbmate --url "${{ secrets.JOURNAL_MIGRATE_URL }}" --migrations-dir journal/internal/migrations up
       - name: Download Lambda artifacts
         uses: actions/download-artifact@v4
         with:
@@ -288,18 +279,33 @@ jobs:
             bookings-http \
             bookings-sqs \
             bookings-outbox \
+            bookings-migrate \
             authentication-http \
             authentication-outbox \
+            authentication-migrate \
             event-ledger-http \
             event-ledger-sqs \
             journal-http \
-            journal-sqs; do
+            journal-sqs \
+            journal-migrate; do
             aws lambda update-function-code \
               --function-name "${PREFIX}-${fn}" \
               --s3-bucket "${BUCKET}" \
               --s3-key "${fn}.zip" \
               --region "${REGION}" \
               --no-cli-pager
+          done
+      - name: Invoke migration Lambdas
+        run: |
+          PREFIX=bilcool-production
+          REGION=eu-north-1
+          for svc in bookings authentication journal; do
+            aws lambda invoke \
+              --function-name "${PREFIX}-${svc}-migrate" \
+              --region "${REGION}" \
+              --no-cli-pager \
+              /tmp/${svc}-migrate-result.json
+            cat /tmp/${svc}-migrate-result.json
           done
 
   terraform-plan:

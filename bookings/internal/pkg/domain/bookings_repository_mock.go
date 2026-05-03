@@ -141,3 +141,32 @@ func (mr *MockBookingsRepositoryMockRecorder) UpdateBooking(ctx, request any) *g
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBooking", reflect.TypeOf((*MockBookingsRepository)(nil).UpdateBooking), ctx, request)
 }
+
+// PauseBooking mocks base method.
+func (m *MockBookingsRepository) PauseBooking(ctx context.Context, request PauseBookingRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PauseBooking", ctx, request)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PauseBooking indicates an expected call of PauseBooking.
+func (mr *MockBookingsRepositoryMockRecorder) PauseBooking(ctx, request any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PauseBooking", reflect.TypeOf((*MockBookingsRepository)(nil).PauseBooking), ctx, request)
+}
+
+// ResumeBooking mocks base method.
+func (m *MockBookingsRepository) ResumeBooking(ctx context.Context, request BookingRequest) (PauseBookingResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResumeBooking", ctx, request)
+	ret0, _ := ret[0].(PauseBookingResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResumeBooking indicates an expected call of ResumeBooking.
+func (mr *MockBookingsRepositoryMockRecorder) ResumeBooking(ctx, request any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResumeBooking", reflect.TypeOf((*MockBookingsRepository)(nil).ResumeBooking), ctx, request)
+}

@@ -60,6 +60,23 @@ resource "aws_lambda_function_url" "fn" {
   }
 }
 
+resource "aws_lambda_permission" "function_url_public" {
+  count                  = var.create_function_url ? 1 : 0
+  statement_id           = "FunctionURLAllowPublicAccess"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.fn.function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}
+
+resource "aws_lambda_permission" "invoke_public" {
+  count         = var.create_function_url ? 1 : 0
+  statement_id  = "InvokePublicAccess"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.fn.function_name
+  principal     = "*"
+}
+
 output "function_arn"        { value = aws_lambda_function.fn.arn }
 output "function_name"       { value = aws_lambda_function.fn.function_name }
 output "invoke_arn"          { value = aws_lambda_function.fn.invoke_arn }

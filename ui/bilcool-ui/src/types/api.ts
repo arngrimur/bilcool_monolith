@@ -18,6 +18,10 @@ export interface LoginBeginRequest {
   email: string;
 }
 
+export interface ResetLoginRequest {
+  email: string;
+}
+
 export type LoginNextStep = 'verify_token' | 'passkey_assertion';
 
 export interface LoginBeginResponse {
@@ -63,6 +67,16 @@ export interface UpdateBookingRequest {
 export interface EndBookingRequest {
   start_distance: number;
   end_distance: number;
+  position?: { lat: number; lon: number };
+}
+
+export interface PauseBookingRequest {
+  lat: number;
+  lon: number;
+}
+
+export interface PauseBookingResponse {
+  position: { lat: number; lon: number };
 }
 
 export interface EventResponse {
@@ -94,6 +108,7 @@ export interface FinishedBooking {
   start_date: string
   end_date: string
   distance_meters: number
+  position?: { lat: number; lon: number }
 }
 
 export interface FinishedBookingParams {

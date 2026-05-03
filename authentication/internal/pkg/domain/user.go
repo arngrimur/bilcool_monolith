@@ -30,6 +30,11 @@ type LoginBeginRequest struct {
 	Locale string `json:"locale" example:"sv"`
 }
 
+type ResetLoginRequest struct {
+	Email  string `json:"email"  validate:"required,email" binding:"required" example:"john@example.com"`
+	Locale string `json:"locale" example:"sv"`
+}
+
 type LoginBeginResponse struct {
 	NextStep  string          `json:"next_step"`
 	SessionID *uuid.UUID      `json:"session_id,omitempty"`
@@ -156,6 +161,10 @@ func (u *Users) DeleteWebAuthnSession(ctx context.Context, sessionID uuid.UUID) 
 
 func (u *Users) StorePasskey(ctx context.Context, userRef uuid.UUID, passkey Passkey) error {
 	return u.r.StorePasskey(ctx, userRef, passkey)
+}
+
+func (u *Users) DeletePasskeys(ctx context.Context, userRef uuid.UUID) error {
+	return u.r.DeletePasskeys(ctx, userRef)
 }
 
 func (u *Users) ChangeUserRole(ctx context.Context, callerRef, targetRef uuid.UUID, newRole string) error {

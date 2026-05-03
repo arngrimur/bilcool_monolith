@@ -14,6 +14,8 @@ type BookingsRepository interface {
 	UpdateBooking(ctx context.Context, request UpdateBookingRequest) error
 	DeleteBooking(ctx context.Context, request BookingRequest) error
 	EndBooking(ctx context.Context, request EndBookingRequest) error
+	PauseBooking(ctx context.Context, request PauseBookingRequest) error
+	ResumeBooking(ctx context.Context, request BookingRequest) (PauseBookingResponse, error)
 	AddUser(ctx context.Context, message brokerpostgres.Message) error
 	DeleteUser(ctx context.Context, message brokerpostgres.Message) error
 }

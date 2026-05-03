@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { CalendarDays, ClipboardList, User, Users, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, ClipboardList, User, Users, MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
 import { cn } from '../../lib/utils'
@@ -53,6 +53,10 @@ export default function Sidebar({ onNavigate, collapsed = false, onToggleCollaps
         <NavLink to="/profile" className={navLinkClass} onClick={onNavigate} title={collapsed ? t('nav.profile') : undefined}>
           <User className="h-4 w-4 shrink-0" aria-hidden="true" />
           {!collapsed && t('nav.profile')}
+        </NavLink>
+        <NavLink to="/where-is" className={navLinkClass} onClick={onNavigate} title={collapsed ? t('nav.where_is') : undefined}>
+          <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {!collapsed && t('nav.where_is')}
         </NavLink>
         {role === 'admin' && (
           <NavLink to="/admin/users" className={navLinkClass} onClick={onNavigate} title={collapsed ? t('nav.admin_users') : undefined}>

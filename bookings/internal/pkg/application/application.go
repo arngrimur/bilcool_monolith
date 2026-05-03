@@ -20,6 +20,8 @@ type (
 		UpdateBooking(ctx context.Context, request domain.UpdateBookingRequest) error
 		DeleteBooking(ctx context.Context, request domain.BookingRequest) error
 		EndBooking(ctx context.Context, request domain.EndBookingRequest) error
+		PauseBooking(ctx context.Context, request domain.PauseBookingRequest) error
+		ResumeBooking(ctx context.Context, request domain.BookingRequest) (domain.PauseBookingResponse, error)
 	}
 
 	Queries interface {

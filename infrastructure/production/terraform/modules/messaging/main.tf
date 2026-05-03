@@ -4,12 +4,12 @@ variable "aws_region" { type = string }
 # ── SNS topics ────────────────────────────────────────────────────────────────
 
 resource "aws_sns_topic" "bookings" {
-  name = "${var.prefix}-bookings"
+  name = "bilcool_bookings"
   tags = { Service = "bookings", Component = "messaging" }
 }
 
 resource "aws_sns_topic" "users" {
-  name = "${var.prefix}-users"
+  name = "bilcool_users"
   tags = { Service = "authentication", Component = "messaging" }
 }
 

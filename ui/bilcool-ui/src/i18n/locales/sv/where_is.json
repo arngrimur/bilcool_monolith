@@ -1,0 +1,15 @@
+{
+  "title": "Var är den?",
+  "last_seen": "Senast registrerad position: {{date}}",
+  "find_me": "Min plats",
+  "locating": "Hämtar position…",
+  "navigate": "Navigera dit",
+  "device_position": "Senast kända position",
+  "your_position": "Din position",
+  "distance_meters": "{{meters}} m bort",
+  "distance_km": "{{km}} km bort",
+  "loading": "Laddar positioner…",
+  "error": "Misslyckades att hämta bokningsdata",
+  "no_position": "Ingen position har registrerats ännu. Avsluta en bokning med GPS-spårning aktiverat för att registrera en position.",
+  "geo_not_supported": "GPS stöds inte på den här enheten"
+}

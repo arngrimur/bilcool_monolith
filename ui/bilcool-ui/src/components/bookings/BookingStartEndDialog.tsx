@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { useDeleteBooking, useEndBooking } from '../../hooks/useBookings'
+import { useDeleteBooking, useEndBooking, usePauseBooking, useResumeBooking } from '../../hooks/useBookings'
+import { useGpsTracking } from '../../hooks/useGpsTracking'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
@@ -51,6 +52,23 @@ export default function BookingStartEndDialog({
   const language = useSettingsStore((s) => s.language)
   const deleteBooking = useDeleteBooking()
   const endBooking = useEndBooking()
+  const pauseBooking = usePauseBooking()
+  const resumeBooking = useResumeBooking()
+  const {
+    isTracking,
+    isPaused,
+    distanceMeters,
+    currentPosition,
+    currentSpeedKmh,
+    error: gpsError,
+    startTracking,
+    stopTracking,
+    pauseTracking,
+    resumeTracking,
+  } = useGpsTracking()
+
+  const LOW_SPEED_THRESHOLD_KMH = 7
+  const canPause = currentSpeedKmh < LOW_SPEED_THRESHOLD_KMH
   const [confirmCancel, setConfirmCancel] = useState(false)
 
   useEffect(() => {
@@ -60,7 +78,8 @@ export default function BookingStartEndDialog({
   const now = new Date()
   const startDate = new Date(booking.start_date)
   const isFuture = startDate > now
-  const isActive = startDate <= now && !hasDistance
+  const isStarted = startDate <= now && !hasDistance
+  const canTrack = !hasDistance
 
   const {
     register,
@@ -73,6 +92,34 @@ export default function BookingStartEndDialog({
   async function handleDelete() {
     await deleteBooking.mutateAsync(booking.booking_reference)
     onOpenChange(false)
+  }
+
+  async function handleStopGps() {
+    stopTracking()
+    await endBooking.mutateAsync({
+      id: booking.booking_reference,
+      body: {
+        start_distance: 0,
+        end_distance: Math.round(distanceMeters),
+        position: currentPosition ?? undefined,
+      },
+    })
+    onOpenChange(false)
+  }
+
+  async function handlePauseGps() {
+    const pos = pauseTracking()
+    if (pos) {
+      await pauseBooking.mutateAsync({
+        id: booking.booking_reference,
+        body: { lat: pos.lat, lon: pos.lon },
+      })
+    }
+  }
+
+  async function handleResumeGps() {
+    const response = await resumeBooking.mutateAsync(booking.booking_reference)
+    resumeTracking(response.position)
   }
 
   async function handleEnd(data: EndFormValues) {
@@ -112,89 +159,158 @@ export default function BookingStartEndDialog({
           )}
         </div>
 
-        {isFuture && !confirmCancel && (
-          <DialogFooter className="flex gap-2">
-            {onEdit && (
-              <Button
-                variant="outline"
-                onClick={() => { onEdit(); onOpenChange(false) }}
-                className="min-h-[44px]"
-              >
-                {t('edit_booking')}
-              </Button>
+        {canTrack && (
+          <div className="space-y-4">
+            {gpsError && (
+              <p className="text-sm text-destructive">{gpsError}</p>
             )}
-            <Button
-              variant="destructive"
-              onClick={() => setConfirmCancel(true)}
-              className="min-h-[44px]"
-            >
-              {t('cancel_booking')}
-            </Button>
-          </DialogFooter>
+
+            {isTracking ? (
+              <div className="space-y-3">
+                <div className="text-center py-2">
+                  <p className="text-3xl font-bold tabular-nums">
+                    {(distanceMeters / 1000).toFixed(2)} km
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('tracking_distance_label')}</p>
+                </div>
+                {isPaused ? (
+                  <Button
+                    className="w-full min-h-[52px] text-base"
+                    onClick={handleResumeGps}
+                    disabled={resumeBooking.isPending}
+                  >
+                    {resumeBooking.isPending ? '...' : t('resume_tracking')}
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1 min-h-[52px] text-base"
+                      variant="outline"
+                      onClick={handlePauseGps}
+                      disabled={!canPause || pauseBooking.isPending}
+                      title={!canPause ? t('pause_speed_hint') : undefined}
+                    >
+                      {pauseBooking.isPending ? '...' : t('pause_tracking')}
+                    </Button>
+                    <Button
+                      className="flex-1 min-h-[52px] text-base"
+                      variant="destructive"
+                      onClick={handleStopGps}
+                      disabled={endBooking.isPending}
+                    >
+                      {endBooking.isPending ? '...' : t('stop_tracking')}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <Button
+                  className="w-full min-h-[52px] text-base"
+                  onClick={startTracking}
+                >
+                  {t('start_tracking')}
+                </Button>
+
+                {isFuture && !confirmCancel && (
+                  <DialogFooter className="flex gap-2">
+                    {onEdit && (
+                      <Button
+                        variant="outline"
+                        onClick={() => { onEdit(); onOpenChange(false) }}
+                        className="min-h-[44px]"
+                      >
+                        {t('edit_booking')}
+                      </Button>
+                    )}
+                    <Button
+                      variant="destructive"
+                      onClick={() => setConfirmCancel(true)}
+                      className="min-h-[44px]"
+                    >
+                      {t('cancel_booking')}
+                    </Button>
+                  </DialogFooter>
+                )}
+
+                {isFuture && confirmCancel && (
+                  <DialogFooter className="flex-col gap-2">
+                    <p className="text-sm text-muted-foreground">{t('cancel_booking_confirm')}</p>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setConfirmCancel(false)} className="min-h-[44px]">
+                        {t('form_cancel')}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDelete}
+                        disabled={deleteBooking.isPending}
+                        className="min-h-[44px]"
+                      >
+                        {deleteBooking.isPending ? '...' : t('cancel_booking')}
+                      </Button>
+                    </div>
+                  </DialogFooter>
+                )}
+
+                {isStarted && (
+                  <>
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">or</span>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleSubmit(handleEnd)} className="space-y-4" id="end-booking-form">
+                      <div className="space-y-2">
+                        <Label htmlFor="start-odo">{t('end_booking_start_odo')}</Label>
+                        <Input
+                          id="start-odo"
+                          type="number"
+                          min={0}
+                          step={1}
+                          {...register('startOdo', { valueAsNumber: true })}
+                          aria-describedby={errors.startOdo ? 'start-odo-error' : undefined}
+                        />
+                        {errors.startOdo && (
+                          <p id="start-odo-error" className="text-sm text-destructive" role="alert">
+                            {errors.startOdo.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="end-odo">{t('end_booking_end_odo')}</Label>
+                        <Input
+                          id="end-odo"
+                          type="number"
+                          min={0}
+                          step={1}
+                          {...register('endOdo', { valueAsNumber: true })}
+                          aria-describedby={errors.endOdo ? 'end-odo-error' : undefined}
+                        />
+                        {errors.endOdo && (
+                          <p id="end-odo-error" className="text-sm text-destructive" role="alert">
+                            {t('end_booking_error_odo')}
+                          </p>
+                        )}
+                      </div>
+
+                      <DialogFooter>
+                        <Button type="submit" form="end-booking-form" disabled={isSubmitting} className="min-h-[44px]">
+                          {isSubmitting ? '...' : t('end_booking_submit')}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </>
+                )}
+              </>
+            )}
+          </div>
         )}
 
-        {isFuture && confirmCancel && (
-          <DialogFooter className="flex-col gap-2">
-            <p className="text-sm text-muted-foreground">{t('cancel_booking_confirm')}</p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setConfirmCancel(false)} className="min-h-[44px]">
-                {t('form_cancel')}
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleteBooking.isPending}
-                className="min-h-[44px]"
-              >
-                {deleteBooking.isPending ? '...' : t('cancel_booking')}
-              </Button>
-            </div>
-          </DialogFooter>
-        )}
-
-        {isActive && (
-          <form onSubmit={handleSubmit(handleEnd)} className="space-y-4" id="end-booking-form">
-            <div className="space-y-2">
-              <Label htmlFor="start-odo">{t('end_booking_start_odo')}</Label>
-              <Input
-                id="start-odo"
-                type="number"
-                min={0}
-                step={1}
-                {...register('startOdo', { valueAsNumber: true })}
-                aria-describedby={errors.startOdo ? 'start-odo-error' : undefined}
-              />
-              {errors.startOdo && (
-                <p id="start-odo-error" className="text-sm text-destructive" role="alert">
-                  {errors.startOdo.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="end-odo">{t('end_booking_end_odo')}</Label>
-              <Input
-                id="end-odo"
-                type="number"
-                min={0}
-                step={1}
-                {...register('endOdo', { valueAsNumber: true })}
-                aria-describedby={errors.endOdo ? 'end-odo-error' : undefined}
-              />
-              {errors.endOdo && (
-                <p id="end-odo-error" className="text-sm text-destructive" role="alert">
-                  {t('end_booking_error_odo')}
-                </p>
-              )}
-            </div>
-
-            <DialogFooter>
-              <Button type="submit" form="end-booking-form" disabled={isSubmitting} className="min-h-[44px]">
-                {isSubmitting ? '...' : t('end_booking_submit')}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
       </DialogContent>
     </Dialog>
   )
