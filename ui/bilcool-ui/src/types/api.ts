@@ -70,6 +70,15 @@ export interface EndBookingRequest {
   position?: { lat: number; lon: number };
 }
 
+export interface PauseBookingRequest {
+  lat: number;
+  lon: number;
+}
+
+export interface PauseBookingResponse {
+  position: { lat: number; lon: number };
+}
+
 export interface EventResponse {
   event_id: string;
   event_type: string;

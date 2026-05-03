@@ -40,6 +40,10 @@
   "active_booking_title": "Your Active Booking",
   "start_tracking": "Start",
   "stop_tracking": "Stop",
+  "pause_tracking": "Pause",
+  "resume_tracking": "Resume",
   "tracking_distance_label": "Distance tracked",
+  "status_paused": "Paused",
+  "pause_speed_hint": "Speed must be below 7 km/h to pause",
   "other_booking_active": "Another booking is currently active"
 }

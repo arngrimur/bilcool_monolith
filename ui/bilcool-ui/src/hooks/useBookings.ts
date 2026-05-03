@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { listBookings, upsertBooking, deleteBooking, endBooking } from '../api/bookings'
-import type { UpdateBookingRequest, EndBookingRequest } from '../types/api'
+import { listBookings, upsertBooking, deleteBooking, endBooking, pauseBooking, resumeBooking } from '../api/bookings'
+import type { UpdateBookingRequest, EndBookingRequest, PauseBookingRequest, PauseBookingResponse } from '../types/api'
 
 export function useBookings() {
   return useQuery({
@@ -38,5 +38,18 @@ export function useEndBooking() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
     },
+  })
+}
+
+export function usePauseBooking() {
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: PauseBookingRequest }) =>
+      pauseBooking(id, body),
+  })
+}
+
+export function useResumeBooking() {
+  return useMutation({
+    mutationFn: (id: string) => resumeBooking(id),
   })
 }

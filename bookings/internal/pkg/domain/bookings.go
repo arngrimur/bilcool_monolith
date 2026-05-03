@@ -12,6 +12,8 @@ import (
 
 var ErrBookingAlreadyStarted = errors.New("booking has already started")
 var ErrUserNotFound = errors.New("user not found")
+var ErrBookingAlreadyPaused = errors.New("booking is already paused")
+var ErrBookingNotPaused = errors.New("booking is not paused")
 
 type UpdateBookingRequest extdomain.BookingResponse
 
@@ -23,6 +25,15 @@ type EndBookingRequest struct {
 	BookingRequest
 	extdomain.Distance
 	Position *extdomain.Position
+}
+
+type PauseBookingRequest struct {
+	BookingRequest
+	Position extdomain.Position
+}
+
+type PauseBookingResponse struct {
+	Position extdomain.Position `json:"position"`
 }
 
 func NewBookingResponse(bookingRef uuid.UUID, startTime time.Time, endTime time.Time, userRef uuid.UUID, distance *extdomain.Distance) extdomain.BookingResponse {
@@ -61,4 +72,12 @@ func (b Bookings) Find(ctx context.Context, request BookingRequest) (extdomain.B
 
 func (b Bookings) EndBooking(ctx context.Context, request EndBookingRequest) error {
 	return b.r.EndBooking(ctx, request)
+}
+
+func (b Bookings) PauseBooking(ctx context.Context, request PauseBookingRequest) error {
+	return b.r.PauseBooking(ctx, request)
+}
+
+func (b Bookings) ResumeBooking(ctx context.Context, request BookingRequest) (PauseBookingResponse, error) {
+	return b.r.ResumeBooking(ctx, request)
 }

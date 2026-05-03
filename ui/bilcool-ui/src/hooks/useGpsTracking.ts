@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 
 interface TrackingState {
   isTracking: boolean
+  isPaused: boolean
   distanceMeters: number
   currentPosition: { lat: number; lon: number } | null
+  currentSpeedKmh: number
   error: string | null
 }
 
@@ -25,8 +27,10 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
 export function useGpsTracking() {
   const [state, setState] = useState<TrackingState>({
     isTracking: false,
+    isPaused: false,
     distanceMeters: 0,
     currentPosition: null,
+    currentSpeedKmh: 0,
     error: null,
   })
 
@@ -35,8 +39,10 @@ export function useGpsTracking() {
   const lastPosRef = useRef<{ lat: number; lon: number; ts: number } | null>(null)
   // when speed first dropped below threshold; null means speed is ok
   const lowSpeedSinceRef = useRef<number | null>(null)
-  // whether accumulation is paused due to sustained low speed
-  const isPausedRef = useRef(false)
+  // whether accumulation is auto-paused due to sustained low speed
+  const isAutoPausedRef = useRef(false)
+  // whether the user has manually paused tracking
+  const isManuallyPausedRef = useRef(false)
   const distanceRef = useRef(0)
   // distance accumulated since speed dropped below threshold (may be retroactively removed)
   const lowSpeedAccumRef = useRef(0)
@@ -49,7 +55,8 @@ export function useGpsTracking() {
     distanceRef.current = 0
     lastPosRef.current = null
     lowSpeedSinceRef.current = null
-    isPausedRef.current = false
+    isAutoPausedRef.current = false
+    isManuallyPausedRef.current = false
     lowSpeedAccumRef.current = 0
 
     const watchId = navigator.geolocation.watchPosition(
@@ -62,9 +69,11 @@ export function useGpsTracking() {
         // unconditionally (the user definitely moved) and reset pause state. Return early
         // so the normal speed logic does not double-count this segment or mark it tentative.
         if (lastPosRef.current && now - lastPosRef.current.ts > SCREEN_LOCK_GAP_MS) {
-          const gapDist = haversineMeters(lastPosRef.current.lat, lastPosRef.current.lon, lat, lon)
-          distanceRef.current += gapDist
-          isPausedRef.current = false
+          if (!isManuallyPausedRef.current) {
+            const gapDist = haversineMeters(lastPosRef.current.lat, lastPosRef.current.lon, lat, lon)
+            distanceRef.current += gapDist
+          }
+          isAutoPausedRef.current = false
           lowSpeedSinceRef.current = null
           lowSpeedAccumRef.current = 0
           lastPosRef.current = { lat, lon, ts: now }
@@ -89,11 +98,23 @@ export function useGpsTracking() {
           speedKmh = 0
         }
 
+        // Manual pause: only track position, never accumulate distance
+        if (isManuallyPausedRef.current) {
+          lastPosRef.current = { lat, lon, ts: now }
+          setState((s) => ({
+            ...s,
+            currentPosition: { lat, lon },
+            currentSpeedKmh: speedKmh,
+            error: null,
+          }))
+          return
+        }
+
         if (speedKmh >= LOW_SPEED_THRESHOLD_KMH) {
-          // Speed ok: reset low-speed timer and resume accumulation
+          // Speed ok: reset low-speed timer and resume auto-pause state
           lowSpeedSinceRef.current = null
           lowSpeedAccumRef.current = 0
-          isPausedRef.current = false
+          isAutoPausedRef.current = false
 
           if (lastPosRef.current) {
             const dist = haversineMeters(lastPosRef.current.lat, lastPosRef.current.lon, lat, lon)
@@ -106,13 +127,13 @@ export function useGpsTracking() {
           }
           const lowSpeedDuration = now - lowSpeedSinceRef.current
           if (lowSpeedDuration >= LOW_SPEED_PAUSE_MS) {
-            if (!isPausedRef.current) {
+            if (!isAutoPausedRef.current) {
               // Threshold just crossed: retroactively remove distance accumulated during low-speed window
               distanceRef.current = Math.max(0, distanceRef.current - lowSpeedAccumRef.current)
               lowSpeedAccumRef.current = 0
-              isPausedRef.current = true
+              isAutoPausedRef.current = true
             }
-          } else if (!isPausedRef.current && lastPosRef.current) {
+          } else if (!isAutoPausedRef.current && lastPosRef.current) {
             // Low speed but under the 5-minute threshold: accumulate tentatively
             const dist = haversineMeters(lastPosRef.current.lat, lastPosRef.current.lon, lat, lon)
             distanceRef.current += dist
@@ -126,6 +147,7 @@ export function useGpsTracking() {
           ...s,
           distanceMeters: distanceRef.current,
           currentPosition: { lat, lon },
+          currentSpeedKmh: speedKmh,
           error: null,
         }))
       },
@@ -134,7 +156,7 @@ export function useGpsTracking() {
     )
 
     watchIdRef.current = watchId
-    setState((s) => ({ ...s, isTracking: true, distanceMeters: 0, error: null }))
+    setState((s) => ({ ...s, isTracking: true, isPaused: false, distanceMeters: 0, currentSpeedKmh: 0, error: null }))
   }
 
   function stopTracking(): number {
@@ -147,8 +169,34 @@ export function useGpsTracking() {
     const finalDistance = Math.max(0, distanceRef.current - lowSpeedAccumRef.current)
     distanceRef.current = finalDistance
     lowSpeedAccumRef.current = 0
-    setState((s) => ({ ...s, isTracking: false, distanceMeters: finalDistance }))
+    isManuallyPausedRef.current = false
+    setState((s) => ({ ...s, isTracking: false, isPaused: false, distanceMeters: finalDistance }))
     return finalDistance
+  }
+
+  // Manually pause tracking. Returns the current GPS position (to be saved to backend).
+  function pauseTracking(): { lat: number; lon: number } | null {
+    isManuallyPausedRef.current = true
+    // Discard tentative low-speed distance
+    distanceRef.current = Math.max(0, distanceRef.current - lowSpeedAccumRef.current)
+    lowSpeedAccumRef.current = 0
+    isAutoPausedRef.current = false
+    lowSpeedSinceRef.current = null
+
+    const pos = lastPosRef.current ? { lat: lastPosRef.current.lat, lon: lastPosRef.current.lon } : null
+    setState((s) => ({ ...s, isPaused: true, distanceMeters: distanceRef.current }))
+    return pos
+  }
+
+  // Resume tracking from a saved position. The next GPS reading will measure distance from savedPosition.
+  function resumeTracking(savedPosition: { lat: number; lon: number }) {
+    isManuallyPausedRef.current = false
+    // Use the saved pause position as the reference point so distance is measured correctly
+    lastPosRef.current = { lat: savedPosition.lat, lon: savedPosition.lon, ts: Date.now() }
+    lowSpeedSinceRef.current = null
+    isAutoPausedRef.current = false
+    lowSpeedAccumRef.current = 0
+    setState((s) => ({ ...s, isPaused: false }))
   }
 
   useEffect(() => {
@@ -159,5 +207,5 @@ export function useGpsTracking() {
     }
   }, [])
 
-  return { ...state, startTracking, stopTracking }
+  return { ...state, startTracking, stopTracking, pauseTracking, resumeTracking }
 }
