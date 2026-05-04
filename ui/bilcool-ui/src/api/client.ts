@@ -10,7 +10,7 @@ export async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promi
   if (res.status === 401) {
     localStorage.removeItem('bilcool_token');
     window.dispatchEvent(new Event('auth:logout'));
-    throw new Error('Unauthorized');
+    throw Object.assign(new Error('Unauthorized'), { status: 401 });
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: 'Unknown error' }));

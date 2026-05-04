@@ -7,6 +7,11 @@ export interface ChangeUserRoleRequest {
   role: 'admin' | 'user';
 }
 
+export interface UpdateUserRequest {
+  username?: string;
+  email?: string;
+}
+
 export interface UserResponse {
   user_ref: string;
   username: string;
@@ -14,7 +19,19 @@ export interface UserResponse {
   role: 'admin' | 'user';
 }
 
+export interface DeletedUserResponse {
+  user_ref: string;
+  username: string;
+  email: string;
+  role: 'admin' | 'user';
+  deleted_at: string;
+}
+
 export interface LoginBeginRequest {
+  email: string;
+}
+
+export interface ResetLoginRequest {
   email: string;
 }
 
@@ -63,6 +80,16 @@ export interface UpdateBookingRequest {
 export interface EndBookingRequest {
   start_distance: number;
   end_distance: number;
+  position?: { lat: number; lon: number };
+}
+
+export interface PauseBookingRequest {
+  lat: number;
+  lon: number;
+}
+
+export interface PauseBookingResponse {
+  position: { lat: number; lon: number };
 }
 
 export interface EventResponse {
@@ -94,6 +121,7 @@ export interface FinishedBooking {
   start_date: string
   end_date: string
   distance_meters: number
+  position?: { lat: number; lon: number }
 }
 
 export interface FinishedBookingParams {

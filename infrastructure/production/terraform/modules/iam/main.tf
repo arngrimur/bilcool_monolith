@@ -43,8 +43,13 @@ resource "aws_iam_role_policy" "postgres_lambda_sns_sqs" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["sns:Publish", "sns:ListTopics"]
+        Action   = ["sns:Publish"]
         Resource = var.sns_topic_arns
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["sns:ListTopics"]
+        Resource = "*"
       },
       {
         Effect = "Allow"
@@ -209,6 +214,11 @@ resource "aws_iam_role_policy" "github_deploy" {
         Effect   = "Allow"
         Action   = ["cloudfront:CreateInvalidation"]
         Resource = "arn:aws:cloudfront::${var.aws_account}:distribution/${var.cloudfront_distribution_id}"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = "arn:aws:lambda:${var.aws_region}:${var.aws_account}:function:${var.prefix}-*-migrate"
       },
     ]
   })

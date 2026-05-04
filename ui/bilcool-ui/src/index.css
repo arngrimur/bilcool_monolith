@@ -130,3 +130,75 @@
     flex-direction: column;
   }
 }
+
+/* FullCalendar theme overrides — apply to both light and dark */
+.fc {
+  color: hsl(var(--foreground));
+}
+
+/* Column headers (day name + date number row) */
+.fc .fc-col-header-cell {
+  background-color: hsl(var(--card));
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number,
+.fc .fc-timegrid-slot-label-cushion,
+.fc .fc-list-day-cushion,
+.fc .fc-list-event-title a,
+.fc .fc-toolbar-title {
+  color: hsl(var(--foreground));
+}
+
+/* Grid cells */
+.fc .fc-daygrid-day,
+.fc .fc-timegrid-col,
+.fc .fc-timegrid-slot,
+.fc .fc-timegrid-axis {
+  background-color: transparent;
+}
+
+/* Grid borders */
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid td,
+.fc .fc-scrollgrid th {
+  border-color: hsl(var(--border));
+}
+
+/* Today column */
+.fc .fc-daygrid-day.fc-day-today,
+.fc .fc-timegrid-col.fc-day-today {
+  background-color: hsl(var(--accent) / 0.3);
+}
+
+/* Selection highlight */
+.fc .fc-highlight {
+  background-color: hsl(var(--primary) / 0.2);
+}
+
+.fc .fc-non-business {
+  background-color: hsl(var(--muted) / 0.2);
+}
+
+.fc .fc-timegrid-now-indicator-line {
+  border-color: hsl(var(--destructive));
+}
+
+/* Toolbar nav buttons */
+.fc .fc-button {
+  background-color: hsl(var(--secondary));
+  border-color: hsl(var(--border));
+  color: hsl(var(--secondary-foreground));
+}
+
+.fc .fc-button:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}

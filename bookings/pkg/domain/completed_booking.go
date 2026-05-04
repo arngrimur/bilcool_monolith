@@ -8,9 +8,15 @@ import (
 
 const EventBookingEnded string = "booking.ended"
 
+type Position struct {
+	Lat float64 `json:"lat"`
+	Lon float64 `json:"lon"`
+}
+
 type CompletedBooking struct {
 	Booking  BookingResponse `json:"booking"`
 	Distance Distance        `json:"distance"`
+	Position *Position       `json:"position,omitempty"`
 }
 
 type BookingResponse struct {

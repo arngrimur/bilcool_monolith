@@ -5,6 +5,7 @@
     "bookings": "Bokningar",
     "profile": "Profil",
     "admin_users": "Användare",
+    "where_is": "Var är den?",
     "sign_out": "Logga ut",
     "settings": "Inställningar"
   },
@@ -24,7 +25,9 @@
     "error_user_not_found": "Inget konto hittades med den e-postadressen",
     "error_invalid_token": "Koden är ogiltig eller har gått ut",
     "error_passkey_failed": "Autentisering med nyckel misslyckades",
-    "error_generic": "Något gick fel. Försök igen."
+    "error_generic": "Något gick fel. Försök igen.",
+    "reset_passkey_link": "Saknar du din nyckel?",
+    "reset_passkey_sent": "En återställningskod har skickats till din e-post"
   },
   "profile": {
     "title": "Profil",
@@ -51,7 +54,16 @@
     "no_users": "Inga användare hittades",
     "promote_to_admin": "Gör till admin",
     "demote_to_user": "Gör till användare",
-    "role_changed": "Roll uppdaterad"
+    "role_changed": "Roll uppdaterad",
+    "deleted_users_title": "Raderade användare",
+    "no_deleted_users": "Inga raderade användare",
+    "col_deleted_at": "Raderad den",
+    "restore_user": "Återställ",
+    "user_restored": "Användare {{username}} återställd",
+    "edit_user": "Redigera",
+    "save_user": "Spara",
+    "cancel": "Avbryt",
+    "user_updated": "Användare {{username}} uppdaterad"
   },
   "errors": { "unexpected": "Ett oväntat fel uppstod" }
 }

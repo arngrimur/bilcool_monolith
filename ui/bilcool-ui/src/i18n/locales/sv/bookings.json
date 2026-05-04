@@ -36,5 +36,14 @@
   "filter_month": "Månad",
   "filter_user": "Användare",
   "filter_all_users": "Alla användare",
-  "no_bookings": "Inga bokningar hittades"
+  "no_bookings": "Inga bokningar hittades",
+  "active_booking_title": "Din aktiva bokning",
+  "start_tracking": "Starta",
+  "stop_tracking": "Stoppa",
+  "pause_tracking": "Pausa",
+  "resume_tracking": "Återuppta",
+  "tracking_distance_label": "Körd sträcka",
+  "status_paused": "Pausad",
+  "pause_speed_hint": "Farten måste vara under 7 km/h för att pausa",
+  "other_booking_active": "En annan bokning är just nu aktiv"
 }

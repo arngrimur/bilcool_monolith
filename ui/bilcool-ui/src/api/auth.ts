@@ -2,19 +2,25 @@ import { apiFetch } from './client';
 import type {
   LoginBeginRequest,
   LoginBeginResponse,
+  ResetLoginRequest,
   VerifyTokenRequest,
   VerifyTokenResponse,
   LoginCompleteRequest,
   LoginCompleteResponse,
   CreateUserRequest,
   UserResponse,
+  DeletedUserResponse,
   ChangeUserRoleRequest,
+  UpdateUserRequest,
 } from '../types/api';
 
 const BASE = '/api/v1';
 
 export const beginLogin = (body: LoginBeginRequest) =>
   apiFetch<LoginBeginResponse>(`${BASE}/users/login`, { method: 'POST', body: JSON.stringify(body) });
+
+export const requestLoginReset = (body: ResetLoginRequest) =>
+  apiFetch<void>(`${BASE}/users/login/reset`, { method: 'POST', body: JSON.stringify(body) });
 
 export const verifyToken = (body: VerifyTokenRequest) =>
   apiFetch<VerifyTokenResponse>(`${BASE}/users/login/token`, { method: 'POST', body: JSON.stringify(body) });
@@ -36,3 +42,12 @@ export const deleteUser = (id: string) =>
 
 export const changeUserRole = (id: string, body: ChangeUserRoleRequest) =>
   apiFetch<void>(`${BASE}/users/${id}/role`, { method: 'PATCH', body: JSON.stringify(body) });
+
+export const updateUser = (id: string, body: UpdateUserRequest) =>
+  apiFetch<UserResponse>(`${BASE}/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+
+export const listDeletedUsers = () =>
+  apiFetch<DeletedUserResponse[]>(`${BASE}/users/deleted`);
+
+export const restoreUser = (id: string) =>
+  apiFetch<UserResponse>(`${BASE}/users/${id}/restore`, { method: 'POST' });

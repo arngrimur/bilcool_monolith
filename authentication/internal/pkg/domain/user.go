@@ -25,7 +25,17 @@ type CreateUserRequest struct {
 	Email    string `json:"email" validate:"required,email" binding:"required" example:"john@example.com"`
 }
 
+type UpdateUserRequest struct {
+	Username *string `json:"username" example:"johndoe"`
+	Email    *string `json:"email" example:"john@example.com"`
+}
+
 type LoginBeginRequest struct {
+	Email  string `json:"email"  validate:"required,email" binding:"required" example:"john@example.com"`
+	Locale string `json:"locale" example:"sv"`
+}
+
+type ResetLoginRequest struct {
 	Email  string `json:"email"  validate:"required,email" binding:"required" example:"john@example.com"`
 	Locale string `json:"locale" example:"sv"`
 }
@@ -114,8 +124,16 @@ func (u *Users) DeleteUser(ctx context.Context, userRef uuid.UUID) error {
 	return u.r.DeleteUser(ctx, userRef)
 }
 
+func (u *Users) RestoreUser(ctx context.Context, userRef uuid.UUID) (extdomain.UserResponse, error) {
+	return u.r.RestoreUser(ctx, userRef)
+}
+
 func (u *Users) FindAll(ctx context.Context) ([]extdomain.UserResponse, error) {
 	return u.r.FindAll(ctx)
+}
+
+func (u *Users) FindAllDeleted(ctx context.Context) ([]extdomain.DeletedUserResponse, error) {
+	return u.r.FindAllDeleted(ctx)
 }
 
 func (u *Users) FindByEmail(ctx context.Context, email string) (extdomain.UserResponse, error) {
@@ -156,6 +174,14 @@ func (u *Users) DeleteWebAuthnSession(ctx context.Context, sessionID uuid.UUID) 
 
 func (u *Users) StorePasskey(ctx context.Context, userRef uuid.UUID, passkey Passkey) error {
 	return u.r.StorePasskey(ctx, userRef, passkey)
+}
+
+func (u *Users) DeletePasskeys(ctx context.Context, userRef uuid.UUID) error {
+	return u.r.DeletePasskeys(ctx, userRef)
+}
+
+func (u *Users) UpdateUser(ctx context.Context, userRef uuid.UUID, req UpdateUserRequest) (extdomain.UserResponse, error) {
+	return u.r.UpdateUser(ctx, userRef, req)
 }
 
 func (u *Users) ChangeUserRole(ctx context.Context, callerRef, targetRef uuid.UUID, newRole string) error {

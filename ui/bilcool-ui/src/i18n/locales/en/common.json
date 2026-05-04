@@ -5,6 +5,7 @@
     "bookings": "Bookings",
     "profile": "Profile",
     "admin_users": "Users",
+    "where_is": "Where is it?",
     "sign_out": "Sign out",
     "settings": "Settings"
   },
@@ -24,7 +25,9 @@
     "error_user_not_found": "No account found with that email address",
     "error_invalid_token": "The code is invalid or has expired",
     "error_passkey_failed": "Passkey authentication failed",
-    "error_generic": "Something went wrong. Please try again."
+    "error_generic": "Something went wrong. Please try again.",
+    "reset_passkey_link": "Lost your passkey?",
+    "reset_passkey_sent": "A reset code has been sent to your email"
   },
   "profile": {
     "title": "Profile",
@@ -51,7 +54,16 @@
     "no_users": "No users found",
     "promote_to_admin": "Make admin",
     "demote_to_user": "Make user",
-    "role_changed": "Role updated"
+    "role_changed": "Role updated",
+    "deleted_users_title": "Deleted Users",
+    "no_deleted_users": "No deleted users",
+    "col_deleted_at": "Deleted at",
+    "restore_user": "Restore",
+    "user_restored": "User {{username}} restored",
+    "edit_user": "Edit",
+    "save_user": "Save",
+    "cancel": "Cancel",
+    "user_updated": "User {{username}} updated"
   },
   "errors": { "unexpected": "An unexpected error occurred" }
 }

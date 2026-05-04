@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/domain"
 	extdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
@@ -122,6 +124,72 @@ func (r UsersRepository) DeleteUser(ctx context.Context, userRef uuid.UUID) erro
 	}
 
 	return tx.Commit()
+}
+
+func (r UsersRepository) RestoreUser(ctx context.Context, userRef uuid.UUID) (extdomain.UserResponse, error) {
+	local_r, tx, err := r.createTransaction(ctx)
+	if err != nil {
+		return extdomain.UserResponse{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var resp extdomain.UserResponse
+	err = local_r.QueryRowContext(ctx,
+		`UPDATE users SET deleted_at = NULL WHERE user_ref = $1 AND deleted_at IS NOT NULL
+		 RETURNING user_ref, username, email, (SELECT name FROM roles WHERE id = role_id)`,
+		userRef,
+	).Scan(&resp.UserRef, &resp.Username, &resp.Email, &resp.Role)
+	if err == sql.ErrNoRows {
+		return extdomain.UserResponse{}, domain.ErrUserNotFound
+	}
+	if err != nil {
+		return extdomain.UserResponse{}, err
+	}
+
+	payload, err := json.Marshal(resp)
+	if err != nil {
+		return extdomain.UserResponse{}, err
+	}
+	err = outbox.Insert(ctx, tx, outbox.Event{
+		EventId:       uuid.New(),
+		Type:          extdomain.EventUserRestored,
+		CorrelationId: uuid.New(),
+		Producer:      extdomain.EventProducer,
+		Payload:       payload,
+	})
+	if err != nil {
+		return extdomain.UserResponse{}, err
+	}
+
+	return resp, tx.Commit()
+}
+
+func (r UsersRepository) FindAllDeleted(ctx context.Context) ([]extdomain.DeletedUserResponse, error) {
+	rows, err := r.QueryContext(ctx,
+		`SELECT u.user_ref, u.username, u.email, r.name, u.deleted_at
+		 FROM users u JOIN roles r ON r.id = u.role_id
+		 WHERE u.deleted_at IS NOT NULL
+		 ORDER BY u.deleted_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	users := make([]extdomain.DeletedUserResponse, 0)
+	for rows.Next() {
+		var u extdomain.DeletedUserResponse
+		var deletedAt time.Time
+		if err := rows.Scan(&u.UserRef, &u.Username, &u.Email, &u.Role, &deletedAt); err != nil {
+			return nil, err
+		}
+		u.DeletedAt = deletedAt.UTC().Format(time.RFC3339)
+		users = append(users, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return users, nil
 }
 
 func (r UsersRepository) FindAll(ctx context.Context) ([]extdomain.UserResponse, error) {
@@ -296,10 +364,41 @@ func (r UsersRepository) ChangeUserRole(ctx context.Context, targetRef uuid.UUID
 	return tx.Commit()
 }
 
+func (r UsersRepository) UpdateUser(ctx context.Context, userRef uuid.UUID, req domain.UpdateUserRequest) (extdomain.UserResponse, error) {
+	var resp extdomain.UserResponse
+	err := r.QueryRowContext(ctx,
+		`UPDATE users SET
+			username = COALESCE($2, username),
+			email    = COALESCE($3, email)
+		 WHERE user_ref = $1 AND deleted_at IS NULL
+		 RETURNING user_ref, username, email, (SELECT name FROM roles WHERE id = role_id)`,
+		userRef, req.Username, req.Email,
+	).Scan(&resp.UserRef, &resp.Username, &resp.Email, &resp.Role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return extdomain.UserResponse{}, domain.ErrUserNotFound
+	}
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+		return extdomain.UserResponse{}, domain.ErrUserAlreadyExists
+	}
+	if err != nil {
+		return extdomain.UserResponse{}, err
+	}
+	return resp, nil
+}
+
 func (r UsersRepository) StorePasskey(ctx context.Context, userRef uuid.UUID, passkey domain.Passkey) error {
 	_, err := r.ExecContext(ctx,
 		`INSERT INTO passkeys (user_ref, credential_id, credential) VALUES ($1, $2, $3)`,
 		userRef, passkey.CredentialID, passkey.Data,
+	)
+	return err
+}
+
+func (r UsersRepository) DeletePasskeys(ctx context.Context, userRef uuid.UUID) error {
+	_, err := r.ExecContext(ctx,
+		`DELETE FROM passkeys WHERE user_ref = $1`,
+		userRef,
 	)
 	return err
 }

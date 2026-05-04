@@ -8,6 +8,7 @@ import { useSettingsStore } from '../stores/settingsStore'
 import type { BookingResponse } from '../types/api'
 import { formatDate, formatTime, formatMonthYear, formatMonthKey } from '../utils/dateUtils'
 import { listFinishedBookings } from '../api/events'
+import ActiveBookingTracker from '../components/bookings/ActiveBookingTracker'
 
 type BookingStatus = 'upcoming' | 'active' | 'overdue'
 
@@ -36,6 +37,15 @@ export default function BookingsPage() {
 
   const { data: allBookings = [] } = useBookings()
   const nonCompleted = allBookings.filter((b) => !b.distance)
+
+  const now = new Date()
+  const myBookings = nonCompleted.filter((b) => b.user_ref === userRef)
+  const myActiveBooking =
+    myBookings.find((b) => new Date(b.start_date) <= now && new Date(b.end_date) > now) ||
+    myBookings
+      .filter((b) => new Date(b.start_date) > now)
+      .sort((a, b) => +new Date(a.start_date) - +new Date(b.start_date))[0] ||
+    myBookings.find((b) => new Date(b.start_date) <= now)
 
   const summaryParams = { year: selectedYear, user_ref: userFilter }
   const { data: finishedBookingsAll = [] } = useQuery({
@@ -109,6 +119,10 @@ export default function BookingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t('title')}</h1>
+
+      {myActiveBooking && (
+        <ActiveBookingTracker booking={myActiveBooking} allBookings={allBookings} />
+      )}
 
       <section aria-labelledby="summary-heading">
         <h2 id="summary-heading" className="text-lg font-semibold mb-3">{t('summary_title')}</h2>

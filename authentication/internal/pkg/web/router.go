@@ -43,11 +43,15 @@ func NewRouter(commands application.Commands, queries application.Queries, jwtSe
 	h.router.POST("/api/v1/users/login", h.loginBegin)
 	h.router.POST("/api/v1/users/login/token", h.verifyToken)
 	h.router.POST("/api/v1/users/login/complete", h.loginComplete)
+	h.router.POST("/api/v1/users/login/reset", h.resetLogin)
 
 	admin := h.router.Group("/api/v1", h.jwtMiddleware(), h.requireAdmin())
 	admin.POST("/users", h.createUser)
 	admin.GET("/users", h.listUsers)
+	admin.GET("/users/deleted", h.listDeletedUsers)
 	admin.DELETE("/users/:id", h.deleteUser)
+	admin.POST("/users/:id/restore", h.restoreUser)
+	admin.PATCH("/users/:id", h.updateUser)
 	admin.PATCH("/users/:id/role", h.changeUserRole)
 
 	return h
@@ -160,6 +164,31 @@ func (h *HttpRouter) listUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+func (h *HttpRouter) listDeletedUsers(c *gin.Context) {
+	resp, err := h.queries.ListDeletedUsers(c.Request.Context())
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, e.Message)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *HttpRouter) restoreUser(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		NewError(c, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	resp, err := h.commands.RestoreUser(c.Request.Context(), id)
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, e.Message)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func (h *HttpRouter) getUser(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -167,6 +196,30 @@ func (h *HttpRouter) getUser(c *gin.Context) {
 		return
 	}
 	resp, err := h.queries.GetUserByRef(c.Request.Context(), id)
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, e.Message)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *HttpRouter) updateUser(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		NewError(c, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	var req domain.UpdateUserRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		NewError(c, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Username == nil && req.Email == nil {
+		NewError(c, http.StatusBadRequest, "at least one of username or email must be provided")
+		return
+	}
+	resp, err := h.commands.UpdateUser(c.Request.Context(), id, req)
 	if err != nil {
 		e := NewHttpError(err)
 		NewError(c, e.Code, e.Message)
@@ -238,6 +291,23 @@ func (h *HttpRouter) verifyToken(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+func (h *HttpRouter) resetLogin(c *gin.Context) {
+	var req domain.ResetLoginRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		NewError(c, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Locale == "" {
+		req.Locale = c.GetHeader("Accept-Language")
+	}
+	if err := h.commands.ResetLogin(c.Request.Context(), req); err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, e.Message)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (h *HttpRouter) loginComplete(c *gin.Context) {
