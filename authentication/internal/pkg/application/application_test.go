@@ -143,6 +143,80 @@ func TestDeleteUser(t *testing.T) {
 	}
 }
 
+func TestUpdateUser(t *testing.T) {
+	strPtr := func(s string) *string { return &s }
+	cases := []struct {
+		name    string
+		req     domain.UpdateUserRequest
+		setup   func(*domain.MockUsersRepository)
+		wantErr bool
+	}{
+		{
+			name: "update username only",
+			req:  domain.UpdateUserRequest{Username: strPtr("newname")},
+			setup: func(repo *domain.MockUsersRepository) {
+				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), domain.UpdateUserRequest{Username: strPtr("newname")}).
+					Return(extdomain.UserResponse{Username: "newname", Email: "alice@example.com"}, nil).Times(1)
+			},
+		},
+		{
+			name: "update email only",
+			req:  domain.UpdateUserRequest{Email: strPtr("new@example.com")},
+			setup: func(repo *domain.MockUsersRepository) {
+				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), domain.UpdateUserRequest{Email: strPtr("new@example.com")}).
+					Return(extdomain.UserResponse{Username: "alice", Email: "new@example.com"}, nil).Times(1)
+			},
+		},
+		{
+			name: "update both",
+			req:  domain.UpdateUserRequest{Username: strPtr("newname"), Email: strPtr("new@example.com")},
+			setup: func(repo *domain.MockUsersRepository) {
+				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(extdomain.UserResponse{Username: "newname", Email: "new@example.com"}, nil).Times(1)
+			},
+		},
+		{
+			name: "user not found",
+			req:  domain.UpdateUserRequest{Username: strPtr("newname")},
+			setup: func(repo *domain.MockUsersRepository) {
+				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(extdomain.UserResponse{}, domain.ErrUserNotFound).Times(1)
+			},
+			wantErr: true,
+		},
+		{
+			name: "email conflict",
+			req:  domain.UpdateUserRequest{Email: strPtr("taken@example.com")},
+			setup: func(repo *domain.MockUsersRepository) {
+				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(extdomain.UserResponse{}, domain.ErrUserAlreadyExists).Times(1)
+			},
+			wantErr: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			repo := domain.NewMockUsersRepository(ctrl)
+			m := mail.NewMockMailSender(ctrl)
+			tc.setup(repo)
+			app := New(repo, m, nil, "secret")
+			resp, err := app.UpdateUser(context.Background(), uuid.New(), tc.req)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tc.req.Username != nil {
+				require.Equal(t, *tc.req.Username, resp.Username)
+			}
+			if tc.req.Email != nil {
+				require.Equal(t, *tc.req.Email, resp.Email)
+			}
+		})
+	}
+}
+
 func TestGenerateSecurityToken(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		token, err := domain.GenerateSecurityToken()

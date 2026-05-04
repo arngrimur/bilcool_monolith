@@ -49,6 +49,7 @@ func NewRouter(commands application.Commands, queries application.Queries, jwtSe
 	admin.POST("/users", h.createUser)
 	admin.GET("/users", h.listUsers)
 	admin.DELETE("/users/:id", h.deleteUser)
+	admin.PATCH("/users/:id", h.updateUser)
 	admin.PATCH("/users/:id/role", h.changeUserRole)
 
 	return h
@@ -168,6 +169,30 @@ func (h *HttpRouter) getUser(c *gin.Context) {
 		return
 	}
 	resp, err := h.queries.GetUserByRef(c.Request.Context(), id)
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, e.Message)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *HttpRouter) updateUser(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		NewError(c, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	var req domain.UpdateUserRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		NewError(c, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Username == nil && req.Email == nil {
+		NewError(c, http.StatusBadRequest, "at least one of username or email must be provided")
+		return
+	}
+	resp, err := h.commands.UpdateUser(c.Request.Context(), id, req)
 	if err != nil {
 		e := NewHttpError(err)
 		NewError(c, e.Code, e.Message)

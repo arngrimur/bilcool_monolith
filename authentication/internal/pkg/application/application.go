@@ -21,6 +21,7 @@ type (
 	Commands interface {
 		CreateUser(ctx context.Context, req domain.CreateUserRequest) (extdomain.UserResponse, error)
 		DeleteUser(ctx context.Context, userRef uuid.UUID) error
+		UpdateUser(ctx context.Context, userRef uuid.UUID, req domain.UpdateUserRequest) (extdomain.UserResponse, error)
 		ChangeUserRole(ctx context.Context, callerRef, targetRef uuid.UUID, newRole string) error
 		LoginBegin(ctx context.Context, req domain.LoginBeginRequest) (domain.LoginBeginResponse, error)
 		VerifyToken(ctx context.Context, req domain.VerifyTokenRequest) (domain.VerifyTokenResponse, error)
@@ -42,6 +43,7 @@ type (
 	appCommands struct {
 		commands.CreateUserHandler
 		commands.DeleteUserHandler
+		commands.UpdateUserHandler
 		commands.ChangeUserRoleHandler
 		commands.LoginBeginHandler
 		commands.VerifyTokenHandler
@@ -67,6 +69,7 @@ func New(
 		appCommands: appCommands{
 			CreateUserHandler:     commands.NewCreateUserHandler(users),
 			DeleteUserHandler:     commands.NewDeleteUserHandler(users),
+			UpdateUserHandler:     commands.NewUpdateUserHandler(users),
 			ChangeUserRoleHandler: commands.NewChangeUserRoleHandler(users),
 			LoginBeginHandler:     commands.NewLoginBeginHandler(users, webAuthn),
 			VerifyTokenHandler:    commands.NewVerifyTokenHandler(users, webAuthn),

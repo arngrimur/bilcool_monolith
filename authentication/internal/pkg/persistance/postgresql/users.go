@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/domain"
 	extdomain "github.com/arngrimur/bilcool_monolith/authentication/pkg/domain"
@@ -294,6 +296,29 @@ func (r UsersRepository) ChangeUserRole(ctx context.Context, targetRef uuid.UUID
 	}
 
 	return tx.Commit()
+}
+
+func (r UsersRepository) UpdateUser(ctx context.Context, userRef uuid.UUID, req domain.UpdateUserRequest) (extdomain.UserResponse, error) {
+	var resp extdomain.UserResponse
+	err := r.QueryRowContext(ctx,
+		`UPDATE users SET
+			username = COALESCE($2, username),
+			email    = COALESCE($3, email)
+		 WHERE user_ref = $1 AND deleted_at IS NULL
+		 RETURNING user_ref, username, email, (SELECT name FROM roles WHERE id = role_id)`,
+		userRef, req.Username, req.Email,
+	).Scan(&resp.UserRef, &resp.Username, &resp.Email, &resp.Role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return extdomain.UserResponse{}, domain.ErrUserNotFound
+	}
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+		return extdomain.UserResponse{}, domain.ErrUserAlreadyExists
+	}
+	if err != nil {
+		return extdomain.UserResponse{}, err
+	}
+	return resp, nil
 }
 
 func (r UsersRepository) StorePasskey(ctx context.Context, userRef uuid.UUID, passkey domain.Passkey) error {
