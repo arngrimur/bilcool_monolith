@@ -290,6 +290,8 @@ All Go jobs use [Task](https://taskfile.dev) for orchestration and share the ven
 
 ## Key conventions for AI assistants
 
+- **Go version**: This project uses **Go 1.26**.
+- **Pointer to primitive**: Never write helper functions (`strPtr`, `intPtr`, `boolPtr`, etc.) to create pointers to primitive values. Declare a named variable and take its address: `s := "value"; req.Field = &s`.
 - **Service isolation**: Never import a service's `internal/` packages from another service. Only types under `<service>/pkg/` are public.
 - **Persistence interface**: Repository implementations accept `DbActions`, not `*sql.DB`. When adding new repository methods keep this pattern.
 - **CQRS split**: New use cases go into `commands/` (writes) or `queries/` (reads) sub-packages, not directly in `application.go`.

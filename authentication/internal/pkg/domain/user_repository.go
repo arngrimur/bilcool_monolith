@@ -25,4 +25,5 @@ type UsersRepository interface {
 	StorePasskey(ctx context.Context, userRef uuid.UUID, passkey Passkey) error
 	DeletePasskeys(ctx context.Context, userRef uuid.UUID) error
 	ChangeUserRole(ctx context.Context, targetRef uuid.UUID, newRole string) error
+	UpdateUser(ctx context.Context, userRef uuid.UUID, req UpdateUserRequest) (extdomain.UserResponse, error)
 }

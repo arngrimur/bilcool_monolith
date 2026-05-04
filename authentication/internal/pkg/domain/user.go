@@ -25,6 +25,11 @@ type CreateUserRequest struct {
 	Email    string `json:"email" validate:"required,email" binding:"required" example:"john@example.com"`
 }
 
+type UpdateUserRequest struct {
+	Username *string `json:"username" example:"johndoe"`
+	Email    *string `json:"email" example:"john@example.com"`
+}
+
 type LoginBeginRequest struct {
 	Email  string `json:"email"  validate:"required,email" binding:"required" example:"john@example.com"`
 	Locale string `json:"locale" example:"sv"`
@@ -165,6 +170,10 @@ func (u *Users) StorePasskey(ctx context.Context, userRef uuid.UUID, passkey Pas
 
 func (u *Users) DeletePasskeys(ctx context.Context, userRef uuid.UUID) error {
 	return u.r.DeletePasskeys(ctx, userRef)
+}
+
+func (u *Users) UpdateUser(ctx context.Context, userRef uuid.UUID, req UpdateUserRequest) (extdomain.UserResponse, error) {
+	return u.r.UpdateUser(ctx, userRef, req)
 }
 
 func (u *Users) ChangeUserRole(ctx context.Context, callerRef, targetRef uuid.UUID, newRole string) error {
