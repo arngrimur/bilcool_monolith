@@ -144,7 +144,9 @@ func TestDeleteUser(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
-	strPtr := func(s string) *string { return &s }
+	newname := "newname"
+	newEmail := "new@example.com"
+	takenEmail := "taken@example.com"
 	cases := []struct {
 		name    string
 		req     domain.UpdateUserRequest
@@ -153,31 +155,31 @@ func TestUpdateUser(t *testing.T) {
 	}{
 		{
 			name: "update username only",
-			req:  domain.UpdateUserRequest{Username: strPtr("newname")},
+			req:  domain.UpdateUserRequest{Username: &newname},
 			setup: func(repo *domain.MockUsersRepository) {
-				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), domain.UpdateUserRequest{Username: strPtr("newname")}).
-					Return(extdomain.UserResponse{Username: "newname", Email: "alice@example.com"}, nil).Times(1)
+				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), domain.UpdateUserRequest{Username: &newname}).
+					Return(extdomain.UserResponse{Username: newname, Email: "alice@example.com"}, nil).Times(1)
 			},
 		},
 		{
 			name: "update email only",
-			req:  domain.UpdateUserRequest{Email: strPtr("new@example.com")},
+			req:  domain.UpdateUserRequest{Email: &newEmail},
 			setup: func(repo *domain.MockUsersRepository) {
-				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), domain.UpdateUserRequest{Email: strPtr("new@example.com")}).
-					Return(extdomain.UserResponse{Username: "alice", Email: "new@example.com"}, nil).Times(1)
+				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), domain.UpdateUserRequest{Email: &newEmail}).
+					Return(extdomain.UserResponse{Username: "alice", Email: newEmail}, nil).Times(1)
 			},
 		},
 		{
 			name: "update both",
-			req:  domain.UpdateUserRequest{Username: strPtr("newname"), Email: strPtr("new@example.com")},
+			req:  domain.UpdateUserRequest{Username: &newname, Email: &newEmail},
 			setup: func(repo *domain.MockUsersRepository) {
 				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(extdomain.UserResponse{Username: "newname", Email: "new@example.com"}, nil).Times(1)
+					Return(extdomain.UserResponse{Username: newname, Email: newEmail}, nil).Times(1)
 			},
 		},
 		{
 			name: "user not found",
-			req:  domain.UpdateUserRequest{Username: strPtr("newname")},
+			req:  domain.UpdateUserRequest{Username: &newname},
 			setup: func(repo *domain.MockUsersRepository) {
 				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(extdomain.UserResponse{}, domain.ErrUserNotFound).Times(1)
@@ -186,7 +188,7 @@ func TestUpdateUser(t *testing.T) {
 		},
 		{
 			name: "email conflict",
-			req:  domain.UpdateUserRequest{Email: strPtr("taken@example.com")},
+			req:  domain.UpdateUserRequest{Email: &takenEmail},
 			setup: func(repo *domain.MockUsersRepository) {
 				repo.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(extdomain.UserResponse{}, domain.ErrUserAlreadyExists).Times(1)
