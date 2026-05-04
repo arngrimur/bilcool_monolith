@@ -21,6 +21,7 @@ type (
 	Commands interface {
 		CreateUser(ctx context.Context, req domain.CreateUserRequest) (extdomain.UserResponse, error)
 		DeleteUser(ctx context.Context, userRef uuid.UUID) error
+		RestoreUser(ctx context.Context, userRef uuid.UUID) (extdomain.UserResponse, error)
 		UpdateUser(ctx context.Context, userRef uuid.UUID, req domain.UpdateUserRequest) (extdomain.UserResponse, error)
 		ChangeUserRole(ctx context.Context, callerRef, targetRef uuid.UUID, newRole string) error
 		LoginBegin(ctx context.Context, req domain.LoginBeginRequest) (domain.LoginBeginResponse, error)
@@ -31,6 +32,7 @@ type (
 
 	Queries interface {
 		ListUsers(ctx context.Context) ([]extdomain.UserResponse, error)
+		ListDeletedUsers(ctx context.Context) ([]extdomain.DeletedUserResponse, error)
 		GetUserByRef(ctx context.Context, userRef uuid.UUID) (extdomain.UserResponse, error)
 	}
 )
@@ -43,6 +45,7 @@ type (
 	appCommands struct {
 		commands.CreateUserHandler
 		commands.DeleteUserHandler
+		commands.RestoreUserHandler
 		commands.UpdateUserHandler
 		commands.ChangeUserRoleHandler
 		commands.LoginBeginHandler
@@ -52,6 +55,7 @@ type (
 	}
 	appQueries struct {
 		queries.ListUsersHandler
+		queries.ListDeletedUsersHandler
 		queries.GetUserHandler
 	}
 )
@@ -69,6 +73,7 @@ func New(
 		appCommands: appCommands{
 			CreateUserHandler:     commands.NewCreateUserHandler(users),
 			DeleteUserHandler:     commands.NewDeleteUserHandler(users),
+			RestoreUserHandler:    commands.NewRestoreUserHandler(users),
 			UpdateUserHandler:     commands.NewUpdateUserHandler(users),
 			ChangeUserRoleHandler: commands.NewChangeUserRoleHandler(users),
 			LoginBeginHandler:     commands.NewLoginBeginHandler(users, webAuthn),
@@ -77,8 +82,9 @@ func New(
 			ResetLoginHandler:     commands.NewResetLoginHandler(users),
 		},
 		appQueries: appQueries{
-			ListUsersHandler: queries.NewListUsersHandler(users),
-			GetUserHandler:   queries.NewGetUserHandler(users),
+			ListUsersHandler:        queries.NewListUsersHandler(users),
+			ListDeletedUsersHandler: queries.NewListDeletedUsersHandler(users),
+			GetUserHandler:          queries.NewGetUserHandler(users),
 		},
 	}
 }

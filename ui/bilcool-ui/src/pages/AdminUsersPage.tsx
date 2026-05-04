@@ -2,7 +2,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { useAllUsers, useCreateUser, useDeleteUser, useChangeUserRole } from '../hooks/useUsers'
+import { useAllUsers, useDeletedUsers, useCreateUser, useDeleteUser, useChangeUserRole, useRestoreUser } from '../hooks/useUsers'
 import { useAuthStore } from '../stores/authStore'
 import { toast } from '../components/ui/use-toast'
 import { Button } from '../components/ui/button'
@@ -24,9 +24,11 @@ export default function AdminUsersPage() {
   const currentEmail = useAuthStore((s) => s.email)
 
   const { data: allUsers = [] } = useAllUsers()
+  const { data: deletedUsers = [] } = useDeletedUsers()
 
   const createUser = useCreateUser()
   const deleteUser = useDeleteUser()
+  const restoreUser = useRestoreUser()
   const changeUserRole = useChangeUserRole()
 
   const {
@@ -45,6 +47,11 @@ export default function AdminUsersPage() {
   async function handleDelete(id: string) {
     await deleteUser.mutateAsync(id)
     toast({ title: t('admin.user_deleted') })
+  }
+
+  async function handleRestore(id: string, username: string) {
+    await restoreUser.mutateAsync(id)
+    toast({ title: t('admin.user_restored', { username }) })
   }
 
   async function handleRoleChange(id: string, newRole: 'admin' | 'user') {
@@ -170,6 +177,49 @@ export default function AdminUsersPage() {
                         className="min-h-[44px]"
                       >
                         {t('admin.delete_user')}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="deleted-users-heading">
+        <h2 id="deleted-users-heading" className="text-lg font-semibold mb-4">{t('admin.deleted_users_title')}</h2>
+
+        {deletedUsers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('admin.no_deleted_users')}</p>
+        ) : (
+          <div className="rounded-lg border overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.col_username')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.col_email')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.col_role')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.col_deleted_at')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.col_actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deletedUsers.map((user) => (
+                  <tr key={user.user_ref} className="border-b last:border-0 text-muted-foreground">
+                    <td className="px-4 py-3">{user.username}</td>
+                    <td className="px-4 py-3">{user.email}</td>
+                    <td className="px-4 py-3">{user.role}</td>
+                    <td className="px-4 py-3">{new Date(user.deleted_at).toLocaleString()}</td>
+                    <td className="px-4 py-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRestore(user.user_ref, user.username)}
+                        disabled={restoreUser.isPending}
+                        className="min-h-[44px]"
+                      >
+                        {t('admin.restore_user')}
                       </Button>
                     </td>
                   </tr>
