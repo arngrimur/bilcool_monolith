@@ -11,6 +11,7 @@ import type {
   UserResponse,
   DeletedUserResponse,
   ChangeUserRoleRequest,
+  UpdateUserRequest,
 } from '../types/api';
 
 const BASE = '/api/v1';
@@ -41,6 +42,9 @@ export const deleteUser = (id: string) =>
 
 export const changeUserRole = (id: string, body: ChangeUserRoleRequest) =>
   apiFetch<void>(`${BASE}/users/${id}/role`, { method: 'PATCH', body: JSON.stringify(body) });
+
+export const updateUser = (id: string, body: UpdateUserRequest) =>
+  apiFetch<UserResponse>(`${BASE}/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
 
 export const listDeletedUsers = () =>
   apiFetch<DeletedUserResponse[]>(`${BASE}/users/deleted`);

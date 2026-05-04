@@ -7,6 +7,11 @@ export interface ChangeUserRoleRequest {
   role: 'admin' | 'user';
 }
 
+export interface UpdateUserRequest {
+  username?: string;
+  email?: string;
+}
+
 export interface UserResponse {
   user_ref: string;
   username: string;

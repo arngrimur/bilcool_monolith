@@ -59,7 +59,11 @@
     "no_deleted_users": "Inga raderade användare",
     "col_deleted_at": "Raderad den",
     "restore_user": "Återställ",
-    "user_restored": "Användare {{username}} återställd"
+    "user_restored": "Användare {{username}} återställd",
+    "edit_user": "Redigera",
+    "save_user": "Spara",
+    "cancel": "Avbryt",
+    "user_updated": "Användare {{username}} uppdaterad"
   },
   "errors": { "unexpected": "Ett oväntat fel uppstod" }
 }

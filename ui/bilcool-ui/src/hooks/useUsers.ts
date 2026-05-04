@@ -1,6 +1,6 @@
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUser, listUsers, listDeletedUsers, createUser, deleteUser, changeUserRole, restoreUser } from '../api/auth'
-import type { CreateUserRequest, ChangeUserRoleRequest } from '../types/api'
+import { getUser, listUsers, listDeletedUsers, createUser, deleteUser, changeUserRole, restoreUser, updateUser } from '../api/auth'
+import type { CreateUserRequest, ChangeUserRoleRequest, UpdateUserRequest } from '../types/api'
 
 export function useAllUsers() {
   return useQuery({
@@ -54,6 +54,17 @@ export function useRestoreUser() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => restoreUser(id),
+    onSuccess: (user) => {
+      queryClient.setQueryData(['user', user.user_ref], user)
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string } & UpdateUserRequest) => updateUser(id, body),
     onSuccess: (user) => {
       queryClient.setQueryData(['user', user.user_ref], user)
       queryClient.invalidateQueries({ queryKey: ['users'] })

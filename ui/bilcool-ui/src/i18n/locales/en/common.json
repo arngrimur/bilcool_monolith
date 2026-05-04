@@ -59,7 +59,11 @@
     "no_deleted_users": "No deleted users",
     "col_deleted_at": "Deleted at",
     "restore_user": "Restore",
-    "user_restored": "User {{username}} restored"
+    "user_restored": "User {{username}} restored",
+    "edit_user": "Edit",
+    "save_user": "Save",
+    "cancel": "Cancel",
+    "user_updated": "User {{username}} updated"
   },
   "errors": { "unexpected": "An unexpected error occurred" }
 }
