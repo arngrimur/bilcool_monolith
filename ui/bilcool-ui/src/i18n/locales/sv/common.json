@@ -54,7 +54,12 @@
     "no_users": "Inga användare hittades",
     "promote_to_admin": "Gör till admin",
     "demote_to_user": "Gör till användare",
-    "role_changed": "Roll uppdaterad"
+    "role_changed": "Roll uppdaterad",
+    "deleted_users_title": "Raderade användare",
+    "no_deleted_users": "Inga raderade användare",
+    "col_deleted_at": "Raderad den",
+    "restore_user": "Återställ",
+    "user_restored": "Användare {{username}} återställd"
   },
   "errors": { "unexpected": "Ett oväntat fel uppstod" }
 }

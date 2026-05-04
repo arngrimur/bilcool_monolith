@@ -48,7 +48,9 @@ func NewRouter(commands application.Commands, queries application.Queries, jwtSe
 	admin := h.router.Group("/api/v1", h.jwtMiddleware(), h.requireAdmin())
 	admin.POST("/users", h.createUser)
 	admin.GET("/users", h.listUsers)
+	admin.GET("/users/deleted", h.listDeletedUsers)
 	admin.DELETE("/users/:id", h.deleteUser)
+	admin.POST("/users/:id/restore", h.restoreUser)
 	admin.PATCH("/users/:id", h.updateUser)
 	admin.PATCH("/users/:id/role", h.changeUserRole)
 
@@ -154,6 +156,31 @@ func (h *HttpRouter) deleteUser(c *gin.Context) {
 
 func (h *HttpRouter) listUsers(c *gin.Context) {
 	resp, err := h.queries.ListUsers(c.Request.Context())
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, e.Message)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *HttpRouter) listDeletedUsers(c *gin.Context) {
+	resp, err := h.queries.ListDeletedUsers(c.Request.Context())
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, e.Message)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *HttpRouter) restoreUser(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		NewError(c, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	resp, err := h.commands.RestoreUser(c.Request.Context(), id)
 	if err != nil {
 		e := NewHttpError(err)
 		NewError(c, e.Code, e.Message)

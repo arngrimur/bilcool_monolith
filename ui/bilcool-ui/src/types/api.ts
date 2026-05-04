@@ -14,6 +14,14 @@ export interface UserResponse {
   role: 'admin' | 'user';
 }
 
+export interface DeletedUserResponse {
+  user_ref: string;
+  username: string;
+  email: string;
+  role: 'admin' | 'user';
+  deleted_at: string;
+}
+
 export interface LoginBeginRequest {
   email: string;
 }

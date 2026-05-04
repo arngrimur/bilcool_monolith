@@ -124,8 +124,16 @@ func (u *Users) DeleteUser(ctx context.Context, userRef uuid.UUID) error {
 	return u.r.DeleteUser(ctx, userRef)
 }
 
+func (u *Users) RestoreUser(ctx context.Context, userRef uuid.UUID) (extdomain.UserResponse, error) {
+	return u.r.RestoreUser(ctx, userRef)
+}
+
 func (u *Users) FindAll(ctx context.Context) ([]extdomain.UserResponse, error) {
 	return u.r.FindAll(ctx)
+}
+
+func (u *Users) FindAllDeleted(ctx context.Context) ([]extdomain.DeletedUserResponse, error) {
+	return u.r.FindAllDeleted(ctx)
 }
 
 func (u *Users) FindByEmail(ctx context.Context, email string) (extdomain.UserResponse, error) {
