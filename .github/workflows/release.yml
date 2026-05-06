@@ -21,6 +21,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Generate go.work and go.work.sum
+        run: go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal ./bilcool-lib && go work sync
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
