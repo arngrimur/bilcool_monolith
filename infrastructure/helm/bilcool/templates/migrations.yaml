@@ -1,198 +1,3 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: migrations-bookings
-  annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "-5"
-    helm.sh/hook-delete-policy: before-hook-creation
-data:
-  20260224130000_setup.sql: |
-    -- migrate:up
-    CREATE TABLE users (
-        id SERIAL PRIMARY KEY,
-        userref uuid NOT NULL unique,
-        received_at timestamptz NOT NULL default NOW(),
-        deleted boolean NOT NULL DEFAULT false,
-        deleted_at timestamptz
-    );
-    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-    CREATE TABLE bookings (
-        id                SERIAL PRIMARY KEY,
-        booking_reference uuid        NOT NULL UNIQUE,
-        start_date        timestamptz NOT NULL,
-        end_date          timestamptz,
-        user_ref          int NOT NULL REFERENCES users (id)
-    );
-    CREATE INDEX ON bookings (user_ref, start_date, end_date);
-    CREATE TABLE distances (
-        id            SERIAL PRIMARY KEY,
-        start_distance        int NOT NULL,
-        end_distance           int NOT NULL,
-        created_at    timestamptz NOT NULL DEFAULT now(),
-        fk_booking_id int NOT NULL REFERENCES bookings (id)
-    );
-    CREATE INDEX ON distances (fk_booking_id, start_distance);
-    CREATE VIEW bookings_and_users AS SELECT bookings.id, booking_reference, start_date, end_date, users.userref FROM bookings INNER JOIN users ON bookings.user_ref = users.id;
-    CREATE TABLE inbox (id SERIAL PRIMARY KEY, message_id varchar NOT NULL UNIQUE);
-    -- migrate:down
-    DROP TABLE inbox;
-    DROP VIEW bookings_and_users;
-    DROP TABLE distances;
-    DROP TABLE bookings;
-    DROP TABLE users;
-  20260501000000_add_position_to_distances.sql: |
-    -- migrate:up
-    CREATE TABLE positions (
-        id            SERIAL PRIMARY KEY,
-        fk_booking_id INT NOT NULL REFERENCES bookings(id),
-        lat           DOUBLE PRECISION NOT NULL,
-        lon           DOUBLE PRECISION NOT NULL
-    );
-    -- migrate:down
-    DROP TABLE positions;
-  20260503000000_add_booking_pauses.sql: |
-    -- migrate:up
-    CREATE TABLE booking_pauses (
-        id            SERIAL PRIMARY KEY,
-        fk_booking_id INT NOT NULL REFERENCES bookings(id),
-        lat           DOUBLE PRECISION NOT NULL,
-        lon           DOUBLE PRECISION NOT NULL,
-        paused_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        resumed_at    TIMESTAMPTZ
-    );
-    -- migrate:down
-    DROP TABLE booking_pauses;
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: migrations-authentication
-  annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "-5"
-    helm.sh/hook-delete-policy: before-hook-creation
-data:
-  20260401000000_setup.sql: |
-    -- migrate:up
-    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-    CREATE TABLE users (
-        id         SERIAL PRIMARY KEY,
-        user_ref   uuid        NOT NULL UNIQUE DEFAULT uuid_generate_v4(),
-        username   varchar     NOT NULL UNIQUE,
-        email      varchar     NOT NULL UNIQUE,
-        created_at timestamptz NOT NULL DEFAULT NOW(),
-        deleted_at timestamptz
-    );
-    CREATE INDEX ON users (email);
-    CREATE TABLE security_tokens (
-        id         SERIAL PRIMARY KEY,
-        user_ref   uuid        NOT NULL REFERENCES users(user_ref) ON DELETE CASCADE,
-        token      varchar(6)  NOT NULL,
-        expires_at timestamptz NOT NULL,
-        used_at    timestamptz,
-        created_at timestamptz NOT NULL DEFAULT NOW()
-    );
-    CREATE INDEX ON security_tokens (user_ref, expires_at);
-    CREATE INDEX ON security_tokens (token, expires_at);
-    CREATE TABLE passkeys (
-        id            SERIAL PRIMARY KEY,
-        user_ref      uuid        NOT NULL REFERENCES users(user_ref) ON DELETE CASCADE,
-        credential_id bytea       NOT NULL UNIQUE,
-        credential    jsonb       NOT NULL,
-        created_at    timestamptz NOT NULL DEFAULT NOW()
-    );
-    CREATE INDEX ON passkeys (user_ref);
-    CREATE TABLE webauthn_sessions (
-        id           SERIAL PRIMARY KEY,
-        session_id   uuid        NOT NULL UNIQUE,
-        user_ref     uuid        NOT NULL REFERENCES users(user_ref) ON DELETE CASCADE,
-        session_type varchar     NOT NULL,
-        data         jsonb       NOT NULL,
-        expires_at   timestamptz NOT NULL,
-        created_at   timestamptz NOT NULL DEFAULT NOW()
-    );
-    CREATE INDEX ON webauthn_sessions (session_id, expires_at);
-    -- migrate:down
-    DROP TABLE webauthn_sessions;
-    DROP TABLE passkeys;
-    DROP TABLE security_tokens;
-    DROP TABLE users;
-  20260405000000_add_roles.sql: |
-    -- migrate:up
-    CREATE TABLE roles (
-        id   SERIAL PRIMARY KEY,
-        name varchar NOT NULL UNIQUE
-    );
-    INSERT INTO roles (id, name) VALUES (2, 'user'), (1, 'admin');
-    ALTER TABLE users ADD COLUMN role_id integer NOT NULL DEFAULT 2 REFERENCES roles(id);
-    CREATE INDEX ON users (role_id);
-    -- migrate:down
-    ALTER TABLE users DROP COLUMN role_id;
-    DROP TABLE roles;
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: migrations-journal
-  annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "-5"
-    helm.sh/hook-delete-policy: before-hook-creation
-data:
-  20260327163000_setup.sql: |
-    -- migrate:up
-    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-    CREATE TABLE inbox (
-        id             SERIAL PRIMARY KEY,
-        event_id       UUID NOT NULL,
-        type           VARCHAR NOT NULL,
-        correlation_id UUID NOT NULL,
-        producer       VARCHAR NOT NULL,
-        emitted_at     TIMESTAMPTZ NOT NULL,
-        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE UNIQUE INDEX idx_inbox_event_id ON inbox (event_id);
-    CREATE TABLE users (
-        id         SERIAL PRIMARY KEY,
-        user_ref   UUID NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL
-    );
-    CREATE TABLE booking_ended_events (
-        id              SERIAL PRIMARY KEY,
-        fk_user         int REFERENCES users(id),
-        booking_ref     uuid NOT NULL,
-        start_date      TIMESTAMPTZ NOT NULL,
-        end_date        TIMESTAMPTZ NOT NULL,
-        distance_meters int NOT NULL,
-        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    -- migrate:down
-    DROP TABLE booking_ended_events;
-    DROP TABLE users;
-    DROP INDEX idx_inbox_event_id;
-    DROP TABLE inbox;
-  20260416120000_add_unique_user_ref.sql: |
-    -- migrate:up
-    ALTER TABLE users ADD CONSTRAINT users_user_ref_unique UNIQUE (user_ref);
-    -- migrate:down
-    ALTER TABLE users DROP CONSTRAINT users_user_ref_unique;
-  20260416130000_soft_delete_users.sql: |
-    -- migrate:up
-    ALTER TABLE users ADD COLUMN deleted_at TIMESTAMPTZ;
-    -- migrate:down
-    ALTER TABLE users DROP COLUMN deleted_at;
-  20260501000000_add_position_to_booking_ended_events.sql: |
-    -- migrate:up
-    CREATE TABLE positions (
-        id                        SERIAL PRIMARY KEY,
-        fk_booking_ended_event_id INT NOT NULL REFERENCES booking_ended_events(id),
-        lat                       DOUBLE PRECISION NOT NULL,
-        lon                       DOUBLE PRECISION NOT NULL
-    );
-    -- migrate:down
-    DROP TABLE positions;
----
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -214,18 +19,11 @@ spec:
             - until pg_isready -h bookings-db -U postgres; do sleep 2; done
       containers:
         - name: migrate
-          image: amacneil/dbmate
-          args: ["--migrations-dir", "/migrations", "migrate"]
+          image: arngrimur/bilcool-bookings-migrate:{{ .Values.image.tag | default .Chart.AppVersion }}
+          args: ["migrate"]
           env:
             - name: DATABASE_URL
               value: postgres://postgres:postgres@bookings-db:5432/bookings?sslmode=disable
-          volumeMounts:
-            - name: migrations
-              mountPath: /migrations
-      volumes:
-        - name: migrations
-          configMap:
-            name: migrations-bookings
 ---
 apiVersion: batch/v1
 kind: Job
@@ -248,18 +46,11 @@ spec:
             - until pg_isready -h authentication-db -U postgres; do sleep 2; done
       containers:
         - name: migrate
-          image: amacneil/dbmate
-          args: ["--migrations-dir", "/migrations", "migrate"]
+          image: arngrimur/bilcool-authentication-migrate:{{ .Values.image.tag | default .Chart.AppVersion }}
+          args: ["migrate"]
           env:
             - name: DATABASE_URL
               value: postgres://postgres:postgres@authentication-db:5432/authentication?sslmode=disable
-          volumeMounts:
-            - name: migrations
-              mountPath: /migrations
-      volumes:
-        - name: migrations
-          configMap:
-            name: migrations-authentication
 ---
 apiVersion: batch/v1
 kind: Job
@@ -282,15 +73,8 @@ spec:
             - until pg_isready -h journal-db -U postgres; do sleep 2; done
       containers:
         - name: migrate
-          image: amacneil/dbmate
-          args: ["--migrations-dir", "/migrations", "migrate"]
+          image: arngrimur/bilcool-journal-migrate:{{ .Values.image.tag | default .Chart.AppVersion }}
+          args: ["migrate"]
           env:
             - name: DATABASE_URL
               value: postgres://postgres:postgres@journal-db:5432/journal?sslmode=disable
-          volumeMounts:
-            - name: migrations
-              mountPath: /migrations
-      volumes:
-        - name: migrations
-          configMap:
-            name: migrations-journal
