@@ -324,6 +324,241 @@ jobs:
         run: terraform validate
         working-directory: infrastructure/production/terraform
 
+  docker-build-bookings:
+    name: docker / build bookings
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Generate go.work and go.work.sum
+        run: go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal ./bilcool-lib && go work vendor
+      - uses: docker/setup-buildx-action@v3
+      - name: Generate image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: arngrimur/bilcool-bookings
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: bookings/Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=bookings
+          cache-to: type=gha,mode=max,scope=bookings
+
+  docker-build-authentication:
+    name: docker / build authentication
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Generate go.work and go.work.sum
+        run: go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal ./bilcool-lib && go work vendor
+      - uses: docker/setup-buildx-action@v3
+      - name: Generate image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: arngrimur/bilcool-authentication
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: authentication/Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=authentication
+          cache-to: type=gha,mode=max,scope=authentication
+
+  docker-build-event-ledger:
+    name: docker / build event-ledger
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Generate go.work and go.work.sum
+        run: go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal ./bilcool-lib && go work vendor
+      - uses: docker/setup-buildx-action@v3
+      - name: Generate image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: arngrimur/bilcool-event-ledger
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: event_ledger/Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=event-ledger
+          cache-to: type=gha,mode=max,scope=event-ledger
+
+  docker-build-journal:
+    name: docker / build journal
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Generate go.work and go.work.sum
+        run: go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal ./bilcool-lib && go work vendor
+      - uses: docker/setup-buildx-action@v3
+      - name: Generate image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: arngrimur/bilcool-journal
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: journal/Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=journal
+          cache-to: type=gha,mode=max,scope=journal
+
+  docker-push:
+    name: docker / push all
+    runs-on: ubuntu-latest
+    needs:
+      - build-bookings
+      - build-authentication
+      - build-event-ledger
+      - build-journal
+      - docker-build-bookings
+      - docker-build-authentication
+      - docker-build-event-ledger
+      - docker-build-journal
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Generate go.work and go.work.sum
+        run: go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal ./bilcool-lib && go work vendor
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Generate bookings tags
+        id: meta-bookings
+        uses: docker/metadata-action@v5
+        with:
+          images: arngrimur/bilcool-bookings
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+      - name: Push bookings
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: bookings/Dockerfile
+          push: true
+          tags: ${{ steps.meta-bookings.outputs.tags }}
+          labels: ${{ steps.meta-bookings.outputs.labels }}
+          cache-from: type=gha,scope=bookings
+          cache-to: type=gha,mode=max,scope=bookings
+      - name: Generate authentication tags
+        id: meta-authentication
+        uses: docker/metadata-action@v5
+        with:
+          images: arngrimur/bilcool-authentication
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+      - name: Push authentication
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: authentication/Dockerfile
+          push: true
+          tags: ${{ steps.meta-authentication.outputs.tags }}
+          labels: ${{ steps.meta-authentication.outputs.labels }}
+          cache-from: type=gha,scope=authentication
+          cache-to: type=gha,mode=max,scope=authentication
+      - name: Generate event-ledger tags
+        id: meta-event-ledger
+        uses: docker/metadata-action@v5
+        with:
+          images: arngrimur/bilcool-event-ledger
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+      - name: Push event-ledger
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: event_ledger/Dockerfile
+          push: true
+          tags: ${{ steps.meta-event-ledger.outputs.tags }}
+          labels: ${{ steps.meta-event-ledger.outputs.labels }}
+          cache-from: type=gha,scope=event-ledger
+          cache-to: type=gha,mode=max,scope=event-ledger
+      - name: Generate journal tags
+        id: meta-journal
+        uses: docker/metadata-action@v5
+        with:
+          images: arngrimur/bilcool-journal
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+      - name: Push journal
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: journal/Dockerfile
+          push: true
+          tags: ${{ steps.meta-journal.outputs.tags }}
+          labels: ${{ steps.meta-journal.outputs.labels }}
+          cache-from: type=gha,scope=journal
+          cache-to: type=gha,mode=max,scope=journal
+
   build-ui:
     name: ui
     runs-on: ubuntu-latest
