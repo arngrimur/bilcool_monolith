@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bilcool-shared
+data:
+  AWS_REGION: {{ .Values.config.awsRegion | quote }}
+  RELEASE: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentication
+data:
+  WEBAUTHN_RP_ID: {{ .Values.config.authentication.webauthnRpId | quote }}
+  WEBAUTHN_RP_ORIGINS: {{ .Values.config.authentication.webauthnRpOrigins | quote }}
+  WEBAUTHN_DISPLAY_NAME: {{ .Values.config.authentication.webauthnDisplayName | quote }}
+  FROM_EMAIL: {{ .Values.config.authentication.fromEmail | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: event-ledger
+data:
+  DYNAMO_TABLE_NAME: {{ .Values.config.eventLedger.dynamoTableName | quote }}

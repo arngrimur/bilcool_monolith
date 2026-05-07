@@ -49,7 +49,7 @@ func NewRouter(querier EventQuerier) *HttpRouter {
 		querier: querier,
 	}
 
-	h.router.GET("/health", h.health)
+	h.router.GET("/ping", h.health)
 	h.router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	h.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	h.router.GET("/api/v1/events", h.getEvents)

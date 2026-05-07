@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-ledger
+  labels:
+    app: event-ledger
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: event-ledger
+  template:
+    metadata:
+      name: event-ledger
+      labels:
+        app: event-ledger
+    spec:
+      containers:
+        - name: event-ledger
+          image: arngrimur/bilcool-event-ledger:v1.0.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: bilcool-shared
+            - configMapRef:
+                name: event-ledger
+            - secretRef:
+                name: event-ledger
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-ledger
+spec:
+  selector:
+    app: event-ledger
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: NodePort

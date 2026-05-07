@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentication
+  labels:
+    app: authentication
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: authentication
+  template:
+    metadata:
+      name: authentication
+      labels:
+        app: authentication
+    spec:
+      containers:
+        - name: authentication
+          image: arngrimur/bilcool-authentication:v1.0.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: bilcool-shared
+            - configMapRef:
+                name: authentication
+            - secretRef:
+                name: authentication
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentication
+spec:
+  selector:
+    app: authentication
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: NodePort
