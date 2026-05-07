@@ -6,6 +6,9 @@ go.work*
 .envrc
 a.out
 
+# Helm
+values-secrets.yaml
+
 # Terraform
 infrastructure/production/bootstrap/terraform.tfstate
 infrastructure/production/bootstrap/terraform.tfstate.backup
