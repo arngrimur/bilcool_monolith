@@ -16,7 +16,7 @@ variable "neon_api_key" {
 resource "neon_project" "bilcool" {
   name      = "bilcool-${var.environment}"
   region_id = "aws-eu-central-1"
-
+  # pg_version=18   # un/comment to change the database version. This
   history_retention_seconds = 21600
 }
 

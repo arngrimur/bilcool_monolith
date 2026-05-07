@@ -15,6 +15,7 @@ var (
 	fromEmail           string
 	brevoAPIKey         string
 	outboxMode          string
+	ginMode             string
 )
 
 func DatabaseUrl() string {
@@ -83,7 +84,16 @@ func Init() error {
 	} else {
 		outboxMode = "replication"
 	}
+	if _, set := os.LookupEnv("RELEASE"); set {
+		ginMode = "release"
+	} else {
+		ginMode = "debug"
+	}
 	return nil
+}
+
+func GinMode() string {
+	return ginMode
 }
 
 func OutboxMode() string {

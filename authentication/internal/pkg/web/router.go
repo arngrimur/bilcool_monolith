@@ -17,6 +17,7 @@ import (
 
 	"github.com/arngrimur/bilcool-lib/pkg/middleware"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/application"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/domain"
 )
 
@@ -28,6 +29,7 @@ type HttpRouter struct {
 }
 
 func NewRouter(commands application.Commands, queries application.Queries, jwtSecret string) *HttpRouter {
+	gin.SetMode(config.GinMode())
 	engine := gin.Default()
 	engine.Use(middleware.LogWithCorrelationID())
 	h := &HttpRouter{

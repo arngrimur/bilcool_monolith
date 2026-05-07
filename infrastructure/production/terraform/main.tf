@@ -64,6 +64,7 @@ module "bookings_http" {
   environment_variables = {
     DATABASE_URL = module.neon.bookings_connection_string
     OUTBOX_MODE  = "polling"
+    RELEASE      = "true"
   }
 }
 
@@ -119,6 +120,7 @@ module "authentication_http" {
     WEBAUTHN_RP_ID        = var.webauthn_rp_id
     WEBAUTHN_RP_ORIGINS   = var.webauthn_rp_origins
     WEBAUTHN_DISPLAY_NAME = var.webauthn_display_name
+    RELEASE               = "true"
   }
 }
 
@@ -153,6 +155,7 @@ module "event_ledger_http" {
   tags                = { Service = "event-ledger", Component = "http" }
   environment_variables = {
     DYNAMO_TABLE_NAME = module.dynamodb.table_name
+    RELEASE           = "true"
   }
 }
 
@@ -187,6 +190,7 @@ module "journal_http" {
   tags                = { Service = "journal", Component = "http" }
   environment_variables = {
     DATABASE_URL = module.neon.journal_connection_string
+    RELEASE      = "true"
   }
 }
 

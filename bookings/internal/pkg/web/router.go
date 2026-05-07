@@ -22,6 +22,7 @@ import (
 	_ "github.com/arngrimur/bilcool_monolith/docs"
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application"
+	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
 )
 
@@ -52,6 +53,7 @@ type HttpRouter struct {
 }
 
 func NewRouter(q application.Queries, c application.Commands) *HttpRouter {
+	gin.SetMode(config.GinMode())
 	engine := gin.Default()
 	engine.Use(middleware.LogWithCorrelationID())
 	h := &HttpRouter{

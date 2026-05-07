@@ -8,6 +8,7 @@ import (
 var (
 	databaseUrl string
 	apiPort     string
+	ginMode     string
 )
 
 func Init() error {
@@ -21,8 +22,16 @@ func Init() error {
 	if !ok {
 		apiPort = ":8080"
 	}
-
+	if _, set := os.LookupEnv("RELEASE"); set {
+		ginMode = "release"
+	} else {
+		ginMode = "debug"
+	}
 	return nil
+}
+
+func GinMode() string {
+	return ginMode
 }
 
 func DatabaseUrl() string {

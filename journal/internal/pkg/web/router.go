@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/arngrimur/bilcool-lib/pkg/middleware"
+	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/persistance/postgres"
 )
 
@@ -28,6 +29,7 @@ type HttpRouter struct {
 }
 
 func NewRouter(querier BookingQuerier) *HttpRouter {
+	gin.SetMode(config.GinMode())
 	engine := gin.Default()
 	engine.Use(middleware.LogWithCorrelationID())
 	h := &HttpRouter{
