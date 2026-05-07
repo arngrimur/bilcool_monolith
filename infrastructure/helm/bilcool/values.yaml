@@ -170,21 +170,3 @@ config:
   eventLedger:
     dynamoTableName: event-ledger
 
-secrets:
-  bookings:
-    databaseUrl: ""
-    awsAccessKeyId: ""
-    awsSecretAccessKey: ""
-  authentication:
-    databaseUrl: ""
-    jwtSecret: ""
-    brevoApiKey: ""
-    awsAccessKeyId: ""
-    awsSecretAccessKey: ""
-  eventLedger:
-    awsAccessKeyId: ""
-    awsSecretAccessKey: ""
-  journal:
-    databaseUrl: ""
-    awsAccessKeyId: ""
-    awsSecretAccessKey: ""
