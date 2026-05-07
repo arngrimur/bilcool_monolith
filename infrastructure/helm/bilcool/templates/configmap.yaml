@@ -4,6 +4,8 @@ metadata:
   name: bilcool-shared
 data:
   AWS_REGION: {{ .Values.config.awsRegion | quote }}
+  AWS_ENDPOINT_URL: {{ .Values.config.awsEndpointUrl | quote }}
+  OUTBOX_MODE: replication
   RELEASE: "true"
 ---
 apiVersion: v1

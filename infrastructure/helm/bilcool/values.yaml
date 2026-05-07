@@ -162,6 +162,7 @@ affinity: {}
 
 config:
   awsRegion: eu-north-1
+  awsEndpointUrl: http://localstack:4566
   authentication:
     webauthnRpId: ""
     webauthnRpOrigins: ""
