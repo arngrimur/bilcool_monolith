@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSettingsStore } from '../stores/settingsStore'
 
 interface TrackingState {
   isTracking: boolean
@@ -25,6 +26,10 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
 }
 
 export function useGpsTracking() {
+  const keepScreenOn = useSettingsStore((s) => s.keepScreenOn)
+  const keepScreenOnRef = useRef(keepScreenOn)
+  keepScreenOnRef.current = keepScreenOn
+
   const [state, setState] = useState<TrackingState>({
     isTracking: false,
     isPaused: false,
@@ -35,6 +40,7 @@ export function useGpsTracking() {
   })
 
   const watchIdRef = useRef<number | null>(null)
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   // last accepted position (lat, lon, timestamp)
   const lastPosRef = useRef<{ lat: number; lon: number; ts: number } | null>(null)
   // when speed first dropped below threshold; null means speed is ok
@@ -47,11 +53,30 @@ export function useGpsTracking() {
   // distance accumulated since speed dropped below threshold (may be retroactively removed)
   const lowSpeedAccumRef = useRef(0)
 
+  const acquireWakeLock = useCallback(async () => {
+    if (!keepScreenOnRef.current || !('wakeLock' in navigator)) return
+    try {
+      wakeLockRef.current = await navigator.wakeLock.request('screen')
+      wakeLockRef.current.addEventListener('release', () => {
+        wakeLockRef.current = null
+      })
+    } catch {
+    }
+  }, [])
+
+  const releaseWakeLock = useCallback(async () => {
+    if (wakeLockRef.current) {
+      await wakeLockRef.current.release()
+      wakeLockRef.current = null
+    }
+  }, [])
+
   function startTracking() {
     if (!navigator.geolocation) {
       setState((s) => ({ ...s, error: 'GPS not supported on this device' }))
       return
     }
+    acquireWakeLock()
     distanceRef.current = 0
     lastPosRef.current = null
     lowSpeedSinceRef.current = null
@@ -160,6 +185,7 @@ export function useGpsTracking() {
   }
 
   function stopTracking(): number {
+    releaseWakeLock()
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current)
       watchIdRef.current = null
@@ -200,12 +226,20 @@ export function useGpsTracking() {
   }
 
   useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && watchIdRef.current !== null) {
+        acquireWakeLock()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current)
       }
+      releaseWakeLock()
     }
-  }, [])
+  }, [acquireWakeLock, releaseWakeLock])
 
   return { ...state, startTracking, stopTracking, pauseTracking, resumeTracking }
 }

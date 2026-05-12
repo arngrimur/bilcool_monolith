@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
+import { Switch } from '../ui/switch'
 import ThemeToggle from './ThemeToggle'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { BOOKING_COLORS } from '../../utils/bookingColors'
@@ -16,6 +17,8 @@ export default function SettingsDialog() {
   const { t } = useTranslation('common')
   const bookingColor = useSettingsStore((s) => s.bookingColor)
   const setBookingColor = useSettingsStore((s) => s.setBookingColor)
+  const keepScreenOn = useSettingsStore((s) => s.keepScreenOn)
+  const setKeepScreenOn = useSettingsStore((s) => s.setKeepScreenOn)
 
   return (
     <Dialog>
@@ -37,6 +40,10 @@ export default function SettingsDialog() {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">{t('settings.theme')}</span>
             <ThemeToggle />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">{t('settings.keepScreenOn')}</span>
+            <Switch checked={keepScreenOn} onCheckedChange={setKeepScreenOn} />
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium">{t('settings.bookingColor')}</span>
