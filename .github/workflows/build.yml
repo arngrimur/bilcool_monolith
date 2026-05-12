@@ -342,7 +342,7 @@ jobs:
         with:
           images: arngrimur/bilcool-bookings
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
@@ -374,7 +374,7 @@ jobs:
         with:
           images: arngrimur/bilcool-authentication
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
@@ -406,7 +406,7 @@ jobs:
         with:
           images: arngrimur/bilcool-event-ledger
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
@@ -438,7 +438,7 @@ jobs:
         with:
           images: arngrimur/bilcool-journal
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
@@ -470,7 +470,7 @@ jobs:
         with:
           images: arngrimur/bilcool-bookings-migrate
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
@@ -502,7 +502,7 @@ jobs:
         with:
           images: arngrimur/bilcool-authentication-migrate
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
@@ -534,7 +534,7 @@ jobs:
         with:
           images: arngrimur/bilcool-journal-migrate
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
@@ -580,7 +580,7 @@ jobs:
         with:
           images: arngrimur/bilcool-bookings
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
@@ -600,7 +600,7 @@ jobs:
         with:
           images: arngrimur/bilcool-authentication
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
@@ -620,7 +620,7 @@ jobs:
         with:
           images: arngrimur/bilcool-event-ledger
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
@@ -640,7 +640,7 @@ jobs:
         with:
           images: arngrimur/bilcool-journal
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest

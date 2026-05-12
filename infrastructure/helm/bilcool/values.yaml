@@ -167,7 +167,19 @@ config:
     webauthnRpId: ""
     webauthnRpOrigins: ""
     webauthnDisplayName: BilCool
-    fromEmail: ""
+    fromEmail: "security@areskiftet44.se"
   eventLedger:
     dynamoTableName: event-ledger
+
+secrets:
+  awsAccessKeyId: ""
+  awsSecretAccessKey: ""
+  authentication:
+    jwtSecret: ""
+    brevoApiKey: ""
+    databaseUrl: ""
+  bookings:
+    databaseUrl: ""
+  journal:
+    databaseUrl: ""
 

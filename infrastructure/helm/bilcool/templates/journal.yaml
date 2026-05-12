@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: journal
-          image: arngrimur/bilcool-journal:v1.0.2
+          image: arngrimur/bilcool-journal:1.0.2
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: event-ledger
-          image: arngrimur/bilcool-event-ledger:v1.0.2
+          image: arngrimur/bilcool-event-ledger:1.0.2
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

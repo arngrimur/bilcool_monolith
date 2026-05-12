@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: authentication
-          image: arngrimur/bilcool-authentication:v1.0.2
+          image: arngrimur/bilcool-authentication:1.0.2
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
