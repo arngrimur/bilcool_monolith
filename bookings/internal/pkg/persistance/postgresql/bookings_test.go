@@ -476,6 +476,57 @@ func (suite *bookingsTestSuite) TestPauseAndResumeMultipleTimes() {
 	suite.Require().Equal(0, count)
 }
 
+// TestEndBookingAfterPauseResume_TotalDistance50km covers a trip where the
+// vehicle moves the entire time but the booking is paused for a 6-minute
+// segment in the middle:
+//
+//	30 min active  @ 50 km/h → 25,000 m
+//	 6 min paused  @ 50 km/h →  5,000 m  (odometer keeps running)
+//	24 min active  @ 50 km/h → 20,000 m
+//	                           ────────
+//	total odometer delta       50,000 m  (50 km)
+//
+// The persistence layer must store and return exactly 50,000 m regardless of
+// how many pause/resume cycles occurred during the trip.
+func (suite *bookingsTestSuite) TestEndBookingAfterPauseResume_TotalDistance50km() {
+	database := NewBookingsRepository(suite.Db)
+	ctx := context.Background()
+
+	pausePos := extdomain.Position{Lat: 59.334591, Lon: 18.063240} // position at ~25 km mark
+
+	err := database.PauseBooking(ctx, domain.PauseBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Position:       pausePos,
+	})
+	suite.Require().NoError(err)
+
+	// 6 minutes of driving at 50 km/h while paused — odometer advances 5,000 m
+	resp, err := database.ResumeBooking(ctx, domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().NoError(err)
+	suite.Require().InDelta(pausePos.Lat, resp.Position.Lat, 0.000001)
+	suite.Require().InDelta(pausePos.Lon, resp.Position.Lon, 0.000001)
+
+	endPos := &extdomain.Position{Lat: 59.450000, Lon: 18.120000}
+	err = database.EndBooking(ctx, domain.EndBookingRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Distance:       extdomain.Distance{StartDistance: 0, EndDistance: 50_000},
+		Position:       endPos,
+	})
+	suite.Require().NoError(err)
+
+	var startDist, endDist int
+	err = suite.Db.QueryRow(`
+		SELECT d.start_distance, d.end_distance
+		FROM distances d JOIN bookings b ON d.fk_booking_id = b.id
+		WHERE b.booking_reference = $1`, suite.bookingRef).Scan(&startDist, &endDist)
+	suite.Require().NoError(err)
+	suite.Require().Equal(0, startDist)
+	suite.Require().Equal(50_000, endDist)
+
+	dist := extdomain.Distance{StartDistance: startDist, EndDistance: endDist}
+	suite.Require().Equal(50_000, dist.Distance(), "total driven distance must be 50 km (50,000 m)")
+}
+
 func makeUserMessage(userRef uuid.UUID, messageID string) brokerpostgres.Message {
 	payload, _ := json.Marshal(authdomain.UserResponse{UserRef: userRef})
 	return brokerpostgres.Message{
