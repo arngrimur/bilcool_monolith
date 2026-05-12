@@ -80,6 +80,11 @@ spec:
               value: test
             - name: AWS_SECRET_ACCESS_KEY
               value: test
+            - name: LOCALSTACK_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: localstack
+                  key: LOCALSTACK_AUTH_TOKEN
           readinessProbe:
             httpGet:
               path: /_localstack/init/ready
