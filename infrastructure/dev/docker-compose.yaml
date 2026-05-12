@@ -95,9 +95,12 @@ services:
         condition: service_completed_successfully
       db-migration-bookings:
         condition: service_completed_successfully
+      db-migration-journal:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgres://postgres:postgres@authentication-db:5432/authentication?sslmode=disable
       BOOKINGS_DATABASE_URL: postgres://postgres:postgres@bookings-db:5432/bookings?sslmode=disable
+      JOURNAL_DATABASE_URL: postgres://postgres:postgres@journal-db:5432/journal?sslmode=disable
     volumes:
       - "./seed/users.csv:/seed/users.csv:ro"
       - "./seed/seed-users.sh:/seed/seed-users.sh:ro"

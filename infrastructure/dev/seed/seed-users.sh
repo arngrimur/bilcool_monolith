@@ -23,4 +23,11 @@ tail -n +2 "$SEED_FILE" | while IFS=',' read -r username email role; do
     "
     echo "  -> added to bookings.users"
   fi
+
+  if [ -n "$JOURNAL_DATABASE_URL" ] && [ -n "$user_ref" ]; then
+    psql "$JOURNAL_DATABASE_URL" -v ON_ERROR_STOP=1 -c "
+      INSERT INTO users (user_ref, created_at) VALUES ('$user_ref', NOW()) ON CONFLICT (user_ref) DO NOTHING;
+    "
+    echo "  -> added to journal.users"
+  fi
 done
