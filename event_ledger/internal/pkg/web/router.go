@@ -43,7 +43,6 @@ type HttpRouter struct {
 func NewRouter(querier EventQuerier) *HttpRouter {
 	gin.SetMode(config.GinMode())
 	engine := gin.Default()
-	engine.Use(middleware.LogWithCorrelationID())
 	h := &HttpRouter{
 		router:  engine,
 		querier: querier,
@@ -52,6 +51,9 @@ func NewRouter(querier EventQuerier) *HttpRouter {
 	h.router.GET("/ping", h.health)
 	h.router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	h.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	engine.Use(middleware.LogWithCorrelationID())
+
 	h.router.GET("/api/v1/events", h.getEvents)
 
 	return h

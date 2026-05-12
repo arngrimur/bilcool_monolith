@@ -48,10 +48,10 @@ var _ = Describe("HttpRouter", func() {
 		router = web.NewRouter(querier)
 	})
 
-	Describe("GET /health", func() {
+	Describe("GET /ping", func() {
 		It("returns 200 with ok status", func() {
 			w := httptest.NewRecorder()
-			router.ServeHTTP(w, newRequest(http.MethodGet, "/health"))
+			router.ServeHTTP(w, newRequest(http.MethodGet, "/ping"))
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var body map[string]string

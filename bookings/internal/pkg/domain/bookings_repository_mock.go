@@ -128,20 +128,6 @@ func (mr *MockBookingsRepositoryMockRecorder) FindAll(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindAll", reflect.TypeOf((*MockBookingsRepository)(nil).FindAll), ctx)
 }
 
-// UpdateBooking mocks base method.
-func (m *MockBookingsRepository) UpdateBooking(ctx context.Context, request UpdateBookingRequest) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateBooking", ctx, request)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateBooking indicates an expected call of UpdateBooking.
-func (mr *MockBookingsRepositoryMockRecorder) UpdateBooking(ctx, request any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBooking", reflect.TypeOf((*MockBookingsRepository)(nil).UpdateBooking), ctx, request)
-}
-
 // PauseBooking mocks base method.
 func (m *MockBookingsRepository) PauseBooking(ctx context.Context, request PauseBookingRequest) error {
 	m.ctrl.T.Helper()
@@ -169,4 +155,18 @@ func (m *MockBookingsRepository) ResumeBooking(ctx context.Context, request Book
 func (mr *MockBookingsRepositoryMockRecorder) ResumeBooking(ctx, request any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResumeBooking", reflect.TypeOf((*MockBookingsRepository)(nil).ResumeBooking), ctx, request)
+}
+
+// UpdateBooking mocks base method.
+func (m *MockBookingsRepository) UpdateBooking(ctx context.Context, request UpdateBookingRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateBooking", ctx, request)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateBooking indicates an expected call of UpdateBooking.
+func (mr *MockBookingsRepositoryMockRecorder) UpdateBooking(ctx, request any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBooking", reflect.TypeOf((*MockBookingsRepository)(nil).UpdateBooking), ctx, request)
 }
