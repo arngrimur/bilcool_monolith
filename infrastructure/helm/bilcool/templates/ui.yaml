@@ -1,42 +1,35 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: journal
+  name: ui
   labels:
-    app: journal
+    app: ui
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: journal
+      app: ui
   template:
     metadata:
-      name: journal
       labels:
-        app: journal
+        app: ui
     spec:
       containers:
-        - name: journal
-          image: arngrimur/bilcool-journal:1.0.2
+        - name: ui
+          image: arngrimur/bilcool-ui:{{ .Values.image.tag | default .Chart.AppVersion }}
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8080
-              protocol: TCP
-          envFrom:
-            - configMapRef:
-                name: bilcool-shared
-            - secretRef:
-                name: journal
+            - containerPort: 80
           livenessProbe:
             httpGet:
-              path: /ping
-              port: 8080
+              path: /
+              port: 80
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /ping
-              port: 8080
+              path: /
+              port: 80
             initialDelaySeconds: 5
             periodSeconds: 10
       restartPolicy: Always
@@ -44,12 +37,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: journal
+  name: ui
 spec:
   selector:
-    app: journal
+    app: ui
   ports:
     - protocol: TCP
-      port: 8080
-      targetPort: 8080
+      port: 80
+      targetPort: 80
   type: NodePort
