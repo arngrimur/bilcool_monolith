@@ -29,6 +29,16 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     cmd: docker exec -it bookings-db psql -U postgres -d bookings
 
+  minikube-portforward:
+    desc: Port-forward UI, databases and LocalStack from Minikube to localhost
+    cmds:
+      - kubectl port-forward service/ui 8080:80 &
+      - kubectl port-forward service/authentication-db 54322:5432 &
+      - kubectl port-forward service/bookings-db 54321:5432 &
+      - kubectl port-forward service/journal-db 54323:5432 &
+      - kubectl port-forward service/localstack 4566:4566 &
+      - wait
+
   swagger:
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
