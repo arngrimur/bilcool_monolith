@@ -95,12 +95,12 @@ export default function BookingStartEndDialog({
   }
 
   async function handleStopGps() {
-    stopTracking()
+    const finalDistance = stopTracking()
     await endBooking.mutateAsync({
       id: booking.booking_reference,
       body: {
         start_distance: 0,
-        end_distance: Math.round(distanceMeters),
+        end_distance: Math.round(finalDistance),
         position: currentPosition ?? undefined,
       },
     })

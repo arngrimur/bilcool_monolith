@@ -367,6 +367,66 @@ describe('useGpsTracking', () => {
     expect(result.current.currentSpeedKmh).toBeCloseTo(LOW_SPEED_KMH, 0)
   })
 
+  // Scenario: drive 30 min at 50 km/h → pause → drive 6 min while paused →
+  // resume → drive 24 min → stop.  Total physical distance = 50 km.
+  //
+  // Each makePosition step ≈ 111 m.  To keep the test fast we use 5 steps
+  // per segment (≈ 555 m each) scaled so that total = 15 steps × 111 m = 1665 m.
+  // The exact unit doesn't matter — what matters is that the total equals the
+  // SUM of all physical steps, including the steps driven while paused.
+  it('total distance over a pause-resume cycle equals the full physical distance', () => {
+    const { result } = renderHook(() => useGpsTracking())
+    act(() => result.current.startTracking())
+
+    let t = 0
+
+    // --- Segment 1: 5 active steps before pause ---
+    for (let step = 0; step <= 5; step++) {
+      sendPosition(makePosition(step, HIGH_SPEED_KMH, t))
+      t += 1_000
+    }
+    // distanceRef ≈ 5 × 111 m = 555 m (step 0 sets lastPosRef, steps 1-5 add distance)
+    const distBeforePause = result.current.distanceMeters
+    expect(distBeforePause).toBeGreaterThan(0)
+
+    // --- Pause ---
+    let savedPos: ReturnType<typeof result.current.pauseTracking> = null
+    act(() => { savedPos = result.current.pauseTracking() })
+    // savedPos is step 5 (lat 59.005)
+
+    // --- Segment 2: 2 steps driven while paused (GPS fires, no accumulation) ---
+    sendPosition(makePosition(6, HIGH_SPEED_KMH, t)); t += 1_000
+    sendPosition(makePosition(7, HIGH_SPEED_KMH, t)); t += 1_000
+    // distance must not change while paused
+    expect(result.current.distanceMeters).toBeCloseTo(distBeforePause, 2)
+
+    // --- Resume from saved pause position (step 5) ---
+    act(() => { result.current.resumeTracking(savedPos!) })
+
+    // --- Segment 3: 4 active steps after resume ---
+    sendPosition(makePosition(8, HIGH_SPEED_KMH, t)); t += 1_000
+    sendPosition(makePosition(9, HIGH_SPEED_KMH, t)); t += 1_000
+    sendPosition(makePosition(10, HIGH_SPEED_KMH, t)); t += 1_000
+    sendPosition(makePosition(11, HIGH_SPEED_KMH, t)); t += 1_000
+
+    // --- Stop and capture the value returned by stopTracking ---
+    let finalDistance = 0
+    act(() => { finalDistance = result.current.stopTracking() })
+
+    // Physical steps: 5 active + 2 during pause + 4 active = 11 steps × ≈111 m ≈ 1221 m.
+    // With resumeTracking(savedPos) the first post-resume GPS at step 8 measures
+    // dist(savedPos=step5, step8) = 3 × 111 m, so the 2 pause steps are re-counted —
+    // giving the correct total of 11 steps × 111 m.
+    const approxStepMeters = 111
+    const totalPhysicalSteps = 5 + 2 + 4  // 11
+    const expectedMeters = totalPhysicalSteps * approxStepMeters  // ≈ 1221 m
+
+    expect(finalDistance).toBeGreaterThan(expectedMeters * 0.9)
+    expect(finalDistance).toBeLessThan(expectedMeters * 1.1)
+    // Must not be doubled
+    expect(finalDistance).toBeLessThan(expectedMeters * 1.5)
+  })
+
   it('does not reset pause state for a short gap (< 6 min)', () => {
     const { result } = renderHook(() => useGpsTracking())
     act(() => result.current.startTracking())
