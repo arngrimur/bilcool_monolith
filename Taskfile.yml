@@ -30,38 +30,43 @@ tasks:
     cmd: docker exec -it bookings-db psql -U postgres -d bookings
 
   minikube:build-authentication:
-    desc: Build authentication image into minikube
+    desc: Build authentication image and load into minikube
     cmds:
-      - eval $(minikube docker-env) && docker build -f authentication/Dockerfile -t arngrimur/bilcool-authentication:latest .
+      - docker build -f authentication/Dockerfile -t arngrimur/bilcool-authentication:latest .
+      - minikube image load arngrimur/bilcool-authentication:latest
 
   minikube:build-bookings:
-    desc: Build bookings image into minikube
+    desc: Build bookings image and load into minikube
     cmds:
-      - eval $(minikube docker-env) && docker build -f bookings/Dockerfile -t arngrimur/bilcool-bookings:latest .
+      - docker build -f bookings/Dockerfile -t arngrimur/bilcool-bookings:latest .
+      - minikube image load arngrimur/bilcool-bookings:latest
 
   minikube:build-journal:
-    desc: Build journal image into minikube
+    desc: Build journal image and load into minikube
     cmds:
-      - eval $(minikube docker-env) && docker build -f journal/Dockerfile -t arngrimur/bilcool-journal:latest .
+      - docker build -f journal/Dockerfile -t arngrimur/bilcool-journal:latest .
+      - minikube image load arngrimur/bilcool-journal:latest
 
   minikube:build-event-ledger:
-    desc: Build event-ledger image into minikube
+    desc: Build event-ledger image and load into minikube
     cmds:
-      - eval $(minikube docker-env) && docker build -f event_ledger/Dockerfile -t arngrimur/bilcool-event-ledger:latest .
+      - docker build -f event_ledger/Dockerfile -t arngrimur/bilcool-event-ledger:latest .
+      - minikube image load arngrimur/bilcool-event-ledger:latest
 
   minikube:build-ui:
-    desc: Build UI image into minikube
+    desc: Build UI image and load into minikube
     cmds:
-      - eval $(minikube docker-env) && docker build -f ui/bilcool-ui/Dockerfile -t arngrimur/bilcool-ui:latest ui/bilcool-ui
+      - docker build -f ui/bilcool-ui/Dockerfile -t arngrimur/bilcool-ui:latest ui/bilcool-ui
+      - minikube image load arngrimur/bilcool-ui:latest
 
   minikube:build:
-    desc: Build all service images into minikube
-    deps:
-      - minikube:build-authentication
-      - minikube:build-bookings
-      - minikube:build-journal
-      - minikube:build-event-ledger
-      - minikube:build-ui
+    desc: Build all service images and load into minikube
+    cmds:
+      - task: minikube:build-authentication
+      - task: minikube:build-bookings
+      - task: minikube:build-journal
+      - task: minikube:build-event-ledger
+      - task: minikube:build-ui
 
   minikube:helm-upgrade:
     desc: Apply Helm chart upgrade and restart all deployments
