@@ -31,15 +31,14 @@ type HttpRouter struct {
 func NewRouter(querier BookingQuerier) *HttpRouter {
 	gin.SetMode(config.GinMode())
 	engine := gin.Default()
+	engine.GET("/ping", func(c *gin.Context) {
+		c.String(http.StatusOK, "pong")
+	})
 	engine.Use(middleware.LogWithCorrelationID())
 	h := &HttpRouter{
 		router:  engine,
 		querier: querier,
 	}
-
-	h.router.GET("/ping", func(c *gin.Context) {
-		c.String(http.StatusOK, "pong")
-	})
 	h.router.GET("/api/v1/journal/bookings", h.getFinishedBookings)
 
 	return h

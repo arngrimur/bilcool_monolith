@@ -55,6 +55,9 @@ type HttpRouter struct {
 func NewRouter(q application.Queries, c application.Commands) *HttpRouter {
 	gin.SetMode(config.GinMode())
 	engine := gin.Default()
+	engine.GET("/ping", func(c *gin.Context) {
+		c.String(http.StatusOK, "pong")
+	})
 	engine.Use(middleware.LogWithCorrelationID())
 	h := &HttpRouter{
 		queries:  q,
@@ -69,10 +72,6 @@ func NewRouter(q application.Queries, c application.Commands) *HttpRouter {
 }
 
 func internalRoutes(h *HttpRouter) {
-	h.router.GET("/ping", func(c *gin.Context) {
-		c.String(http.StatusOK, "pong")
-	})
-	// use ginSwagger middleware to serve the API docs
 	h.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }
 

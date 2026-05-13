@@ -15,9 +15,19 @@ spec:
       labels:
         app: event-ledger
     spec:
+      initContainers:
+        - name: wait-for-localstack
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until wget -qO- http://localstack:4566/_localstack/init/ready | grep -q SUCCESSFUL; do
+                echo "Waiting for LocalStack init to complete..."; sleep 3;
+              done
       containers:
         - name: event-ledger
-          image: arngrimur/bilcool-event-ledger:1.0.2
+          image: arngrimur/bilcool-event-ledger:{{ .Values.image.tag | default "latest" }}
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

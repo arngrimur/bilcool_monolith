@@ -31,6 +31,9 @@ type HttpRouter struct {
 func NewRouter(commands application.Commands, queries application.Queries, jwtSecret string) *HttpRouter {
 	gin.SetMode(config.GinMode())
 	engine := gin.Default()
+	engine.GET("/ping", func(c *gin.Context) {
+		c.String(http.StatusOK, "pong")
+	})
 	engine.Use(middleware.LogWithCorrelationID())
 	h := &HttpRouter{
 		commands:  commands,
@@ -38,9 +41,6 @@ func NewRouter(commands application.Commands, queries application.Queries, jwtSe
 		router:    engine,
 		jwtSecret: []byte(jwtSecret),
 	}
-	h.router.GET("/ping", func(c *gin.Context) {
-		c.String(http.StatusOK, "pong")
-	})
 	h.router.GET("/api/v1/users/:id", h.getUser)
 	h.router.POST("/api/v1/users/login", h.loginBegin)
 	h.router.POST("/api/v1/users/login/token", h.verifyToken)

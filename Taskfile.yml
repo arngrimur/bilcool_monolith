@@ -29,7 +29,47 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     cmd: docker exec -it bookings-db psql -U postgres -d bookings
 
-  minikube-portforward:
+  minikube:build-authentication:
+    desc: Build authentication image into minikube
+    cmds:
+      - eval $(minikube docker-env) && docker build -f authentication/Dockerfile -t arngrimur/bilcool-authentication:latest .
+
+  minikube:build-bookings:
+    desc: Build bookings image into minikube
+    cmds:
+      - eval $(minikube docker-env) && docker build -f bookings/Dockerfile -t arngrimur/bilcool-bookings:latest .
+
+  minikube:build-journal:
+    desc: Build journal image into minikube
+    cmds:
+      - eval $(minikube docker-env) && docker build -f journal/Dockerfile -t arngrimur/bilcool-journal:latest .
+
+  minikube:build-event-ledger:
+    desc: Build event-ledger image into minikube
+    cmds:
+      - eval $(minikube docker-env) && docker build -f event_ledger/Dockerfile -t arngrimur/bilcool-event-ledger:latest .
+
+  minikube:build-ui:
+    desc: Build UI image into minikube
+    cmds:
+      - eval $(minikube docker-env) && docker build -f ui/bilcool-ui/Dockerfile -t arngrimur/bilcool-ui:latest ui/bilcool-ui
+
+  minikube:build:
+    desc: Build all service images into minikube
+    deps:
+      - minikube:build-authentication
+      - minikube:build-bookings
+      - minikube:build-journal
+      - minikube:build-event-ledger
+      - minikube:build-ui
+
+  minikube:helm-upgrade:
+    desc: Apply Helm chart upgrade and restart all deployments
+    cmds:
+      - helm upgrade --install bilcool ./infrastructure/helm/bilcool -f infrastructure/helm/values-secrets.yaml
+      - kubectl rollout restart deployment/bookings deployment/authentication deployment/journal deployment/event-ledger deployment/ui
+
+  minikube:port-forward:
     desc: Port-forward UI, databases and LocalStack from Minikube to localhost
     cmds:
       - kubectl port-forward service/ui 8080:80 &
