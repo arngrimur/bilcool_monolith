@@ -5,7 +5,7 @@ metadata:
 data:
   AWS_REGION: {{ .Values.config.awsRegion | quote }}
   AWS_ENDPOINT_URL: {{ .Values.config.awsEndpointUrl | quote }}
-  OUTBOX_MODE: replication
+  OUTBOX_MODE: {{ .Values.config.outboxMode | default "polling" | quote }}
   RELEASE: "true"
 ---
 apiVersion: v1

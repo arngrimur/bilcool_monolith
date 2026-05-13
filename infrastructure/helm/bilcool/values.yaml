@@ -163,6 +163,7 @@ affinity: {}
 config:
   awsRegion: eu-north-1
   awsEndpointUrl: http://localstack:4566
+  outboxMode: polling
   authentication:
     webauthnRpId: ""
     webauthnRpOrigins: ""
