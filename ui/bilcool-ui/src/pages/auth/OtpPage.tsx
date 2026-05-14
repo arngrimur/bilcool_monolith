@@ -42,11 +42,17 @@ export default function OtpPage() {
       setAuth({ token, userRef: user.user_ref, username: user.username, email: user.email, role: user.role })
       navigate('/')
     } catch (err: unknown) {
-      const apiErr = err as { status?: number }
-      if (apiErr.status === 401 || apiErr.status === 400) {
-        setError(t('auth.error_invalid_token'))
+      if (err instanceof Error && err.name === 'InvalidStateError') {
+        setError(t('auth.error_passkey_exists'))
+      } else if (err instanceof Error && (err.name === 'NotAllowedError' || err.name === 'AbortError')) {
+        setError(t('auth.error_passkey_cancelled'))
       } else {
-        setError(t('auth.error_generic'))
+        const apiErr = err as { status?: number }
+        if (apiErr.status === 401 || apiErr.status === 400) {
+          setError(t('auth.error_invalid_token'))
+        } else {
+          setError(t('auth.error_generic'))
+        }
       }
     } finally {
       setLoading(false)

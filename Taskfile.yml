@@ -74,14 +74,19 @@ tasks:
       - helm upgrade --install bilcool ./infrastructure/helm/bilcool -f infrastructure/helm/values-secrets.yaml
       - kubectl rollout restart deployment/bookings deployment/authentication deployment/journal deployment/event-ledger deployment/ui
 
+  minikube:kill-port-forward:
+    desc: Kill all active kubectl port-forward processes
+    cmds:
+      - pkill -f "kubectl port-forward" || true
+
   minikube:port-forward:
     desc: Port-forward UI, databases and LocalStack from Minikube to localhost
     cmds:
-      - kubectl port-forward service/ui 8080:80 &
-      - kubectl port-forward service/authentication-db 54322:5432 &
-      - kubectl port-forward service/bookings-db 54321:5432 &
-      - kubectl port-forward service/journal-db 54323:5432 &
-      - kubectl port-forward service/localstack 4566:4566 &
+      - kubectl port-forward service/ui 3000:80 &
+      - kubectl port-forward service/authentication-db 54322:5432 2>&1 > /dev/null &
+      - kubectl port-forward service/bookings-db 54321:5432 2>&1 > /dev/null &
+      - kubectl port-forward service/journal-db 54323:5432 2>&1 > /dev/null &
+      - kubectl port-forward service/localstack 4566:4566 2>&1 > /dev/null &
       - wait
 
   swagger:

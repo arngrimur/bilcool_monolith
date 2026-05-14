@@ -31,10 +31,16 @@ type HttpRouter struct {
 func NewRouter(commands application.Commands, queries application.Queries, jwtSecret string) *HttpRouter {
 	gin.SetMode(config.GinMode())
 	engine := gin.Default()
+	engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		SkipPaths: []string{"/ping"},
+		Output:    log.Logger,
+	}))
 	engine.GET("/ping", func(c *gin.Context) {
 		c.String(http.StatusOK, "pong")
 	})
-	engine.Use(middleware.LogWithCorrelationID())
+	engine.Use(middleware.LogWithCorrelationID(),
+		gin.Recovery(),
+	)
 	h := &HttpRouter{
 		commands:  commands,
 		queries:   queries,

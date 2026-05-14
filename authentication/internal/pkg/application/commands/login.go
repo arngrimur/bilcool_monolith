@@ -108,9 +108,15 @@ func (h VerifyTokenHandler) VerifyToken(ctx context.Context, req domain.VerifyTo
 		return domain.VerifyTokenResponse{}, err
 	}
 
+	passkeys, err := h.users.GetPasskeys(ctx, user.UserRef)
+	if err != nil {
+		return domain.VerifyTokenResponse{}, err
+	}
+
 	webAuthnUser := domain.WebAuthnUser{
 		UserRef:  user.UserRef,
 		Username: user.Username,
+		Passkeys: passkeys,
 	}
 	options, sessionData, err := h.webAuthn.BeginRegistration(webAuthnUser)
 	if err != nil {

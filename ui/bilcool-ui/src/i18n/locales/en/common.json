@@ -26,6 +26,8 @@
     "error_invalid_token": "The code is invalid or has expired",
     "error_passkey_failed": "Passkey authentication failed",
     "error_generic": "Something went wrong. Please try again.",
+    "error_passkey_exists": "A passkey for this account already exists in your browser. Remove it from your browser's password manager and request a new code.",
+    "error_passkey_cancelled": "Passkey creation was cancelled. Please try again.",
     "reset_passkey_link": "Lost your passkey?",
     "reset_passkey_sent": "A reset code has been sent to your email"
   },
