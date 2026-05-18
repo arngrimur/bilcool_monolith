@@ -13,6 +13,7 @@ import (
 	"github.com/arngrimur/bilcool-lib/pkg/logging"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/application"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/config"
+	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/infrastructure/mapbox"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance/postgresql"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/web"
 	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
@@ -35,7 +36,8 @@ func main() {
 		log.Fatal().Err(err).Msg("error creating outbox table")
 	}
 	repo := postgresql.NewBookingsRepository(db)
-	app := application.New(repo)
+	mapboxClient := mapbox.NewClient(config.MapboxAccessToken())
+	app := application.New(repo, mapboxClient)
 	ginLambda := ginadapter.NewV2(web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler).Engine())
 
 	lambda.Start(func(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
