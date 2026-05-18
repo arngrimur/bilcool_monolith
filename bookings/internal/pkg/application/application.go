@@ -22,6 +22,7 @@ type (
 		EndBooking(ctx context.Context, request domain.EndBookingRequest) error
 		PauseBooking(ctx context.Context, request domain.PauseBookingRequest) error
 		ResumeBooking(ctx context.Context, request domain.BookingRequest) (domain.PauseBookingResponse, error)
+		AddTrackPoints(ctx context.Context, request domain.AddTrackPointsRequest) error
 	}
 
 	Queries interface {
@@ -47,10 +48,10 @@ type (
 // Dummy for interface
 var _ App = (*Application)(nil)
 
-func New(bookingsRepo domain.BookingsRepository) *Application {
+func New(bookingsRepo domain.BookingsRepository, distanceCalc commands.DistanceCalculator) *Application {
 	return &Application{
 		appCommands{
-			UpdateBookingsHandler: commands.NewUpdateBookingsHandler(domain.NewBookings(bookingsRepo)),
+			UpdateBookingsHandler: commands.NewUpdateBookingsHandler(domain.NewBookings(bookingsRepo), distanceCalc),
 		},
 		appQueries{
 			GetBookingsHandler: queries.NewGetBookingsHandler(domain.NewBookings(bookingsRepo)),

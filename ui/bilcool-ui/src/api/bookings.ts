@@ -5,6 +5,7 @@ import type {
   EndBookingRequest,
   PauseBookingRequest,
   PauseBookingResponse,
+  TrackPoint,
 } from '../types/api';
 
 const BASE = '/api/v1';
@@ -29,3 +30,9 @@ export const pauseBooking = (id: string, body: PauseBookingRequest) =>
 
 export const resumeBooking = (id: string) =>
   apiFetch<PauseBookingResponse>(`${BASE}/bookings/${id}/resume`, { method: 'POST' });
+
+export const addTrackPoints = (id: string, points: TrackPoint[]) =>
+  apiFetch<void>(`${BASE}/bookings/${id}/track`, {
+    method: 'POST',
+    body: JSON.stringify({ points }),
+  });

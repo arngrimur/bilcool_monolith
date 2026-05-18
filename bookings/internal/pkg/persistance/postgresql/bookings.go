@@ -174,7 +174,7 @@ func (bdb BookingRepository) EndBooking(ctx context.Context, request domain.EndB
 		return err
 	}
 	q := "INSERT INTO distances (fk_booking_id, start_distance, end_distance) VALUES ($1, $2, $3)"
-	_, err = local_bdb.ExecContext(ctx, q, booking.id, request.StartDistance, request.EndDistance)
+	_, err = local_bdb.ExecContext(ctx, q, booking.id, request.Distance.StartDistance, request.Distance.EndDistance)
 	if err != nil {
 		return err
 	}
@@ -327,6 +327,52 @@ func (bdb BookingRepository) DeleteUser(ctx context.Context, m brokerpostgres.Me
 		return err
 	}
 	return tx.Commit()
+}
+
+func (bdb BookingRepository) AddTrackPoints(ctx context.Context, request domain.AddTrackPointsRequest) error {
+	var bookingID int
+	err := bdb.QueryRowContext(ctx,
+		`SELECT id FROM bookings WHERE booking_reference = $1`,
+		request.BookingReference,
+	).Scan(&bookingID)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range request.Points {
+		_, err = bdb.ExecContext(ctx,
+			`INSERT INTO gps_track_points (fk_booking_id, lat, lon, recorded_at) VALUES ($1, $2, $3, $4)`,
+			bookingID, p.Lat, p.Lon, p.RecordedAt,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (bdb BookingRepository) GetTrackPoints(ctx context.Context, request domain.BookingRequest) ([]extdomain.TrackPoint, error) {
+	rows, err := bdb.QueryContext(ctx,
+		`SELECT lat, lon, recorded_at
+         FROM gps_track_points
+         WHERE fk_booking_id = (SELECT id FROM bookings WHERE booking_reference = $1)
+         ORDER BY recorded_at ASC`,
+		request.BookingReference,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var points []extdomain.TrackPoint
+	for rows.Next() {
+		var p extdomain.TrackPoint
+		if err := rows.Scan(&p.Lat, &p.Lon, &p.RecordedAt); err != nil {
+			return nil, err
+		}
+		points = append(points, p)
+	}
+	return points, rows.Err()
 }
 
 func (bdb BookingRepository) userRef(m brokerpostgres.Message) (uuid.UUID, error) {

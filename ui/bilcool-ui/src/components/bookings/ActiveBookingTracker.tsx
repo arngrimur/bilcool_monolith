@@ -1,12 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import { useGpsTracking } from '../../hooks/useGpsTracking'
-import { useEndBooking, usePauseBooking, useResumeBooking } from '../../hooks/useBookings'
+import { useEndBooking, usePauseBooking, useResumeBooking, useAddTrackPoints } from '../../hooks/useBookings'
 import { Button } from '../ui/button'
-import type { BookingResponse } from '../../types/api'
+import type { BookingResponse, TrackPoint } from '../../types/api'
 import { formatTime } from '../../utils/dateUtils'
 import { useSettingsStore } from '../../stores/settingsStore'
-
-const LOW_SPEED_THRESHOLD_KMH = 7
 
 interface Props {
   booking: BookingResponse
@@ -19,18 +17,14 @@ export default function ActiveBookingTracker({ booking, allBookings }: Props) {
   const endBooking = useEndBooking()
   const pauseBooking = usePauseBooking()
   const resumeBooking = useResumeBooking()
-  const {
-    isTracking,
-    isPaused,
-    distanceMeters,
-    currentPosition,
-    currentSpeedKmh,
-    error,
-    startTracking,
-    stopTracking,
-    pauseTracking,
-    resumeTracking,
-  } = useGpsTracking()
+  const addTrackPoints = useAddTrackPoints()
+
+  const onPoint = async (point: TrackPoint) => {
+    await addTrackPoints.mutateAsync({ id: booking.booking_reference, points: [point] })
+  }
+
+  const { isTracking, isPaused, currentPosition, error, startTracking, stopTracking, pauseTracking, resumeTracking } =
+    useGpsTracking({ onPoint })
 
   const now = new Date()
   const hasOtherActive = allBookings.some(
@@ -41,15 +35,11 @@ export default function ActiveBookingTracker({ booking, allBookings }: Props) {
       !b.distance,
   )
 
-  const canPause = currentSpeedKmh < LOW_SPEED_THRESHOLD_KMH
-
   async function handleStop() {
-    const finalDistance = stopTracking()
+    stopTracking()
     await endBooking.mutateAsync({
       id: booking.booking_reference,
       body: {
-        start_distance: 0,
-        end_distance: Math.round(finalDistance),
         position: currentPosition ?? undefined,
       },
     })
@@ -66,8 +56,8 @@ export default function ActiveBookingTracker({ booking, allBookings }: Props) {
   }
 
   async function handleResume() {
-    const response = await resumeBooking.mutateAsync(booking.booking_reference)
-    resumeTracking(response.position)
+    await resumeBooking.mutateAsync(booking.booking_reference)
+    resumeTracking()
   }
 
   return (
@@ -83,18 +73,13 @@ export default function ActiveBookingTracker({ booking, allBookings }: Props) {
         {formatTime(booking.start_date, language)} – {formatTime(booking.end_date, language)}
       </p>
 
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {isTracking ? (
         <div className="space-y-3">
-          <div className="text-center py-2">
-            <p className="text-3xl font-bold tabular-nums">
-              {(distanceMeters / 1000).toFixed(2)} km
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">{t('tracking_distance_label')}</p>
-          </div>
+          {!isPaused && (
+            <p className="text-sm text-center text-muted-foreground py-2">{t('tracking_active_label')}</p>
+          )}
 
           {isPaused ? (
             <Button
@@ -110,8 +95,7 @@ export default function ActiveBookingTracker({ booking, allBookings }: Props) {
                 className="flex-1 min-h-[52px] text-base"
                 variant="outline"
                 onClick={handlePause}
-                disabled={!canPause || pauseBooking.isPending}
-                title={!canPause ? t('pause_speed_hint') : undefined}
+                disabled={pauseBooking.isPending}
               >
                 {pauseBooking.isPending ? '...' : t('pause_tracking')}
               </Button>
@@ -131,10 +115,7 @@ export default function ActiveBookingTracker({ booking, allBookings }: Props) {
           {hasOtherActive ? (
             <p className="text-sm text-muted-foreground">{t('other_booking_active')}</p>
           ) : (
-            <Button
-              className="w-full min-h-[52px] text-base"
-              onClick={startTracking}
-            >
+            <Button className="w-full min-h-[52px] text-base" onClick={startTracking}>
               {t('start_tracking')}
             </Button>
           )}

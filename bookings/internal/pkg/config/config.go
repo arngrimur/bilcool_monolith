@@ -6,9 +6,10 @@ import (
 )
 
 var (
-	databaseUrl string
-	outboxMode  string
-	ginMode     string
+	databaseUrl        string
+	outboxMode         string
+	ginMode            string
+	mapboxAccessToken  string
 )
 
 func DatabaseUrl() string {
@@ -35,9 +36,14 @@ func Init() error {
 	} else {
 		ginMode = "debug"
 	}
+	mapboxAccessToken, _ = os.LookupEnv("MAPBOX_ACCESS_TOKEN")
 	return nil
 }
 
 func GinMode() string {
 	return ginMode
+}
+
+func MapboxAccessToken() string {
+	return mapboxAccessToken
 }

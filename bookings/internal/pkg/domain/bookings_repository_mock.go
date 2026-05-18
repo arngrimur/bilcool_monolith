@@ -42,6 +42,20 @@ func (m *MockBookingsRepository) EXPECT() *MockBookingsRepositoryMockRecorder {
 	return m.recorder
 }
 
+// AddTrackPoints mocks base method.
+func (m *MockBookingsRepository) AddTrackPoints(ctx context.Context, request AddTrackPointsRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddTrackPoints", ctx, request)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddTrackPoints indicates an expected call of AddTrackPoints.
+func (mr *MockBookingsRepositoryMockRecorder) AddTrackPoints(ctx, request any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTrackPoints", reflect.TypeOf((*MockBookingsRepository)(nil).AddTrackPoints), ctx, request)
+}
+
 // AddUser mocks base method.
 func (m *MockBookingsRepository) AddUser(ctx context.Context, message postgres.Message) error {
 	m.ctrl.T.Helper()
@@ -126,6 +140,21 @@ func (m *MockBookingsRepository) FindAll(ctx context.Context) ([]domain.BookingR
 func (mr *MockBookingsRepositoryMockRecorder) FindAll(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindAll", reflect.TypeOf((*MockBookingsRepository)(nil).FindAll), ctx)
+}
+
+// GetTrackPoints mocks base method.
+func (m *MockBookingsRepository) GetTrackPoints(ctx context.Context, request BookingRequest) ([]domain.TrackPoint, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTrackPoints", ctx, request)
+	ret0, _ := ret[0].([]domain.TrackPoint)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTrackPoints indicates an expected call of GetTrackPoints.
+func (mr *MockBookingsRepositoryMockRecorder) GetTrackPoints(ctx, request any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTrackPoints", reflect.TypeOf((*MockBookingsRepository)(nil).GetTrackPoints), ctx, request)
 }
 
 // PauseBooking mocks base method.

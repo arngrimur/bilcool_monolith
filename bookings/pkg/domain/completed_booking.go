@@ -13,6 +13,12 @@ type Position struct {
 	Lon float64 `json:"lon"`
 }
 
+type TrackPoint struct {
+	Lat        float64   `json:"lat"`
+	Lon        float64   `json:"lon"`
+	RecordedAt time.Time `json:"recorded_at"`
+}
+
 type CompletedBooking struct {
 	Booking  BookingResponse `json:"booking"`
 	Distance Distance        `json:"distance"`

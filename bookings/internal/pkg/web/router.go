@@ -86,6 +86,7 @@ func commandRoutes(h *HttpRouter) {
 	h.router.POST("/api/v1/bookings/:id/end", h.endBooking)
 	h.router.POST("/api/v1/bookings/:id/pause", h.pauseBooking)
 	h.router.POST("/api/v1/bookings/:id/resume", h.resumeBooking)
+	h.router.POST("/api/v1/bookings/:id/track", h.addTrackPoints)
 }
 
 func (h *HttpRouter) Engine() *gin.Engine { return h.router }
@@ -292,8 +293,9 @@ func (h *HttpRouter) endBooking(c *gin.Context) {
 		return
 	}
 	var body struct {
-		extdomain.Distance
-		Position *extdomain.Position `json:"position,omitempty"`
+		OdometerStart *int                `json:"odometer_start,omitempty"`
+		OdometerEnd   *int                `json:"odometer_end,omitempty"`
+		Position      *extdomain.Position `json:"position,omitempty"`
 	}
 	err = c.ShouldBindBodyWithJSON(&body)
 	if err != nil {
@@ -302,12 +304,38 @@ func (h *HttpRouter) endBooking(c *gin.Context) {
 	}
 	err = h.commands.EndBooking(c.Request.Context(), domain.EndBookingRequest{
 		BookingRequest: domain.BookingRequest{BookingReference: id},
-		Distance:       body.Distance,
+		OdometerStart:  body.OdometerStart,
+		OdometerEnd:    body.OdometerEnd,
 		Position:       body.Position,
 	})
 	if err != nil {
 		e := NewHttpError(err)
 		NewError(c, e.Code, fmt.Errorf("failed to end booking %s", e.Message))
+		return
+	}
+	c.Status(http.StatusAccepted)
+}
+
+func (h *HttpRouter) addTrackPoints(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
+		return
+	}
+	var body struct {
+		Points []extdomain.TrackPoint `json:"points"`
+	}
+	if err = c.ShouldBindBodyWithJSON(&body); err != nil || len(body.Points) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+	err = h.commands.AddTrackPoints(c.Request.Context(), domain.AddTrackPointsRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: id},
+		Points:         body.Points,
+	})
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, fmt.Errorf("failed to add track points %s", e.Message))
 		return
 	}
 	c.Status(http.StatusAccepted)

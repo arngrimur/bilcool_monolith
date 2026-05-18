@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { listBookings, upsertBooking, deleteBooking, endBooking, pauseBooking, resumeBooking } from '../api/bookings'
-import type { UpdateBookingRequest, EndBookingRequest, PauseBookingRequest } from '../types/api'
+import { listBookings, upsertBooking, deleteBooking, endBooking, pauseBooking, resumeBooking, addTrackPoints } from '../api/bookings'
+import type { UpdateBookingRequest, EndBookingRequest, PauseBookingRequest, TrackPoint } from '../types/api'
 
 export function useBookings() {
   return useQuery({
@@ -51,5 +51,12 @@ export function usePauseBooking() {
 export function useResumeBooking() {
   return useMutation({
     mutationFn: (id: string) => resumeBooking(id),
+  })
+}
+
+export function useAddTrackPoints() {
+  return useMutation({
+    mutationFn: ({ id, points }: { id: string; points: TrackPoint[] }) =>
+      addTrackPoints(id, points),
   })
 }

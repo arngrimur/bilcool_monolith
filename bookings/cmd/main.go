@@ -16,6 +16,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/event_dispatcher"
 	bookinginbox "github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/inbox"
+	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/infrastructure/mapbox"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance/postgresql"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/web"
 	soutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
@@ -98,7 +99,8 @@ func main() {
 	worker.Start(ctx)
 	defer worker.Stop()
 
-	app := application.New(repo)
+	mapboxClient := mapbox.NewClient(config.MapboxAccessToken())
+	app := application.New(repo, mapboxClient)
 	webService := web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler)
 	err = webService.StartRouter(":8080")
 	if err != nil {
