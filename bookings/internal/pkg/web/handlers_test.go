@@ -50,6 +50,9 @@ func (s *stubCommands) PauseBooking(_ context.Context, _ domain.PauseBookingRequ
 func (s *stubCommands) ResumeBooking(_ context.Context, _ domain.BookingRequest) (domain.PauseBookingResponse, error) {
 	return s.resumeResp, s.resumeErr
 }
+func (s *stubCommands) AddTrackPoints(_ context.Context, _ domain.AddTrackPointsRequest) error {
+	return nil
+}
 
 // stubQueries implements application.Queries returning zero values.
 type stubQueries struct{}
