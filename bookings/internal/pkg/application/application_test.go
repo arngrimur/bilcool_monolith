@@ -21,7 +21,14 @@ import (
 
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/pkg/persistance/postgresql"
+	extdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 )
+
+type noopDistanceCalc struct{}
+
+func (noopDistanceCalc) CalculateRoadDistance(_ context.Context, _ []extdomain.TrackPoint) (int, error) {
+	return 0, nil
+}
 
 type applicationTestSuite struct {
 	suite.Suite
@@ -78,7 +85,7 @@ func TestRunSuiteApplication(t *testing.T) {
 // region tests
 func (suite *applicationTestSuite) TestGetASingleBooking() {
 	bookingRepository := postgresql.NewBookingsRepository(suite.Db)
-	application := New(bookingRepository)
+	application := New(bookingRepository, noopDistanceCalc{})
 	booking, err := application.GetBooking(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
 	suite.Require().NoError(err)
 	suite.Require().Equal(suite.bookingRef, booking.BookingReference, "Booking reference should be the same")
@@ -86,7 +93,7 @@ func (suite *applicationTestSuite) TestGetASingleBooking() {
 
 func (suite *applicationTestSuite) TestUpdateBooking() {
 	bookingRepository := postgresql.NewBookingsRepository(suite.Db)
-	application := New(bookingRepository)
+	application := New(bookingRepository, noopDistanceCalc{})
 	r := domain.UpdateBookingRequest{
 		BookingReference: uuid.New(),
 		StartDate:        suite.now,
