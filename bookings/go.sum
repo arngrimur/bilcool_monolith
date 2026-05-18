@@ -27,6 +27,8 @@ github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260402112002-df5a2
 github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260402112002-df5a2cfef02b/go.mod h1:zVnjQkGN9+M47joJ+MEQepSnCml19uieHmnUnvBjEJQ=
 github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260416092020-364bd8b53ab3 h1:oVSjKTvcD2c0W+bRSGq+YVVIprFdzRmBeay2nKw80W4=
 github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260416092020-364bd8b53ab3/go.mod h1:/gWcdy2RdcOdH/b6VKOCqLwd9xVDb/eb4eWTh7Yos/E=
+github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260514201903-347b38328692 h1:rdrU1XL+GWLMWgmWgQmtEoR/iVoDMy0Yuvsk1u8QGcg=
+github.com/arngrimur/bilcool_monolith/message_broker v0.0.0-20260514201903-347b38328692/go.mod h1:/gWcdy2RdcOdH/b6VKOCqLwd9xVDb/eb4eWTh7Yos/E=
 github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260324161225-100b97514df9 h1:+Nefg3oRgIRlDqB7wUsv7jojNa0eirln/OH4J2QmmIQ=
 github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260324161225-100b97514df9/go.mod h1:FG8tzb1NN20Rp3iS1y8cu82hK0+lCgSnwqNFidiMUOA=
 github.com/arngrimur/bilcool_monolith/testing v0.0.0-20260402112002-df5a2cfef02b h1:uDN/3k1cbWRA94feA3Fgd5tsGJXfkzzWJoH9c6Tm+g0=
