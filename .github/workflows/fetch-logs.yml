@@ -1,0 +1,60 @@
+name: Fetch CloudWatch Logs
+
+on:
+  workflow_dispatch:
+    inputs:
+      function:
+        description: Lambda function suffix (e.g. authentication-http, bookings-http)
+        required: true
+        default: authentication-http
+      hours:
+        description: Hours of logs to fetch (max 24)
+        required: true
+        default: "2"
+      filter:
+        description: Optional keyword filter (e.g. "error", "fatal", "login")
+        required: false
+        default: ""
+
+jobs:
+  fetch-logs:
+    name: Fetch CloudWatch Logs
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      REGION: eu-north-1
+      PREFIX: bilcool-production
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-north-1
+
+      - name: Fetch logs
+        run: |
+          FUNCTION="${PREFIX}-${{ github.event.inputs.function }}"
+          LOG_GROUP="/aws/lambda/${FUNCTION}"
+          HOURS="${{ github.event.inputs.hours }}"
+          FILTER="${{ github.event.inputs.filter }}"
+          START_MS=$(( $(date +%s) * 1000 - HOURS * 3600 * 1000 ))
+
+          echo "## CloudWatch Logs: \`${LOG_GROUP}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Last **${HOURS}h** | filter: \`${FILTER:-<none>}\`" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          aws logs filter-log-events \
+            --log-group-name "$LOG_GROUP" \
+            --start-time "$START_MS" \
+            ${FILTER:+--filter-pattern "\"$FILTER\""} \
+            --region "$REGION" \
+            --query 'events[*].[timestamp,message]' \
+            --output text \
+          | while IFS=$'\t' read -r ts msg; do
+              echo "[$(date -d @$(( ts / 1000 )) '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date -r $(( ts / 1000 )) '+%Y-%m-%d %H:%M:%S')] $msg"
+            done >> $GITHUB_STEP_SUMMARY
+
+          echo '```' >> $GITHUB_STEP_SUMMARY
