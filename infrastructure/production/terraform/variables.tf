@@ -65,3 +65,9 @@ variable "frontend_bucket_name" {
   type        = string
   default     = "bilcool-frontend"
 }
+
+variable "mapbox_access_token" {
+  description = "Mapbox API token for distance/routing calculations"
+  type        = string
+  sensitive   = true
+}

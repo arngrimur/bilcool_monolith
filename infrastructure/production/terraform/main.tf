@@ -65,6 +65,7 @@ module "bookings_http" {
     DATABASE_URL = module.neon.bookings_connection_string
     OUTBOX_MODE  = "polling"
     RELEASE      = "true"
+    MAPBOX_ACCESS_TOKEN  = var.mapbox_access_token
   }
 }
 
