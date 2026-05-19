@@ -220,6 +220,18 @@ resource "aws_iam_role_policy" "github_deploy" {
         Action   = ["lambda:InvokeFunction"]
         Resource = "arn:aws:lambda:${var.aws_region}:${var.aws_account}:function:${var.prefix}-*-migrate"
       },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:FilterLogEvents",
+          "logs:GetLogEvents",
+          "logs:StartQuery",
+          "logs:GetQueryResults",
+        ]
+        Resource = "arn:aws:logs:${var.aws_region}:${var.aws_account}:log-group:/aws/lambda/${var.prefix}-*:*"
+      },
     ]
   })
 }
