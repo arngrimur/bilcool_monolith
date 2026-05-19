@@ -77,9 +77,15 @@ export interface UpdateBookingRequest {
   end_date: string;
 }
 
+export interface TrackPoint {
+  lat: number;
+  lon: number;
+  recorded_at: string; // ISO 8601
+}
+
 export interface EndBookingRequest {
-  start_distance: number;
-  end_distance: number;
+  odometer_start?: number;
+  odometer_end?: number;
   position?: { lat: number; lon: number };
 }
 

@@ -18,4 +18,6 @@ type BookingsRepository interface {
 	ResumeBooking(ctx context.Context, request BookingRequest) (PauseBookingResponse, error)
 	AddUser(ctx context.Context, message brokerpostgres.Message) error
 	DeleteUser(ctx context.Context, message brokerpostgres.Message) error
+	AddTrackPoints(ctx context.Context, request AddTrackPointsRequest) error
+	GetTrackPoints(ctx context.Context, request BookingRequest) ([]ext_domain.TrackPoint, error)
 }

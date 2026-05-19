@@ -23,8 +23,15 @@ type BookingRequest struct {
 
 type EndBookingRequest struct {
 	BookingRequest
-	extdomain.Distance
-	Position *extdomain.Position
+	OdometerStart *int                `json:"odometer_start,omitempty"`
+	OdometerEnd   *int                `json:"odometer_end,omitempty"`
+	Position      *extdomain.Position `json:"position,omitempty"`
+	Distance      extdomain.Distance  // populated by command handler, not from HTTP
+}
+
+type AddTrackPointsRequest struct {
+	BookingRequest
+	Points []extdomain.TrackPoint `json:"points"`
 }
 
 type PauseBookingRequest struct {
@@ -80,4 +87,12 @@ func (b Bookings) PauseBooking(ctx context.Context, request PauseBookingRequest)
 
 func (b Bookings) ResumeBooking(ctx context.Context, request BookingRequest) (PauseBookingResponse, error) {
 	return b.r.ResumeBooking(ctx, request)
+}
+
+func (b Bookings) AddTrackPoints(ctx context.Context, request AddTrackPointsRequest) error {
+	return b.r.AddTrackPoints(ctx, request)
+}
+
+func (b Bookings) GetTrackPoints(ctx context.Context, request BookingRequest) ([]extdomain.TrackPoint, error) {
+	return b.r.GetTrackPoints(ctx, request)
 }

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { useDeleteBooking, useEndBooking, usePauseBooking, useResumeBooking } from '../../hooks/useBookings'
+import { useDeleteBooking, useEndBooking, usePauseBooking, useResumeBooking, useAddTrackPoints } from '../../hooks/useBookings'
 import { useGpsTracking } from '../../hooks/useGpsTracking'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '../ui/dialog'
-import type { BookingResponse } from '../../types/api'
+import type { BookingResponse, TrackPoint } from '../../types/api'
 import { formatDate, formatTime } from '../../utils/dateUtils'
 import { useSettingsStore } from '../../stores/settingsStore'
 
@@ -54,21 +54,23 @@ export default function BookingStartEndDialog({
   const endBooking = useEndBooking()
   const pauseBooking = usePauseBooking()
   const resumeBooking = useResumeBooking()
+  const addTrackPoints = useAddTrackPoints()
+
+  const onPoint = async (point: TrackPoint) => {
+    await addTrackPoints.mutateAsync({ id: booking.booking_reference, points: [point] })
+  }
+
   const {
     isTracking,
     isPaused,
-    distanceMeters,
     currentPosition,
-    currentSpeedKmh,
     error: gpsError,
     startTracking,
     stopTracking,
     pauseTracking,
     resumeTracking,
-  } = useGpsTracking()
+  } = useGpsTracking({ onPoint })
 
-  const LOW_SPEED_THRESHOLD_KMH = 7
-  const canPause = currentSpeedKmh < LOW_SPEED_THRESHOLD_KMH
   const [confirmCancel, setConfirmCancel] = useState(false)
 
   useEffect(() => {
@@ -99,8 +101,6 @@ export default function BookingStartEndDialog({
     await endBooking.mutateAsync({
       id: booking.booking_reference,
       body: {
-        start_distance: 0,
-        end_distance: Math.round(distanceMeters),
         position: currentPosition ?? undefined,
       },
     })
@@ -118,16 +118,16 @@ export default function BookingStartEndDialog({
   }
 
   async function handleResumeGps() {
-    const response = await resumeBooking.mutateAsync(booking.booking_reference)
-    resumeTracking(response.position)
+    await resumeBooking.mutateAsync(booking.booking_reference)
+    resumeTracking()
   }
 
   async function handleEnd(data: EndFormValues) {
     await endBooking.mutateAsync({
       id: booking.booking_reference,
       body: {
-        start_distance: data.startOdo * 1000,
-        end_distance: data.endOdo * 1000,
+        odometer_start: data.startOdo * 1000,
+        odometer_end: data.endOdo * 1000,
       },
     })
     onOpenChange(false)
@@ -167,12 +167,9 @@ export default function BookingStartEndDialog({
 
             {isTracking ? (
               <div className="space-y-3">
-                <div className="text-center py-2">
-                  <p className="text-3xl font-bold tabular-nums">
-                    {(distanceMeters / 1000).toFixed(2)} km
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">{t('tracking_distance_label')}</p>
-                </div>
+                {!isPaused && (
+                  <p className="text-sm text-center text-muted-foreground py-2">{t('tracking_active_label')}</p>
+                )}
                 {isPaused ? (
                   <Button
                     className="w-full min-h-[52px] text-base"
@@ -187,8 +184,7 @@ export default function BookingStartEndDialog({
                       className="flex-1 min-h-[52px] text-base"
                       variant="outline"
                       onClick={handlePauseGps}
-                      disabled={!canPause || pauseBooking.isPending}
-                      title={!canPause ? t('pause_speed_hint') : undefined}
+                      disabled={pauseBooking.isPending}
                     >
                       {pauseBooking.isPending ? '...' : t('pause_tracking')}
                     </Button>
