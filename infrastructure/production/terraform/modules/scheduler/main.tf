@@ -19,8 +19,7 @@ resource "aws_scheduler_schedule" "bookings_outbox" {
     mode = "OFF"
   }
 
-  # Every 15 seconds
-  schedule_expression = "rate(1 minute)"
+  schedule_expression = "rate(10 minutes)"
 
   target {
     arn      = var.bookings_outbox_lambda_arn
@@ -48,7 +47,7 @@ resource "aws_scheduler_schedule" "authentication_outbox" {
     mode = "OFF"
   }
 
-  schedule_expression = "rate(1 minute)"
+  schedule_expression = "rate(10 minutes)"
 
   target {
     arn      = var.authentication_outbox_lambda_arn
