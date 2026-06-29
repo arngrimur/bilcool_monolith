@@ -1,2 +1,3 @@
 FROM amacneil/dbmate
 COPY authentication/internal/migrations /db/migrations
+USER nobody

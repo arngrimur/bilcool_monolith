@@ -9,10 +9,20 @@ metadata:
 spec:
   template:
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       restartPolicy: OnFailure
       initContainers:
         - name: wait-for-db
           image: postgres:18
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsUser: 999
+            runAsNonRoot: true
           command:
             - sh
             - -c
@@ -20,7 +30,13 @@ spec:
       containers:
         - name: migrate
           image: arngrimur/bilcool-bookings-migrate:{{ .Values.image.tag | default "latest" }}
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsUser: 65534
+            runAsNonRoot: true
           args: ["migrate"]
           env:
             - name: DATABASE_URL
@@ -37,10 +53,20 @@ metadata:
 spec:
   template:
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       restartPolicy: OnFailure
       initContainers:
         - name: wait-for-db
           image: postgres:18
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsUser: 999
+            runAsNonRoot: true
           command:
             - sh
             - -c
@@ -48,7 +74,13 @@ spec:
       containers:
         - name: migrate
           image: arngrimur/bilcool-authentication-migrate:{{ .Values.image.tag | default "latest" }}
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsUser: 65534
+            runAsNonRoot: true
           args: ["migrate"]
           env:
             - name: DATABASE_URL
@@ -65,10 +97,20 @@ metadata:
 spec:
   template:
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       restartPolicy: OnFailure
       initContainers:
         - name: wait-for-db
           image: postgres:18
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsUser: 999
+            runAsNonRoot: true
           command:
             - sh
             - -c
@@ -76,7 +118,13 @@ spec:
       containers:
         - name: migrate
           image: arngrimur/bilcool-journal-migrate:{{ .Values.image.tag | default "latest" }}
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsUser: 65534
+            runAsNonRoot: true
           args: ["migrate"]
           env:
             - name: DATABASE_URL
