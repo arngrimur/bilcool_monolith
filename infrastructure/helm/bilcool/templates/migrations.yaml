@@ -19,7 +19,8 @@ spec:
             - until pg_isready -h bookings-db -U postgres; do sleep 2; done
       containers:
         - name: migrate
-          image: arngrimur/bilcool-bookings-migrate:{{ .Values.image.tag | default .Chart.AppVersion }}
+          image: arngrimur/bilcool-bookings-migrate:{{ .Values.image.tag | default "latest" }}
+          imagePullPolicy: Never
           args: ["migrate"]
           env:
             - name: DATABASE_URL
@@ -46,7 +47,8 @@ spec:
             - until pg_isready -h authentication-db -U postgres; do sleep 2; done
       containers:
         - name: migrate
-          image: arngrimur/bilcool-authentication-migrate:{{ .Values.image.tag | default .Chart.AppVersion }}
+          image: arngrimur/bilcool-authentication-migrate:{{ .Values.image.tag | default "latest" }}
+          imagePullPolicy: Never
           args: ["migrate"]
           env:
             - name: DATABASE_URL
@@ -73,7 +75,8 @@ spec:
             - until pg_isready -h journal-db -U postgres; do sleep 2; done
       containers:
         - name: migrate
-          image: arngrimur/bilcool-journal-migrate:{{ .Values.image.tag | default .Chart.AppVersion }}
+          image: arngrimur/bilcool-journal-migrate:{{ .Values.image.tag | default "latest" }}
+          imagePullPolicy: Never
           args: ["migrate"]
           env:
             - name: DATABASE_URL

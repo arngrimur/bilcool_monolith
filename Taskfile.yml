@@ -59,6 +59,31 @@ tasks:
       - docker build -f ui/bilcool-ui/Dockerfile -t arngrimur/bilcool-ui:latest ui/bilcool-ui
       - minikube image load arngrimur/bilcool-ui:latest
 
+  minikube:build-migrate-authentication:
+    desc: Build authentication migration image and load into minikube
+    cmds:
+      - docker build -f authentication/Dockerfile.migrate -t arngrimur/bilcool-authentication-migrate:latest .
+      - minikube image load arngrimur/bilcool-authentication-migrate:latest
+
+  minikube:build-migrate-bookings:
+    desc: Build bookings migration image and load into minikube
+    cmds:
+      - docker build -f bookings/Dockerfile.migrate -t arngrimur/bilcool-bookings-migrate:latest .
+      - minikube image load arngrimur/bilcool-bookings-migrate:latest
+
+  minikube:build-migrate-journal:
+    desc: Build journal migration image and load into minikube
+    cmds:
+      - docker build -f journal/Dockerfile.migrate -t arngrimur/bilcool-journal-migrate:latest .
+      - minikube image load arngrimur/bilcool-journal-migrate:latest
+
+  minikube:build-migrate:
+    desc: Build all migration images and load into minikube
+    cmds:
+      - task: minikube:build-migrate-authentication
+      - task: minikube:build-migrate-bookings
+      - task: minikube:build-migrate-journal
+
   minikube:build:
     desc: Build all service images and load into minikube
     cmds:
@@ -82,12 +107,13 @@ tasks:
   minikube:port-forward:
     desc: Port-forward UI, databases and LocalStack from Minikube to localhost
     cmds:
-      - kubectl port-forward service/ui 3000:80 &
-      - kubectl port-forward service/authentication-db 54322:5432 2>&1 > /dev/null &
-      - kubectl port-forward service/bookings-db 54321:5432 2>&1 > /dev/null &
-      - kubectl port-forward service/journal-db 54323:5432 2>&1 > /dev/null &
-      - kubectl port-forward service/localstack 4566:4566 2>&1 > /dev/null &
-      - wait
+      - |
+        kubectl port-forward service/ui 3000:80 &
+        kubectl port-forward service/authentication-db 54322:5432 &>/dev/null &
+        kubectl port-forward service/bookings-db 54321:5432 &>/dev/null &
+        kubectl port-forward service/journal-db 54323:5432 &>/dev/null &
+        kubectl port-forward service/localstack 4566:4566 &>/dev/null &
+        wait
 
   swagger:
     dir: '{{.USER_WORKING_DIR}}'
