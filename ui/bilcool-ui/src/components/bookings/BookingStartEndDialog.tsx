@@ -31,6 +31,30 @@ const endSchema = z
 
 type EndFormValues = z.infer<typeof endSchema>
 
+type OdoDraft = Partial<EndFormValues>
+
+function draftKey(bookingRef: string) {
+  return `booking-draft:${bookingRef}`
+}
+
+function readDraft(bookingRef: string): OdoDraft | undefined {
+  const raw = sessionStorage.getItem(draftKey(bookingRef))
+  if (!raw) return undefined
+  try {
+    return JSON.parse(raw) as OdoDraft
+  } catch {
+    return undefined
+  }
+}
+
+function writeDraft(bookingRef: string, draft: OdoDraft) {
+  sessionStorage.setItem(draftKey(bookingRef), JSON.stringify(draft))
+}
+
+function clearDraft(bookingRef: string) {
+  sessionStorage.removeItem(draftKey(bookingRef))
+}
+
 interface BookingStartEndDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -86,13 +110,28 @@ export default function BookingStartEndDialog({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<EndFormValues>({
     resolver: zodResolver(endSchema),
+    defaultValues: readDraft(booking.booking_reference),
   })
+
+  useEffect(() => {
+    const subscription = watch((values) => {
+      const draft: OdoDraft = {}
+      if (Number.isFinite(values.startOdo)) draft.startOdo = values.startOdo
+      if (Number.isFinite(values.endOdo)) draft.endOdo = values.endOdo
+      if (draft.startOdo !== undefined || draft.endOdo !== undefined) {
+        writeDraft(booking.booking_reference, draft)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [watch, booking.booking_reference])
 
   async function handleDelete() {
     await deleteBooking.mutateAsync(booking.booking_reference)
+    clearDraft(booking.booking_reference)
     onOpenChange(false)
   }
 
@@ -104,6 +143,7 @@ export default function BookingStartEndDialog({
         position: currentPosition ?? undefined,
       },
     })
+    clearDraft(booking.booking_reference)
     onOpenChange(false)
   }
 
@@ -130,6 +170,7 @@ export default function BookingStartEndDialog({
         odometer_end: data.endOdo * 1000,
       },
     })
+    clearDraft(booking.booking_reference)
     onOpenChange(false)
   }
 
