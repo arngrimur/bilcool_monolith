@@ -1,0 +1,44 @@
+# Terraform Provider for Frostmoln Cloud
+
+Terraform provider for the [Frostmoln Cloud Platform](https://frostmoln.cloud), enabling infrastructure-as-code management of cloud resources with full data sovereignty in EU/EEA datacenters.
+
+## Requirements
+
+- [Terraform](https://www.terraform.io/downloads.html) >= 1.0
+- [Go](https://golang.org/doc/install) >= 1.25 (to build the provider plugin)
+
+## Building The Provider
+
+```sh
+git clone go.frostmoln.internal/terraform-provider-frostmoln
+cd terraform-provider-frostmoln
+go build ./...
+```
+
+## Using The Provider
+
+```hcl
+terraform {
+  required_providers {
+    frostmoln = {
+      source = "registry.terraform.io/frostmoln/frostmoln"
+    }
+  }
+}
+
+provider "frostmoln" {
+  api_endpoint = "https://api.frostmoln.cloud/api"
+  api_key      = var.frostmoln_api_key
+}
+```
+
+## Developing The Provider
+
+See [CLAUDE.md](CLAUDE.md) for development guidelines.
+
+```sh
+go build ./...     # Build
+go test ./...      # Unit tests
+TF_ACC=1 go test ./...   # Acceptance tests
+go install ./...   # Install locally
+```

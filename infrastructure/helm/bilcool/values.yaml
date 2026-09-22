@@ -160,6 +160,9 @@ tolerations: []
 
 affinity: {}
 
+postgres:
+  location: local  # local | neon | frostmoln
+
 config:
   awsRegion: eu-north-1
   awsEndpointUrl: http://localstack:4566

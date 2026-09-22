@@ -57,36 +57,17 @@ spec:
   template:
     spec:
       restartPolicy: OnFailure
-      initContainers:
-        - name: wait-for-authentication-db
-          image: postgres:18
-          command:
-            - sh
-            - -c
-            - until pg_isready -h authentication-db -U postgres; do sleep 2; done
-        - name: wait-for-bookings-db
-          image: postgres:18
-          command:
-            - sh
-            - -c
-            - until pg_isready -h bookings-db -U postgres; do sleep 2; done
-        - name: wait-for-journal-db
-          image: postgres:18
-          command:
-            - sh
-            - -c
-            - until pg_isready -h journal-db -U postgres; do sleep 2; done
       containers:
         - name: seed
           image: postgres:18
           command: ["/bin/sh", "/seed/seed-users.sh"]
           env:
             - name: DATABASE_URL
-              value: postgres://postgres:postgres@authentication-db:5432/authentication?sslmode=disable
+              value: {{ .Values.secrets.authentication.databaseUrl | quote }}
             - name: BOOKINGS_DATABASE_URL
-              value: postgres://postgres:postgres@bookings-db:5432/bookings?sslmode=disable
+              value: {{ .Values.secrets.bookings.databaseUrl | quote }}
             - name: JOURNAL_DATABASE_URL
-              value: postgres://postgres:postgres@journal-db:5432/journal?sslmode=disable
+              value: {{ .Values.secrets.journal.databaseUrl | quote }}
           volumeMounts:
             - name: seed
               mountPath: /seed

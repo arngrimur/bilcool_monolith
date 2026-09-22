@@ -1,3 +1,4 @@
+{{- if eq .Values.postgres.location "local" }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -237,3 +238,4 @@ spec:
     - port: 5432
       targetPort: 5432
   clusterIP: None
+{{- end }}
