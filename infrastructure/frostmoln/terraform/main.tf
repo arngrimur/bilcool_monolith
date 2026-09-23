@@ -15,8 +15,8 @@ provider "frostmoln" {
 resource "frostmoln_tenant_default_tags" "this" {
   tags = {
     env         = terraform.workspace
-    app = vars.app
-    fullname = vars.fullname
+    app      = var.app
+    fullname = var.fullname
   }
 }
 
