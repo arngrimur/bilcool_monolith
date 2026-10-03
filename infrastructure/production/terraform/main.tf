@@ -2,7 +2,18 @@ locals {
   prefix = "bilcool-${var.environment}"
 }
 
-# ── Neon databases ────────────────────────────────────────────────────────────
+# ── Database (Frostmoln Postgres: one database, one schema per service) ───────
+
+module "database" {
+  source  = "./modules/database"
+  db_host = var.db_host
+  db_port = var.db_port
+}
+
+# ── Neon (legacy) ─────────────────────────────────────────────────────────────
+# No longer referenced by any Lambda. Kept ONLY so that `terraform apply` does not destroy the
+# Neon project before its data has been copied to Frostmoln. Delete this module, the neon
+# provider and var.neon_api_key after the data migration (see plan.md).
 
 module "neon" {
   source       = "./modules/neon"
@@ -62,7 +73,7 @@ module "bookings_http" {
   create_function_url = true
   tags                = { Service = "bookings", Component = "http" }
   environment_variables = {
-    DATABASE_URL = module.neon.bookings_connection_string
+    DATABASE_URL = module.database.bookings_connection_string
     OUTBOX_MODE  = "polling"
     RELEASE      = "true"
     MAPBOX_ACCESS_TOKEN  = var.mapbox_access_token
@@ -77,7 +88,7 @@ module "bookings_sqs" {
   role_arn      = module.iam.postgres_lambda_role_arn
   tags          = { Service = "bookings", Component = "sqs-consumer" }
   environment_variables = {
-    DATABASE_URL = module.neon.bookings_connection_string
+    DATABASE_URL = module.database.bookings_connection_string
   }
 }
 
@@ -90,7 +101,7 @@ module "bookings_outbox" {
   timeout       = 60
   tags          = { Service = "bookings", Component = "outbox" }
   environment_variables = {
-    DATABASE_URL = module.neon.bookings_connection_string
+    DATABASE_URL = module.database.bookings_connection_string
     OUTBOX_MODE  = "polling"
   }
 }
@@ -113,7 +124,7 @@ module "authentication_http" {
   create_function_url = true
   tags                = { Service = "authentication", Component = "http" }
   environment_variables = {
-    DATABASE_URL          = module.neon.authentication_connection_string
+    DATABASE_URL          = module.database.authentication_connection_string
     OUTBOX_MODE           = "polling"
     JWT_SECRET            = var.jwt_secret
     FROM_EMAIL            = var.from_email
@@ -134,7 +145,7 @@ module "authentication_outbox" {
   timeout       = 60
   tags          = { Service = "authentication", Component = "outbox" }
   environment_variables = {
-    DATABASE_URL        = module.neon.authentication_connection_string
+    DATABASE_URL        = module.database.authentication_connection_string
     OUTBOX_MODE         = "polling"
     JWT_SECRET          = var.jwt_secret
     FROM_EMAIL          = var.from_email
@@ -190,7 +201,7 @@ module "journal_http" {
   create_function_url = true
   tags                = { Service = "journal", Component = "http" }
   environment_variables = {
-    DATABASE_URL = module.neon.journal_connection_string
+    DATABASE_URL = module.database.journal_connection_string
     RELEASE      = "true"
   }
 }
@@ -203,7 +214,7 @@ module "journal_sqs" {
   role_arn      = module.iam.postgres_lambda_role_arn
   tags          = { Service = "journal", Component = "sqs-consumer" }
   environment_variables = {
-    DATABASE_URL = module.neon.journal_connection_string
+    DATABASE_URL = module.database.journal_connection_string
   }
 }
 
@@ -242,7 +253,7 @@ module "bookings_migrate" {
   timeout       = 60
   tags          = { Service = "bookings", Component = "migrate" }
   environment_variables = {
-    DATABASE_URL = module.neon.bookings_migrate_url
+    DATABASE_URL = module.database.bookings_migrate_url
   }
 }
 
@@ -255,7 +266,7 @@ module "authentication_migrate" {
   timeout       = 60
   tags          = { Service = "authentication", Component = "migrate" }
   environment_variables = {
-    DATABASE_URL = module.neon.authentication_migrate_url
+    DATABASE_URL = module.database.authentication_migrate_url
   }
 }
 
@@ -268,26 +279,26 @@ module "journal_migrate" {
   timeout       = 60
   tags          = { Service = "journal", Component = "migrate" }
   environment_variables = {
-    DATABASE_URL = module.neon.journal_migrate_url
+    DATABASE_URL = module.database.journal_migrate_url
   }
 }
 
 resource "aws_lambda_invocation" "bookings_migrate" {
   function_name = module.bookings_migrate.function_name
   input         = "{}"
-  depends_on    = [module.bookings_migrate, module.neon]
+  depends_on    = [module.bookings_migrate, module.database]
 }
 
 resource "aws_lambda_invocation" "authentication_migrate" {
   function_name = module.authentication_migrate.function_name
   input         = "{}"
-  depends_on    = [module.authentication_migrate, module.neon]
+  depends_on    = [module.authentication_migrate, module.database]
 }
 
 resource "aws_lambda_invocation" "journal_migrate" {
   function_name = module.journal_migrate.function_name
   input         = "{}"
-  depends_on    = [module.journal_migrate, module.neon]
+  depends_on    = [module.journal_migrate, module.database]
 }
 
 # ── EventBridge Scheduler: outbox dispatchers ─────────────────────────────────

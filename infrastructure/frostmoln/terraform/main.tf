@@ -4,6 +4,12 @@ terraform {
       source = "frostmoln/frostmoln"
     }
   }
+
+  backend "s3" {
+    bucket = "bilcool-terraform-state"
+    key    = "frostmoln/terraform.tfstate"
+    region = "eu-north-1"
+  }
 }
 
 provider "frostmoln" {
@@ -15,8 +21,7 @@ provider "frostmoln" {
 resource "frostmoln_tenant_default_tags" "this" {
   tags = {
     env         = terraform.workspace
-    app      = var.app
-    fullname = var.fullname
+    system      = var.system
   }
 }
 
@@ -48,6 +53,14 @@ output "gateway_source_address" {
   value = frostmoln_gateway.main.source_address
 }
 
+output "vpc_id" {
+  value = frostmoln_vpc.main.id
+}
+
+output "subnet_id" {
+  value = frostmoln_subnet.bilcool.id
+}
+
 
 #security groups
 resource "frostmoln_security_group" "web" {
@@ -64,14 +77,3 @@ resource "frostmoln_security_group_rule" "https" {
   remote_cidr       = "0.0.0.0/0"
 }
 
-#database
-resource "frostmoln_postgres_instance" "bilcool" {
-  name             = "bilcool-db"
-  version          = "16"
-  flavor_id        = "db.gp1.medium"
-  storage_gb       = 100
-  vpc_id           = frostmoln_vpc.main.id
-  subnet_id        = frostmoln_subnet.bilcool.id
-  ha_enabled       = false
-  backup_enabled   = true
-}

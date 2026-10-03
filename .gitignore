@@ -16,4 +16,12 @@ infrastructure/production/bootstrap/.terraform/
 infrastructure/production/terraform/.terraform/
 infrastructure/production/terraform/*.tfvars
 infrastructure/production/terraform/*.tfvars.json
+infrastructure/frostmoln/terraform/.terraform/
+infrastructure/frostmoln/terraform/terraform.tfstate*
+infrastructure/frostmoln/terraform/terraform.tfstate.d/
+authentication/terraform/.terraform/
+authentication/terraform/terraform.tfstate*
+authentication/terraform/terraform.tfstate.d/
 dist/
+
+.claude/settings.local.json

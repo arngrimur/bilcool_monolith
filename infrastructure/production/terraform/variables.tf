@@ -10,8 +10,19 @@ variable "environment" {
   default     = "production"
 }
 
+variable "db_host" {
+  description = "Public address of the Frostmoln Postgres (output db_host of infrastructure/frostmoln/terraform)"
+  type        = string
+}
+
+variable "db_port" {
+  description = "Port of the Frostmoln Postgres"
+  type        = number
+  default     = 5432
+}
+
 variable "neon_api_key" {
-  description = "Neon API key for database provisioning"
+  description = "Legacy: Neon API key, only needed until the Neon module is removed"
   type        = string
   sensitive   = true
 }

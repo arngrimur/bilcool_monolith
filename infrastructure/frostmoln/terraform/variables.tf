@@ -2,11 +2,7 @@ variable "env" {
 	description = "environment"
         type = string
 }
-variable "app" {
-  description = "application name"
+variable "system" {
+  description = "system name"
   type        = string
-}
-variable "fullname" {
-  description = "full name of app"
-  type = string
 }

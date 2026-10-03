@@ -41,19 +41,19 @@ output "github_deploy_role_arn" {
 
 output "bookings_migrate_url" {
   description = "Set this as the BOOKINGS_MIGRATE_URL secret in GitHub repository settings"
-  value       = module.neon.bookings_migrate_url
+  value       = module.database.bookings_migrate_url
   sensitive   = true
 }
 
 output "authentication_migrate_url" {
   description = "Set this as the AUTHENTICATION_MIGRATE_URL secret in GitHub repository settings"
-  value       = module.neon.authentication_migrate_url
+  value       = module.database.authentication_migrate_url
   sensitive   = true
 }
 
 output "journal_migrate_url" {
   description = "Set this as the JOURNAL_MIGRATE_URL secret in GitHub repository settings"
-  value       = module.neon.journal_migrate_url
+  value       = module.database.journal_migrate_url
   sensitive   = true
 }
 
@@ -74,4 +74,10 @@ output "frontend_bucket_name" {
 output "acm_validation_records" {
   description = "Add these CNAME records in Loopia to validate the TLS certificate"
   value       = module.frontend.acm_validation_records
+}
+
+output "database_bootstrap_sql" {
+  description = "One-time SQL for the Frostmoln admin user: terraform output -raw database_bootstrap_sql | psql <admin url>"
+  value       = module.database.bootstrap_sql
+  sensitive   = true
 }
