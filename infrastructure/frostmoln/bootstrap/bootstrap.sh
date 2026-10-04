@@ -10,6 +10,8 @@
 #
 # Role passwords are generated on the first run and written to $OUT (mode 600, gitignored). A re-run reuses
 # them; delete $OUT first to rotate. Passwords go to psql on stdin, never on a command line.
+# $OUT consists of `export` lines, so `. $OUT` alone puts TF_VAR_db_passwords (and the PW_*/URL_* values)
+# into the current shell's environment, ready for terraform. Run `terraform` from that same shell.
 set -euo pipefail
 
 : "${PGPASSWORD:?export PGPASSWORD (the pgadmin password) first}"
@@ -28,6 +30,8 @@ admin_psql() { # <database>; SQL on stdin
 declare -A PW
 if [[ -f "$OUT" ]]; then
   echo "Reusing passwords from $OUT"
+  # Upgrade a file written before it exported its variables (keeps the passwords; idempotent, mode is kept).
+  sed -i -E 's/^([A-Za-z_][A-Za-z0-9_]*=)/export \1/' "$OUT"
   # shellcheck disable=SC1090
   source "$OUT"
   for s in "${SERVICES[@]}"; do
@@ -39,11 +43,11 @@ else
   for s in "${SERVICES[@]}"; do PW[$s]="$(openssl rand -hex 24)"; done # hex: URL-safe
   umask 077
   {
-    for s in "${SERVICES[@]}"; do echo "PW_${s^^}=${PW[$s]}"; done
+    for s in "${SERVICES[@]}"; do echo "export PW_${s^^}=${PW[$s]}"; done
     for s in "${SERVICES[@]}"; do
-      echo "URL_${s^^}='postgres://${s}:${PW[$s]}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require'"
+      echo "export URL_${s^^}='postgres://${s}:${PW[$s]}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require'"
     done
-    printf "TF_VAR_db_passwords='{\"bookings\":\"%s\",\"authentication\":\"%s\",\"journal\":\"%s\"}'\n" \
+    printf "export TF_VAR_db_passwords='{\"bookings\":\"%s\",\"authentication\":\"%s\",\"journal\":\"%s\"}'\n" \
       "${PW[bookings]}" "${PW[authentication]}" "${PW[journal]}"
   } >"$OUT"
   echo "Wrote $OUT (mode 600)"
