@@ -664,7 +664,8 @@ jobs:
       - docker-push-authentication-migrate
       - docker-push-journal-migrate
       - docker-push-ui
-    if: startsWith(github.ref, 'refs/tags/')
+    # Skipped unless the repository variable DEPLOY_FROSTMOLN_K8S is set to 'true' (the apps run on Lambda for now).
+    if: startsWith(github.ref, 'refs/tags/') && vars.DEPLOY_FROSTMOLN_K8S == 'true'
     steps:
       - uses: actions/checkout@v5
       - uses: azure/setup-helm@v4
