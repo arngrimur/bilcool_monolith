@@ -1,5 +1,11 @@
 # Production Setup Plan — Issue #41
 
+> **Historical document.** This was the original plan for moving to AWS Lambda with Neon Postgres, and most of it was implemented.
+> It is **not** current: the database is now one Frostmoln PostgreSQL (one schema and role per service, see `/plan.md` and
+> `infrastructure/frostmoln/README.md`), HTTP is served through Lambda Function URLs behind CloudFront (there is no API Gateway),
+> and there are 12 Lambda functions. For the current setup read `infrastructure/production/terraform/README.md` and `/CLAUDE.md`.
+> The Neon and API Gateway sections below are kept only as history.
+
 ## Goals
 
 1. Services run as AWS Lambda functions

@@ -1,5 +1,11 @@
 # Move from Neon to a single Frostmoln Postgres (one DB, one schema per module)
 
+> **Status (2026-10-04): done and in production.** Released as v1.2.0. The Lambdas run against the Frostmoln database, signup, login and
+> booking creation work. Still open: remove the legacy Neon module (see the production Terraform README), tighten database access
+> (the load balancer listener has no CIDR allowlist), and decide on a shorter outbox relay interval (10 min today).
+> Current documentation lives in `CLAUDE.md`, `infrastructure/frostmoln/README.md` and `infrastructure/production/terraform/README.md`; this
+> file is the plan and progress log from the migration.
+
 ## Context
 Neon runs out of credits. Replace it with the Frostmoln Postgres instance
 (`frostmoln_postgres_instance.bilcool` in `infrastructure/frostmoln/terraform/db.tf`, PG16, in-VPC, no
