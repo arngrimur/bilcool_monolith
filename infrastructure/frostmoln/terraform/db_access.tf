@@ -35,10 +35,17 @@ resource "frostmoln_load_balancer" "db" {
 
 resource "frostmoln_lb_listener" "db" {
   load_balancer_id = frostmoln_load_balancer.db.id
-  name             = "postgres"
+  name             = "bilcool-listener"
   protocol         = "tcp"
   protocol_port    = 5432
   allowed_cidrs    = var.db_allowed_cidrs
+
+  # The platform refused every listener create that sent allowed_cidrs (generic "operation could not
+  # be completed"), so this listener was created by hand in the portal and imported, with no CIDR
+  # list. Do not let Terraform push the list as an update until Frostmoln has fixed that.
+  lifecycle {
+    ignore_changes = [allowed_cidrs]
+  }
 }
 
 resource "frostmoln_lb_pool" "db" {

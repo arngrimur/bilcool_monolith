@@ -21,6 +21,12 @@ variable "db_port" {
   default     = 5432
 }
 
+variable "db_passwords" {
+  description = "Role passwords for bookings, authentication and journal, as written by infrastructure/frostmoln/bootstrap/bootstrap.sh"
+  type        = map(string)
+  sensitive   = true
+}
+
 variable "neon_api_key" {
   description = "Legacy: Neon API key, only needed until the Neon module is removed"
   type        = string

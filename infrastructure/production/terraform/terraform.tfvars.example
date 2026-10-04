@@ -1,5 +1,6 @@
 aws_region            = "eu-north-1"
 environment           = "production"
+db_passwords          = { bookings = "REPLACE_ME", authentication = "REPLACE_ME", journal = "REPLACE_ME" }   # from bootstrap.sh
 db_host               = "REPLACE_ME"   # terraform output db_host in infrastructure/frostmoln/terraform
 neon_api_key          = "REPLACE_ME"   # legacy, remove with the neon module
 jwt_secret            = "REPLACE_ME"

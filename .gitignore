@@ -25,3 +25,4 @@ authentication/terraform/terraform.tfstate.d/
 dist/
 
 .claude/settings.local.json
+infrastructure/frostmoln/bootstrap/db-credentials.env
