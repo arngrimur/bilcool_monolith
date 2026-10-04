@@ -161,7 +161,7 @@ tolerations: []
 affinity: {}
 
 postgres:
-  location: local  # local | neon | frostmoln
+  location: local  # local | frostmoln
 
 config:
   awsRegion: eu-north-1
