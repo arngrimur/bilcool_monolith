@@ -75,9 +75,3 @@ output "acm_validation_records" {
   description = "Add these CNAME records in Loopia to validate the TLS certificate"
   value       = module.frontend.acm_validation_records
 }
-
-output "database_bootstrap_sql" {
-  description = "One-time SQL for the Frostmoln admin user: terraform output -raw database_bootstrap_sql | psql <admin url>"
-  value       = module.database.bootstrap_sql
-  sensitive   = true
-}

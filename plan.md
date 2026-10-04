@@ -128,8 +128,9 @@ Files: `infrastructure/frostmoln/terraform/db.tf`, `main.tf`, `variables.tf`, `e
 ## Progress log
 - **2026-10-03, step 4 done (code only, not applied):**
   - `journal/.../postgres/setup.go`: Lambda connection limits (2 open, 0 idle), same as bookings and authentication.
-  - `infrastructure/production/terraform/modules/database/`: `random_password` per service, URLs without
-    `pgbouncer=true`, and a sensitive `bootstrap_sql` output (database, extension, roles, schemas, `search_path`).
+  - `infrastructure/production/terraform/modules/database/`: takes the role passwords as `var.passwords` (root
+    `var.db_passwords`), URLs without `pgbouncer=true`. The DB, schemas and roles come from
+    `infrastructure/frostmoln/bootstrap/bootstrap.sh` (see below), not from Terraform.
     `main.tf` Lambdas now use `module.database`. New vars `db_host` and `db_port`.
   - `module "neon"` is deliberately kept so `apply` does not destroy the Neon project before the data is copied.
     Remove it, the neon provider and `neon_api_key` afterwards.
@@ -137,3 +138,17 @@ Files: `infrastructure/frostmoln/terraform/db.tf`, `main.tf`, `variables.tf`, `e
     (3) only then apply the production stack. The migrate Lambdas run during that apply and fail if the schemas
     do not exist. The first production apply needs the bootstrap output, so use
     `terraform apply -target=module.database` first, run the bootstrap, then do the full apply.
+- **2026-10-03, Frostmoln DB reachable (dev workspace):** public IP + L4 load balancer + pool/member/health monitor
+  applied; the listener was created by hand in the portal and imported, because the platform refused every
+  Terraform-created listener that sent `allowed_cidrs` (generic failure). `lifecycle.ignore_changes` keeps Terraform
+  from pushing the CIDR list. TCP and TLS 1.3 verified from this host. The listener's effective access with an empty
+  CIDR list is UNVERIFIED. The certificate is self-signed, so use `sslmode=require`.
+- **Bootstrap:** `infrastructure/frostmoln/bootstrap/bootstrap.sh` (idempotent; needs `PGPASSWORD` + `DB_HOST`) creates
+  the DB, extension, schemas, roles and `search_path`, writes credentials to the gitignored `db-credentials.env`
+  and verifies each role's `search_path`. Rotate the pgadmin password: it was pasted into a chat.
+- **2026-10-03, Neon data skipped** (test data only): the migrate Lambdas create fresh tables in the new schemas.
+- **Migrate invocations now re-run on a DB change:** `aws_lambda_invocation.*_migrate` had no `triggers`, so Terraform would
+  not have re-run them after the DB switch (CI does, a bare apply did not). Added `triggers = { database = sha256(url) }`.
+- **Production stack** (`infrastructure/production/terraform`, `default` workspace, 99 resources, live on Neon): initialised
+  locally. Applying needs a gitignored `terraform.tfvars` with `db_host`, `db_passwords` (from `bootstrap/db-credentials.env`)
+  and the existing jwt_secret, brevo_api_key, mapbox_access_token, neon_api_key and so on.

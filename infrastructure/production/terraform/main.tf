@@ -5,9 +5,10 @@ locals {
 # ── Database (Frostmoln Postgres: one database, one schema per service) ───────
 
 module "database" {
-  source  = "./modules/database"
-  db_host = var.db_host
-  db_port = var.db_port
+  source    = "./modules/database"
+  db_host   = var.db_host
+  db_port   = var.db_port
+  passwords = var.db_passwords
 }
 
 # ── Neon (legacy) ─────────────────────────────────────────────────────────────
@@ -73,10 +74,10 @@ module "bookings_http" {
   create_function_url = true
   tags                = { Service = "bookings", Component = "http" }
   environment_variables = {
-    DATABASE_URL = module.database.bookings_connection_string
-    OUTBOX_MODE  = "polling"
-    RELEASE      = "true"
-    MAPBOX_ACCESS_TOKEN  = var.mapbox_access_token
+    DATABASE_URL        = module.database.bookings_connection_string
+    OUTBOX_MODE         = "polling"
+    RELEASE             = "true"
+    MAPBOX_ACCESS_TOKEN = var.mapbox_access_token
   }
 }
 
@@ -286,18 +287,33 @@ module "journal_migrate" {
 resource "aws_lambda_invocation" "bookings_migrate" {
   function_name = module.bookings_migrate.function_name
   input         = "{}"
+  # Re-run the migrations whenever the target database changes (e.g. Neon -> Frostmoln). Without this the
+  # invocation only fires when it is first created. A hash, so the password is not exposed.
+  triggers = {
+    database = nonsensitive(sha256(module.database.bookings_migrate_url))
+  }
   depends_on    = [module.bookings_migrate, module.database]
 }
 
 resource "aws_lambda_invocation" "authentication_migrate" {
   function_name = module.authentication_migrate.function_name
   input         = "{}"
+  # Re-run the migrations whenever the target database changes (e.g. Neon -> Frostmoln). Without this the
+  # invocation only fires when it is first created. A hash, so the password is not exposed.
+  triggers = {
+    database = nonsensitive(sha256(module.database.authentication_migrate_url))
+  }
   depends_on    = [module.authentication_migrate, module.database]
 }
 
 resource "aws_lambda_invocation" "journal_migrate" {
   function_name = module.journal_migrate.function_name
   input         = "{}"
+  # Re-run the migrations whenever the target database changes (e.g. Neon -> Frostmoln). Without this the
+  # invocation only fires when it is first created. A hash, so the password is not exposed.
+  triggers = {
+    database = nonsensitive(sha256(module.database.journal_migrate_url))
+  }
   depends_on    = [module.journal_migrate, module.database]
 }
 
