@@ -1,100 +1,99 @@
-# Outbox
+# message_broker
 
-A PostgreSQL WAL-based implementation of the [transactional outbox pattern](https://microservices.io/patterns/data/transactional-outbox.html) using logical replication.
+Shared library for the [transactional outbox pattern](https://microservices.io/patterns/data/transactional-outbox.html) and for
+consuming the resulting events. It is a Go module used by the services, not a running service.
 
-## How it works
-
-Instead of polling an outbox table, this library tails the PostgreSQL Write-Ahead Log (WAL) via logical replication. When rows change in the tables you care about, your registered `Action` handlers are called with the affected table information.
-
-The library:
-
-1. Creates (or reuses) a PostgreSQL **publication** for the tables you specify
-2. Creates (or reuses) a persistent **replication slot**
-3. Starts a background goroutine that streams WAL changes and dispatches them to your handlers
-
-> **Current limitation:** Only `INSERT` operations are handled. `UPDATE`, `DELETE`, and `TRUNCATE` events are received but ignored.
-
-## Prerequisites
-
-Your PostgreSQL instance must have logical replication enabled:
-
-```sql
-ALTER SYSTEM SET wal_level = logical;
+```
+pkg/postgres       outbox table: migrations, Insert, FindAllNewEvents, CreateTable
+pkg/outbox/poller  polling relay: outbox table -> SNS
+pkg/outbox/sns     SNS publisher and topic cache
+pkg/domain         replication relay: tails the WAL (logical replication) -> your Action handlers
+pkg/inbox          inbox worker; pkg/inbox/sqs is the SQS subscriber
 ```
 
-A server restart is required after changing `wal_level`.
+## How events flow
 
-## Usage
+1. A command handler writes its domain data and an `outbox` row **in the same transaction** (`postgres.Insert`).
+2. A relay publishes the unsent rows to SNS. There are two relays; the service picks one with `OUTBOX_MODE`:
+   - **`polling`** (`pkg/outbox/poller`): `Poll` reads up to 100 rows with `emitted_at IS NULL` (`FOR UPDATE SKIP LOCKED`), publishes them to an SNS
+     topic in a batch and marks them emitted, all in one transaction. `RunLoop(ctx, interval)` repeats this in a long-running process.
+     On AWS Lambda the outbox Lambdas are triggered by EventBridge Scheduler (every 10 minutes in production), so delivery
+     can take up to 10 minutes. Used in production and as the Helm default.
+   - **`replication`** (`pkg/domain`): tails the PostgreSQL WAL through a publication and a replication slot and calls your registered
+     `Action` handlers. Needs `wal_level=logical`. Used by docker compose, and it is the default when `OUTBOX_MODE` is unset.
+3. Consumers (`pkg/inbox`) read SQS queues subscribed to the topics and are idempotent (an `inbox` table).
 
-### 1. Implement the `Action` interface
+## The outbox table and its schema
+
+`postgres.OutboxTableName` is `outbox`, with its own migration history in the table `outbox_schema_migrations` (separate from the service's
+`schema_migrations`). Columns: `id`, `event_id` (unique), `type`, `correlation_id`, `producer`, `emitted_at` (null until published),
+`created_at`, `payload` (jsonb). The migrations are embedded in `pkg/postgres/migrations/`.
+
+`postgres.CreateTable(url)` applies them with dbmate and is idempotent. The bookings, authentication and journal services call it at start-up
+(for the HTTP Lambdas: on every cold start).
+
+**All SQL uses the unqualified table name `outbox`. There is no schema-aware code.** The schema comes from the connection's
+`search_path`. In production all Postgres services share one database and each service's login role has
+`search_path = <service>, public` (set by `infrastructure/frostmoln/bootstrap/bootstrap.sh`), so each service gets its own `outbox`,
+`outbox_schema_migrations` and `schema_migrations`. Do not schema-qualify names here.
+
+## Polling relay
 
 ```go
+poller := poller.New(db, publisher, "bilcool_users") // *sql.DB, sns.Publisher, topic name
+err := poller.Poll(ctx)                              // one pass; returns an error if the SNS publish or the commit fails
+// or, in a long-running process:
+poller.RunLoop(ctx, 10*time.Second)
+```
+
+## Replication relay
+
+The relay needs `wal_level=logical` (a server restart is needed after `ALTER SYSTEM SET wal_level = logical`). It creates (or reuses) a
+publication for the given tables and a persistent replication slot, then streams changes to your handlers. Only `INSERT` operations
+are acted on; `UPDATE`, `DELETE` and `TRUNCATE` are received but ignored.
+
+```go
+// 1. Implement domain.Action
 type myInsertHandler struct{}
 
-func (h myInsertHandler) Execute(table outbox.Table) {
+func (h myInsertHandler) Execute(ctx context.Context, table domain.Table) error {
     fmt.Printf("INSERT on %s.%s\n", table.SchemaName, table.TableName)
+    return nil
 }
-```
 
-### 2. Register actions
+// 2. Create an idempotent publication with its actions
+pub := domain.NewCreatePublications(
+    "my_publication", "mydb", []string{"outbox"},
+    map[domain.ActionName]domain.Action{domain.ActionInsert: myInsertHandler{}},
+)
 
-```go
-actions := outbox.NewActions()
-actions.Add(outbox.ActionInsert, myInsertHandler{})
-```
-
-### 3. Create a publication
-
-Use `CreatePublication` to create a new publication (idempotent — safe to call if it already exists).
-
-> **Note:** The internal `publication` struct is currently unexported. Until a public constructor is added, `CreatePublication` can only be instantiated from within the `outbox` package itself (e.g. in your own factory function placed in the same package, or via a constructor that will be added to this package).
-
-The intended usage once a constructor is available:
-
-```go
-pub := outbox.NewCreatePublication("my_publication", "mydb", []string{"orders", "payments"}, actions)
-```
-
-In the meantime, callers in the same module can construct it directly:
-
-```go
-pub := outbox.CreatePublication{
-    // unexported publication fields set here — only valid inside package outbox
-}
-```
-
-### 4. Start the outbox
-
-```go
-connURL, _ := url.Parse("postgres://user:pass@localhost:5432/mydb")
-
-o, err := outbox.NewOutbox(ctx, connURL, outbox.PgOutputPlugin, pub)
+// 3. Start the outbox
+connURL, _ := url.Parse("postgres://user:pass@localhost:5432/mydb?sslmode=disable")
+o, err := domain.NewOutbox(ctx, connURL, domain.PgOutputPlugin, pub)
 if err != nil {
     log.Fatal(err)
 }
-
-stopCh, err := o.StartReplication()
+stopCh, err := o.StartReplication(ctx)
 if err != nil {
     log.Fatal(err)
 }
-
-// To stop replication:
-close(stopCh)
+// To stop replication: close(stopCh)
 ```
 
-`NewOutbox` is a singleton — calling it multiple times returns the same instance.
-
-## Output plugins
+The publication DDL is `CREATE PUBLICATION ... FOR TABLE "outbox"`, which resolves through the connection's `search_path`.
 
 | Constant | Plugin | Notes |
 |---|---|---|
 | `PgOutputPlugin` | `pgoutput` | Built-in, recommended |
 | `W2JoutputPlugin` | `wal2json` | Requires the wal2json extension; WAL data is logged but not decoded |
 
-## Integration tests
+## Tests
 
-Tests require a running PostgreSQL instance and are gated behind the `integration` build tag:
+Mocks are generated (`go generate ./...`) and gitignored. Integration tests need Docker (testcontainers via `testing/testdb`) and are gated
+behind the `integration` build tag:
 
 ```bash
-go test -tags integration ./pkg/outbox/...
+go generate ./...
+go test ./...                    # unit tests
+go test -tags=integration ./...  # integration tests (replication, SNS publisher, SQS subscriber)
 ```

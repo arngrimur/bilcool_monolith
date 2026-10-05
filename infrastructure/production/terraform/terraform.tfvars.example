@@ -1,13 +1,26 @@
-aws_region            = "eu-north-1"
-environment           = "production"
-db_passwords          = { bookings = "REPLACE_ME", authentication = "REPLACE_ME", journal = "REPLACE_ME" }   # from bootstrap.sh
-db_host               = "REPLACE_ME"   # terraform output db_host in infrastructure/frostmoln/terraform
-neon_api_key          = "REPLACE_ME"   # legacy, remove with the neon module
-jwt_secret            = "REPLACE_ME"
-brevo_api_key         = "REPLACE_ME"
-from_email            = "noreply@yourdomain.com"
-webauthn_rp_id        = "bilcool.areskiftet44.se"
-webauthn_rp_origins   = "https://bilcool.areskiftet44.se"
-webauthn_display_name = "BilCool"
+# Copy to terraform.tfvars (gitignored) and fill in the REPLACE_ME values.
+#
+# Keep SECRETS out of this file: supply them as TF_VAR_* environment variables instead. A value set in
+# terraform.tfvars overrides the matching TF_VAR_* variable, so never leave a dummy value for a secret here.
+
+aws_region  = "eu-north-1"
+environment = "production"
+
+# Frostmoln Postgres: `terraform output db_host` in infrastructure/frostmoln/terraform
+db_host = "REPLACE_ME"
+db_port = 5432
+
+# The sender must be verified in Brevo
+from_email              = "REPLACE_ME@yourdomain.com"
+webauthn_rp_id          = "bilcool.areskiftet44.se"
+webauthn_rp_origins     = "https://bilcool.areskiftet44.se"
+webauthn_display_name   = "BilCool"
+domain_name             = "bilcool.areskiftet44.se"
 lambda_artifacts_bucket = "bilcool-lambda-artifacts"
-domain_name           = "bilcool.areskiftet44.se"
+frontend_bucket_name    = "bilcool-frontend"
+
+# Secrets: export as environment variables, do not put them here.
+#   . ../../frostmoln/bootstrap/db-credentials.env     # exports TF_VAR_db_passwords (bookings, authentication, journal)
+#   export TF_VAR_jwt_secret=...
+#   export TF_VAR_brevo_api_key=...
+#   export TF_VAR_mapbox_access_token=...

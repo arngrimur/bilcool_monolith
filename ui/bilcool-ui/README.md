@@ -1,73 +1,43 @@
-# React + TypeScript + Vite
+# BilCool UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Single-page app for BilCool (React 19, TypeScript, Vite 8 with `@vitejs/plugin-react`, Tailwind). It talks to the backend only through relative
+`/api/v1/...` paths, so the same build works locally, in Kubernetes and behind CloudFront.
 
-Currently, two official plugins are available:
+## Scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Run these in `ui/bilcool-ui/` (or use `task ui:build`, `task ui:test`, `task ui:dev` from the repo root):
 
-## React Compiler
+| Script | What it does |
+|---|---|
+| `npm run dev` | Vite dev server on http://localhost:3000 |
+| `npm run build` | `tsc -b && vite build` |
+| `npm run preview` | Serve the production build locally |
+| `npm test` | Unit tests (`vitest run`); `npm run test:watch` to watch |
+| `npm run lint` | ESLint (no warnings allowed) |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## API proxy (dev server)
 
-## Expanding the ESLint configuration
+`vite.config.ts` proxies the API paths to the services. Override the targets with environment variables:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Path | Variable | Default |
+|---|---|---|
+| `/api/v1/users` | `AUTH_SERVICE_URL` | `http://localhost:8082` |
+| `/api/v1/bookings` | `BOOK_SERVICE_URL` | `http://localhost:8081` |
+| `/api/v1/events` | `EVENTS_SERVICE_URL` | `http://localhost:8083` |
+| `/api/v1/journal` | `JOURNAL_SERVICE_URL` | `http://localhost:8084` |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Passkeys need the WebAuthn origin to match: locally the authentication service uses `WEBAUTHN_RP_ID=localhost` and
+`WEBAUTHN_RP_ORIGINS=http://localhost:3000`.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Deployment
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- **Production (AWS):** CI (`ui-deploy`, on push to `main`) syncs the build to the S3 bucket and invalidates CloudFront. CloudFront serves the SPA
+  (a function rewrites non-file paths to `/index.html`) and routes `/api/v1/...` to the Lambda Function URLs. Infrastructure:
+  `infrastructure/production/terraform/modules/frontend`.
+- **Kubernetes / Docker:** the `Dockerfile` builds the app (Node 22) and serves it with nginx on port 80; `nginx.conf` proxies the same API
+  paths to the services. The Helm chart template is `infrastructure/helm/bilcool/templates/ui.yaml`.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Source layout
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+`src/` has `api` (REST clients), `components`, `hooks`, `i18n`, `lib` and `test`. PWA assets are in `public/` (`manifest.webmanifest`);
+`scripts/generate-icons.py` generates the icons.

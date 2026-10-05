@@ -8,14 +8,20 @@ Passwordless authentication using WebAuthn (passkeys) with an email-token fallba
 
 | Variable | Required | Description |
 |---|---|---|
-| `DATABASE_URL` | yes | PostgreSQL connection string, e.g. `postgres://user:pass@localhost:5432/auth?sslmode=disable` |
+| `DATABASE_URL` | yes | PostgreSQL connection string. Local: `postgres://postgres:postgres@localhost:54322/authentication?sslmode=disable`. Production: `postgres://authentication:<password>@<host>:5432/bilcool?sslmode=require`; the `authentication` schema is chosen by the role's `search_path`, not by the URL |
 | `JWT_SECRET` | yes | Secret key for signing JWTs (HS256) |
 | `WEBAUTHN_RP_ID` | yes | WebAuthn Relying Party ID — the domain name of your application |
 | `WEBAUTHN_RP_ORIGINS` | yes | Comma-separated list of allowed WebAuthn origins |
-| `WEBAUTHN_DISPLAY_NAME` | yes | Human-readable name shown to users during passkey prompts (defaults to `BilCool`) |
-| `SES_FROM_EMAIL` | yes | AWS SES sender address for security code emails |
+| `FROM_EMAIL` | yes | Sender address for the security code emails. It must be verified in Brevo |
+| `BREVO_API_KEY` | yes | Brevo transactional email API key |
+| `WEBAUTHN_DISPLAY_NAME` | no | Human-readable name shown to users during passkey prompts (defaults to `BilCool`) |
+| `OUTBOX_MODE` | no | `replication` (default) or `polling`. Lambda uses `polling` |
+| `RELEASE` | no | Any value switches Gin to release mode |
 
-AWS credentials are resolved via the standard AWS SDK chain (env vars, `~/.aws/credentials`, IAM role, etc.). See the [AWS SDK configuration guide](https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/).
+Email is sent through **Brevo** (`internal/pkg/mail/brevo`, used by both `cmd/main.go` and `cmd/lambda/http/main.go`). An AWS SES
+sender exists in `internal/pkg/mail/ses` but is not wired in and cannot be selected by configuration.
+
+AWS credentials (used for publishing the outbox events to SNS) are resolved via the standard AWS SDK chain (env vars, `~/.aws/credentials`, IAM role, etc.). See the [AWS SDK configuration guide](https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/).
 
 ---
 
@@ -40,7 +46,7 @@ openssl rand -base64 32
 The Relying Party ID is the effective domain of your application. The browser enforces that passkeys created for an RP ID can only be used on that domain (and its subdomains).
 
 - For local development: `localhost`
-- For production: your bare domain, e.g. `bilcool.com`
+- For production: your bare domain, e.g. `bilcool.areskiftet44.se`
 
 Do **not** include a scheme (`https://`) or path.
 
@@ -55,7 +61,7 @@ Do **not** include a scheme (`https://`) or path.
 A comma-separated list of origins the authenticator is allowed to respond to. Each origin must be a full `scheme://host:port` string.
 
 - For local development: `http://localhost:3000`
-- For production: `https://bilcool.com`
+- For production: `https://bilcool.areskiftet44.se`
 
 The origin must match the `Origin` header sent by the browser during the WebAuthn ceremony. Multiple origins are useful when the same backend serves several frontends.
 
@@ -78,6 +84,8 @@ A human-readable name for the application shown to the user in passkey dialogs (
 
 ### User Creation
 
+Creating a user is an **admin-only** operation (`POST /api/v1/users` requires a valid JWT of a user with the admin role).
+
 ```
 Client                          Auth Service                    Database
   |                                   |                              |
@@ -96,7 +104,8 @@ Client                          Auth Service                    Database
   |<----------------------------------|                              |
   |                                   |                              |
   |                                   |  SNS publish "users/created" |
-  |                                   |  (from outbox dispatcher)    |
+  |                                   |  (outbox relay; polled every |
+  |                                   |   10 min on Lambda)          |
 ```
 
 ---
@@ -117,7 +126,7 @@ Client                          Auth Service                Database          Em
   |                                   |  Generate 6-digit token |               |
   |                                   |  INSERT security_tokens |               |
   |                                   |------------------------>|               |
-  |                                   |  Send token via SES     |               |
+  |                                   |  Send token via Brevo   |               |
   |                                   |---------------------------------------->|
   |  200 { next_step: "verify_token" }|                         |               |
   |<----------------------------------|                         |               |
@@ -194,12 +203,40 @@ Client                          Auth Service                Database
 
 ## HTTP Endpoints
 
+Public:
+
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/users` | Create a new user |
+| `GET` | `/ping` | Health check |
 | `GET` | `/api/v1/users/:id` | Get user by ref |
-| `DELETE` | `/api/v1/users/:id` | Delete user |
 | `POST` | `/api/v1/users/login` | Begin login — returns `next_step` |
 | `POST` | `/api/v1/users/login/token` | Verify email token (starts passkey registration) |
 | `POST` | `/api/v1/users/login/complete` | Complete login with WebAuthn credential, returns JWT |
-| `GET` | `/ping` | Health check |
+| `POST` | `/api/v1/users/login/reset` | Reset a login (see the router) |
+
+Admin only (JWT middleware plus the admin role):
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/users` | Create a new user |
+| `GET` | `/api/v1/users` | List users |
+| `GET` | `/api/v1/users/deleted` | List deleted users |
+| `DELETE` | `/api/v1/users/:id` | Delete user |
+| `POST` | `/api/v1/users/:id/restore` | Restore a deleted user |
+| `PATCH` | `/api/v1/users/:id` | Update user |
+| `PATCH` | `/api/v1/users/:id/role` | Change the user's role |
+
+The routes are defined in `internal/pkg/web/router.go`.
+
+---
+
+## Running and database
+
+- Long-running service (Docker, Helm): `cmd/main.go`. AWS Lambda: `cmd/lambda/{http,outbox,migrate}`. The Lambda connection pool is
+  small (2 open, 0 idle connections); locally it is 5/5.
+- Migrations (dbmate) are in `internal/migrations/` and run with `Dockerfile.migrate` locally or the `migrate` Lambda in production.
+  Keep them schema-agnostic: in production this service owns the `authentication` schema of the shared `bilcool` database, selected by the
+  role's `search_path`, so never schema-qualify names or `SET search_path`.
+- The `outbox` table is created by `message_broker` (`CreateTable`) at start-up, not by these migrations.
+- New users reach the bookings service only through the `user.created` event (outbox -> SNS -> SQS). On Lambda the outbox is relayed every
+  10 minutes, so a brand-new user may not be able to book for up to 10 minutes.

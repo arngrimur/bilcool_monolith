@@ -1,79 +1,57 @@
 # testdb
 
-```bash
-go get -u gitlab.tooling.zimpler.net/shared/embedded-postgres/v2/pkg/testdb
-```
-
-Package for conveniently connecting to and migrating a database instance for tests.
-
-Just call `db := testdb.NewEmbedded(t)` to get a fully migrated database. By default uses dbmate looking for migrations files
-under migrations/ in the project's root directory. This can be configured by passing `WithMigrater(...)` to `NewEmbbedded`.
-
-The project's root directory is defined by the `ProjectRoot` type. Depending on the value
-of this type, the project root is either defined by the parent of the .git/ directory, or the
-directory of the "go.mod" file. The default behaviour is to look for the programs associated "go.mod" file. This can be configured 
-by passing `WithProjectRoot(...)` to `NewEmbedded`.
-
-Writes to .testdbdata/ in the project's root directory. Each test gets it's own subfolder, potentially creating a lof of files
-if you have a lot of individual tests calling `NewEmbedded`. In most cases this shouldn't be a problem. However, if it
-turns out to be a problem, you can reduce the number of subfolders by sharing the database instance for each logical group of
-code, like so:
+Test helper that starts a throwaway PostgreSQL in Docker and runs a service's migrations against it. It is part of the shared `testing`
+module (`github.com/arngrimur/bilcool_monolith/testing`), used by the integration tests of bookings, authentication, journal and
+message_broker.
 
 ```go
-// MyServiceTests holds methods for each MyService subtest. This type allows
-// passing dependencies for tests while still providing a convenient syntax when
-// subtests are registered.
-type MyServiceTests struct {
-	db *sql.DB
+import "github.com/arngrimur/bilcool_monolith/testing/testdb"
+```
+
+## Usage
+
+Integration tests are gated by the `integration` build tag and **need Docker** (testcontainers):
+
+```go
+//go:build integration
+
+func (s *MySuite) SetupSuite() {
+    // migrations.FS is an embed.FS holding the service's dbmate migration files
+    s.db = testdb.SetupDatabase(s.T(), migrations.FS, "mydb")
 }
 
-func TestMyService(t *testing.T) {
-	t.Parallel()
-
-	db := testdb.NewEmbedded(t, testdb.WithProjectRoot(testdb.GoModule))
-	tests := MyServiceTests{db}
-
-	t.Run("createSomething", tests.createSomething)
-	t.Run("querySomething", tests.querySomething)
-}
-
-func (ms *MyServiceTests) createSomething(t *testing.T) {
-	// Tests creating something.
-}
-
-func (ms *MyServiceTests) querySomething(t *testing.T) {
-	// Tests querying for something.
+func (s *MySuite) TearDownSuite() {
+    s.db.TearDown(s.T())
 }
 ```
 
-The postgres daemon and default migrater uses the `io.Writer` from calling `NewWriteLogger(t, &bytes.Buffer{})`. This respects the 
-verbosity flag when running `go test` -- i.e. you only get verbose output logs when running `go test -v` or when a test fails.
+`SetupDatabase(t, fs, dbName)`:
 
-## Debugging
+1. starts a `postgres:18` container (user and password `postgres`) with `wal_level=logical`, `max_wal_senders=5` and
+   `max_replication_slots=5`, so replication-based outbox tests work;
+2. creates the database `dbName` on a random local port;
+3. applies the migrations in `fs` with dbmate (`NewDBMate(t, WithEmbeddedFs(fs), WithWait())`). Pass an empty `embed.FS{}` to skip migrations.
 
-For debugging purposes, you can connect to a database after a test has run. This is done in the following way. 
+It returns a `SuiteDbIntegration`:
 
-1. Go to the directory containing the embedded-postgres binary:
+| Field | Description |
+|---|---|
+| `Db` | `*sql.DB` connected to the new database |
+| `ConnString` | the connection URL (`postgres://postgres:postgres@localhost:<port>/<dbName>?sslmode=disable`) |
+| `Ctx`, `CancelFunc` | a context for the test run and its cancel function |
+| `PostgresContainer` | the running testcontainers container |
 
-```bash
-cd .testdbdata/<testname>
-```
+It also has `Exec`, `ExecContext` and `QueryContext` shortcuts. `TearDown(t)` cancels the context, closes `Db` and removes the container.
 
-2. Start the embedded-postgres daemon:
+## Options (for `NewDBMate`)
 
-```bash
-./bin/pg_ctl start -w -D data --options="-p 6432"
-```
+- `WithEmbeddedFs(fs)`: read migrations from an `embed.FS`.
+- `WithProjectRoot(root)`: read migrations from the file system instead; `root` is `GitRoot`, `GoModule` or `TestData` (see `path.go`).
+- `WithWait()`: wait for the database to accept connections before migrating.
 
-3. Connect to the database:
+## Notes
 
-```bash
-psql "postgres://postgres:postgres@localhost:6432/<testname>"
-```
-
-4. Once you are done, stop the embedded-postgres daemon:
-
-```bash
-./bin/pg_ctl stop -D data
-```
-
+- Tests run against a single schema (`public`); the production layout with one schema per service is created by
+  `infrastructure/frostmoln/bootstrap/bootstrap.sh` and is not reproduced here.
+- To inspect a test database, use `docker ps` to find the container and connect to its mapped port with the URL above.
+- The LocalStack helper for the AWS tests lives next to this package in `testing/aws/local_cloud.go`.
