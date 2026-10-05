@@ -11,17 +11,6 @@ module "database" {
   passwords = var.db_passwords
 }
 
-# ── Neon (legacy) ─────────────────────────────────────────────────────────────
-# No longer referenced by any Lambda. Kept ONLY so that `terraform apply` does not destroy the
-# Neon project before its data has been copied to Frostmoln. Delete this module, the neon
-# provider and var.neon_api_key after the data migration (see plan.md).
-
-module "neon" {
-  source       = "./modules/neon"
-  environment  = var.environment
-  neon_api_key = var.neon_api_key
-}
-
 # ── Messaging (SNS + SQS) ─────────────────────────────────────────────────────
 
 module "messaging" {
