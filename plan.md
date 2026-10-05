@@ -1,7 +1,7 @@
 # Move from Neon to a single Frostmoln Postgres (one DB, one schema per module)
 
 > **Status (2026-10-04): done and in production.** Released as v1.2.0. The Lambdas run against the Frostmoln database, signup, login and
-> booking creation work. Still open: remove the legacy Neon module (see the production Terraform README), tighten database access
+> booking creation work. Still open: delete the leftover `neon_api_key` variable, tighten database access
 > (the load balancer listener has no CIDR allowlist), and decide on a shorter outbox relay interval (10 min today).
 > Current documentation lives in `CLAUDE.md`, `infrastructure/frostmoln/README.md` and `infrastructure/production/terraform/README.md`; this
 > file is the plan and progress log from the migration.
@@ -138,8 +138,7 @@ Files: `infrastructure/frostmoln/terraform/db.tf`, `main.tf`, `variables.tf`, `e
     `var.db_passwords`), URLs without `pgbouncer=true`. The DB, schemas and roles come from
     `infrastructure/frostmoln/bootstrap/bootstrap.sh` (see below), not from Terraform.
     `main.tf` Lambdas now use `module.database`. New vars `db_host` and `db_port`.
-  - `module "neon"` is deliberately kept so `apply` does not destroy the Neon project before the data is copied.
-    Remove it, the neon provider and `neon_api_key` afterwards.
+  - `module "neon"` was kept at this point so `apply` would not destroy the Neon project before the data was copied (removed later, see the 2026-10-04 entry).
   - **Apply order matters:** (1) apply the frostmoln stack, (2) run `database_bootstrap_sql` as the admin user,
     (3) only then apply the production stack. The migrate Lambdas run during that apply and fail if the schemas
     do not exist. The first production apply needs the bootstrap output, so use
@@ -158,3 +157,4 @@ Files: `infrastructure/frostmoln/terraform/db.tf`, `main.tf`, `variables.tf`, `e
 - **Production stack** (`infrastructure/production/terraform`, `default` workspace, 99 resources, live on Neon): initialised
   locally. Applying needs a gitignored `terraform.tfvars` with `db_host`, `db_passwords` (from `bootstrap/db-credentials.env`)
   and the existing jwt_secret, brevo_api_key, mapbox_access_token, neon_api_key and so on.
+- **2026-10-04, Neon removed (PR #80):** `module "neon"`, `modules/neon/`, the neon provider and the helm `postgres.location: neon` option are gone. Only the unused `neon_api_key` variable declaration in `variables.tf` remains.

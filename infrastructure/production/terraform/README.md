@@ -13,7 +13,6 @@ PostgreSQL database through its public load balancer.
 | `scheduler` | EventBridge Scheduler (`rate(10 minutes)`) that runs the outbox Lambdas |
 | `frontend` | S3 bucket, CloudFront distribution (SPA + `/api` routed to the Function URLs), ACM certificate |
 | `iam` | Lambda roles and the GitHub deploy role |
-| `neon` | **Legacy.** The old Neon project. Kept only until the cutover is confirmed, so `apply` does not destroy it |
 | `networking` | Empty stub (the Lambdas are not in a VPC) |
 
 Lambdas: bookings `http, sqs, outbox, migrate`; authentication `http, outbox, migrate`; journal `http, sqs, migrate`;
@@ -51,7 +50,7 @@ uploads the Lambda ZIPs). The bootstrap state file is gitignored; keep it, never
 | `db_port` | default `5432` |
 | `db_passwords` | **required, sensitive.** `map(string)` with `bookings`, `authentication`, `journal`; produced by `bootstrap.sh` |
 | `jwt_secret`, `brevo_api_key`, `mapbox_access_token` | **required, sensitive** |
-| `neon_api_key` | legacy, still required until the `neon` module is removed |
+| `neon_api_key` | unused leftover. The Neon module and provider are gone, but `variables.tf` still declares it without a default, so set any dummy value (`TF_VAR_neon_api_key=unused`) until the variable is deleted |
 | `from_email`, `webauthn_rp_id`, `webauthn_rp_origins` | **required** |
 | `webauthn_display_name` (`BilCool`), `domain_name` (`bilcool.areskiftet44.se`), `frontend_bucket_name` (`bilcool-frontend`) | defaults |
 | `lambda_artifacts_bucket` | **required.** The bucket CI uploads to (`bilcool-lambda-artifacts` per `.github/workflows/build.yml`) |
@@ -140,7 +139,6 @@ invalidate CloudFront). Run `terraform apply` only for infrastructure changes.
 `CLOUDFRONT_DISTRIBUTION_ID`), `frontend_bucket_name`, `acm_validation_records`, and the sensitive
 `bookings_migrate_url`, `authentication_migrate_url`, `journal_migrate_url`.
 
-## Removing Neon (after the cutover is confirmed)
+## Neon
 
-Delete `module "neon"` in `main.tf`, `modules/neon/`, the `neon` provider in `providers.tf` and the `neon_api_key` variable.
-Do this only once nothing needs the Neon data, because removing the module makes the next `apply` destroy the Neon project.
+The Neon module, provider and project were removed (PR #80). Only the `neon_api_key` variable declaration in `variables.tf` remains; delete it together with the matching line in this README and in `terraform.tfvars.example`.
