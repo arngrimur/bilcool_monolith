@@ -1,7 +1,7 @@
 # Move from Neon to a single Frostmoln Postgres (one DB, one schema per module)
 
 > **Status (2026-10-04): done and in production.** Released as v1.2.0. The Lambdas run against the Frostmoln database, signup, login and
-> booking creation work. Still open: delete the leftover `neon_api_key` variable, tighten database access
+> booking creation work. Still open: tighten database access
 > (the load balancer listener has no CIDR allowlist), and decide on a shorter outbox relay interval (10 min today).
 > Current documentation lives in `CLAUDE.md`, `infrastructure/frostmoln/README.md` and `infrastructure/production/terraform/README.md`; this
 > file is the plan and progress log from the migration.
@@ -157,4 +157,4 @@ Files: `infrastructure/frostmoln/terraform/db.tf`, `main.tf`, `variables.tf`, `e
 - **Production stack** (`infrastructure/production/terraform`, `default` workspace, 99 resources, live on Neon): initialised
   locally. Applying needs a gitignored `terraform.tfvars` with `db_host`, `db_passwords` (from `bootstrap/db-credentials.env`)
   and the existing jwt_secret, brevo_api_key, mapbox_access_token, neon_api_key and so on.
-- **2026-10-04, Neon removed (PR #80):** `module "neon"`, `modules/neon/`, the neon provider and the helm `postgres.location: neon` option are gone. Only the unused `neon_api_key` variable declaration in `variables.tf` remains.
+- **2026-10-04, Neon removed (PR #80):** `module "neon"`, `modules/neon/`, the neon provider and the helm `postgres.location: neon` option are gone. The leftover `neon_api_key` variable was removed afterwards.

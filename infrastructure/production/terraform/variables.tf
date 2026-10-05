@@ -27,12 +27,6 @@ variable "db_passwords" {
   sensitive   = true
 }
 
-variable "neon_api_key" {
-  description = "Legacy: Neon API key, only needed until the Neon module is removed"
-  type        = string
-  sensitive   = true
-}
-
 variable "jwt_secret" {
   description = "Secret used to sign JWT tokens"
   type        = string

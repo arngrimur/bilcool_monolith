@@ -50,7 +50,6 @@ uploads the Lambda ZIPs). The bootstrap state file is gitignored; keep it, never
 | `db_port` | default `5432` |
 | `db_passwords` | **required, sensitive.** `map(string)` with `bookings`, `authentication`, `journal`; produced by `bootstrap.sh` |
 | `jwt_secret`, `brevo_api_key`, `mapbox_access_token` | **required, sensitive** |
-| `neon_api_key` | unused leftover. The Neon module and provider are gone, but `variables.tf` still declares it without a default, so set any dummy value (`TF_VAR_neon_api_key=unused`) until the variable is deleted |
 | `from_email`, `webauthn_rp_id`, `webauthn_rp_origins` | **required** |
 | `webauthn_display_name` (`BilCool`), `domain_name` (`bilcool.areskiftet44.se`), `frontend_bucket_name` (`bilcool-frontend`) | defaults |
 | `lambda_artifacts_bucket` | **required.** The bucket CI uploads to (`bilcool-lambda-artifacts` per `.github/workflows/build.yml`) |
@@ -61,7 +60,7 @@ Put **non-secret** values in `terraform.tfvars` (gitignored; start from `terrafo
 
 ```bash
 . ../../frostmoln/bootstrap/db-credentials.env        # exports TF_VAR_db_passwords
-export TF_VAR_jwt_secret=... TF_VAR_brevo_api_key=... TF_VAR_mapbox_access_token=... TF_VAR_neon_api_key=...
+export TF_VAR_jwt_secret=... TF_VAR_brevo_api_key=... TF_VAR_mapbox_access_token=...
 ```
 
 ## First-time setup
@@ -141,4 +140,4 @@ invalidate CloudFront). Run `terraform apply` only for infrastructure changes.
 
 ## Neon
 
-The Neon module, provider and project were removed (PR #80). Only the `neon_api_key` variable declaration in `variables.tf` remains; delete it together with the matching line in this README and in `terraform.tfvars.example`.
+The Neon module, provider, project and `neon_api_key` variable were removed.

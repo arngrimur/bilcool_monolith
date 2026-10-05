@@ -128,7 +128,7 @@ Lambda entrypoints (`<service>/cmd/lambda/`): bookings `http, sqs, outbox, migra
   - Connections use `sslmode=require` (the certificate is self-signed, so `verify-full` does not work) through a public Layer-4 load balancer; there is no connection pooler, so do not use `pgbouncer=true`.
   - The Lambdas keep few connections (`MaxOpenConns=2`, no idle) because Postgres has no pooler in front.
   - The database, schemas and roles are created by `infrastructure/frostmoln/bootstrap/bootstrap.sh`, not by Terraform or the service migrations. See `infrastructure/frostmoln/README.md`.
-  - The old Neon setup is retired and its Terraform module and provider are removed. Only the unused `neon_api_key` variable declaration is left in `variables.tf`.
+  - The old Neon setup is retired and its Terraform module and provider are removed.
 
 ### Service package layout
 
