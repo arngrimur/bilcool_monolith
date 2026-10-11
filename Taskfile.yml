@@ -7,27 +7,36 @@ vars:
 
 tasks:
   up:
-    dir: infrastructure/dev
-    preconditions:
-      - test -f docker-compose.yaml
-    env:
-      AWS_ACCESS_KEY_ID: "test"
-      AWS_SECRET_ACCESS_KEY: "test"
-      FROM_EMAIL: ${FROM_EMAIL}
-      BREVO_API_KEY: ${BREVO_API_KEY}
+    desc: Start minikube (if needed), build and load all images, and install the chart with values-dev.yaml
     cmds:
-      - docker-compose up --build journal event-ledger bookings authentication bilcool-ui db-seed-authentication
+      - task: minikube:start
+      - task: minikube:build
+      - task: minikube:build-migrate
+      - task: minikube:helm-upgrade
 
   down:
-    dir: infrastructure/dev
-    preconditions:
-      - test -f docker-compose.yaml
+    desc: Uninstall the release (keeps the database volume; see down:purge)
     cmds:
-      - docker-compose down --remove-orphans
+      - helm uninstall bilcool || true
+
+  down:purge:
+    desc: Uninstall the release and delete hook leftovers (Postgres, secrets) and the database volume
+    cmds:
+      - helm uninstall bilcool || true
+      - kubectl delete statefulset/postgres service/postgres secret/postgres secret/localstack secret/authentication secret/bookings secret/journal secret/event-ledger configmap/db-init configmap/seed-users job/db-init --ignore-not-found
+      - kubectl delete pvc -l app=postgres --ignore-not-found
+      - kubectl delete pvc data-postgres-0 --ignore-not-found
 
   bookings_db:
-    dir: '{{.USER_WORKING_DIR}}'
-    cmd: docker exec -it bookings-db psql -U postgres -d bookings
+    desc: psql into the bookings schema of the minikube database
+    cmd: kubectl exec -it statefulset/postgres -- env PGPASSWORD=dev-bookings psql -h localhost -U bookings -d bilcool
+
+  minikube:start:
+    desc: Start minikube if it is not running
+    status:
+      - minikube status
+    cmds:
+      - minikube start
 
   minikube:build-authentication:
     desc: Build authentication image and load into minikube
@@ -94,9 +103,12 @@ tasks:
       - task: minikube:build-ui
 
   minikube:helm-upgrade:
-    desc: Apply Helm chart upgrade and restart all deployments
+    desc: Install/upgrade the chart with values-dev.yaml + values-secrets.yaml and restart all deployments
+    preconditions:
+      - sh: test -f infrastructure/helm/values-secrets.yaml
+        msg: "infrastructure/helm/values-secrets.yaml is missing. Run: cp infrastructure/helm/values-secrets.example.yaml infrastructure/helm/values-secrets.yaml and fill it in."
     cmds:
-      - helm upgrade --install bilcool ./infrastructure/helm/bilcool -f infrastructure/helm/values-secrets.yaml
+      - helm upgrade --install bilcool ./infrastructure/helm/bilcool -f infrastructure/helm/values-dev.yaml -f infrastructure/helm/values-secrets.yaml --wait --timeout 10m
       - kubectl rollout restart deployment/bookings deployment/authentication deployment/journal deployment/event-ledger deployment/ui
 
   minikube:kill-port-forward:
@@ -109,9 +121,7 @@ tasks:
     cmds:
       - |
         kubectl port-forward service/ui 3000:80 &
-        kubectl port-forward service/authentication-db 54322:5432 &>/dev/null &
-        kubectl port-forward service/bookings-db 54321:5432 &>/dev/null &
-        kubectl port-forward service/journal-db 54323:5432 &>/dev/null &
+        kubectl port-forward service/postgres 54320:5432 &>/dev/null &
         kubectl port-forward service/localstack 4566:4566 &>/dev/null &
         wait
 

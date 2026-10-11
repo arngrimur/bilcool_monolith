@@ -1,15 +1,16 @@
+{{- if .Values.seed.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: seed-users
   annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "4"
-    helm.sh/hook-delete-policy: before-hook-creation
+    {{- include "bilcool.preHook" "4" | nindent 4 }}
 data:
   users.csv: |
     username,email,role
-    admin,arngrimurbjarnason@gmail.com,admin
+    {{- range .Values.seed.users }}
+    {{ .username }},{{ .email }},{{ .role }}
+    {{- end }}
   seed-users.sh: |
     #!/bin/sh
     set -e
@@ -50,24 +51,35 @@ kind: Job
 metadata:
   name: seed-authentication
   annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "5"
-    helm.sh/hook-delete-policy: before-hook-creation
+    {{- include "bilcool.preHook" "5" | nindent 4 }}
 spec:
+  backoffLimit: 20
   template:
     spec:
       restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: seed
-          image: postgres:18
+          image: {{ .Values.postgres.image }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           command: ["/bin/sh", "/seed/seed-users.sh"]
           env:
             - name: DATABASE_URL
-              value: {{ .Values.secrets.authentication.databaseUrl | quote }}
+              valueFrom:
+                secretKeyRef: {name: authentication, key: DATABASE_URL}
             - name: BOOKINGS_DATABASE_URL
-              value: {{ .Values.secrets.bookings.databaseUrl | quote }}
+              valueFrom:
+                secretKeyRef: {name: bookings, key: DATABASE_URL}
             - name: JOURNAL_DATABASE_URL
-              value: {{ .Values.secrets.journal.databaseUrl | quote }}
+              valueFrom:
+                secretKeyRef: {name: journal, key: DATABASE_URL}
           volumeMounts:
             - name: seed
               mountPath: /seed
@@ -75,3 +87,4 @@ spec:
         - name: seed
           configMap:
             name: seed-users
+{{- end }}

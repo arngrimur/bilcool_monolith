@@ -1,0 +1,40 @@
+# minikube. Use with: helm upgrade --install bilcool ./bilcool -f values-dev.yaml -f values-secrets.yaml
+# Everything here is a throwaway local value; real secrets (JWT, Brevo, LocalStack token) go in values-secrets.yaml.
+replicas:
+  authentication: 1
+  bookings: 1
+  journal: 1
+  eventLedger: 1
+  ui: 1
+
+config:
+  awsEndpointUrl: http://localstack:4566
+  outboxMode: polling
+  authentication:
+    webauthnRpId: localhost
+    webauthnRpOrigins: http://localhost:3000
+
+localstack:
+  enabled: true
+postgres:
+  enabled: true
+  replicationRoles: true
+seed:
+  enabled: true
+  users:
+    - username: arngrimur
+      email: arngrimurbjarnason@gmail.com
+      role: admin
+
+secrets:
+  awsAccessKeyId: test
+  awsSecretAccessKey: test
+  postgres:
+    adminPassword: postgres
+    passwords:
+      bookings: dev-bookings
+      authentication: dev-authentication
+      journal: dev-journal
+  authentication:
+    jwtSecret: changeme
+    brevoApiKey: dev-placeholder-no-mail-is-sent

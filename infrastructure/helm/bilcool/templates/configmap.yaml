@@ -4,7 +4,9 @@ metadata:
   name: bilcool-shared
 data:
   AWS_REGION: {{ .Values.config.awsRegion | quote }}
-  AWS_ENDPOINT_URL: {{ .Values.config.awsEndpointUrl | quote }}
+  {{- with .Values.config.awsEndpointUrl }}
+  AWS_ENDPOINT_URL: {{ . | quote }}
+  {{- end }}
   OUTBOX_MODE: {{ .Values.config.outboxMode | default "polling" | quote }}
   RELEASE: "true"
 ---
