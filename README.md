@@ -51,13 +51,15 @@ flowchart LR
 
 The services talk to each other only through events. A service writes its data and an outbox row in one transaction; the outbox is relayed
 to an SNS topic, and the consuming services read the events from their SQS queues (see `message_broker/`). All HTTP APIs are REST.
-Locally and in Helm each Postgres service has its own database; in production they share one database with a schema (and login role) per service.
+Locally (minikube) and in production the services share one Postgres database with a schema (and login role) per service.
 
 ## Getting started
 
 ```bash
 task vendor     # generate go.work and vendor the modules
-task up         # docker compose: services, databases, LocalStack and the UI (needs FROM_EMAIL and BREVO_API_KEY exported)
+cp infrastructure/helm/values-secrets.example.yaml infrastructure/helm/values-secrets.yaml   # once
+task up         # minikube + Helm: services, Postgres, LocalStack and the UI (see infrastructure/helm/README.md)
+task minikube:port-forward   # UI on http://localhost:3000
 task test-all   # unit and integration tests
 ```
 

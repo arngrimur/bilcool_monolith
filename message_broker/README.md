@@ -20,7 +20,7 @@ pkg/inbox          inbox worker; pkg/inbox/sqs is the SQS subscriber
      On AWS Lambda the outbox Lambdas are triggered by EventBridge Scheduler (every 10 minutes in production), so delivery
      can take up to 10 minutes. Used in production and as the Helm default.
    - **`replication`** (`pkg/domain`): tails the PostgreSQL WAL through a publication and a replication slot and calls your registered
-     `Action` handlers. Needs `wal_level=logical`. Used by docker compose, and it is the default when `OUTBOX_MODE` is unset.
+     `Action` handlers. Needs `wal_level=logical`. Needs a Postgres with `wal_level=logical` (the dev Postgres in the Helm chart has it); it is the default when `OUTBOX_MODE` is unset.
 3. Consumers (`pkg/inbox`) read SQS queues subscribed to the topics and are idempotent (an `inbox` table).
 
 ## The outbox table and its schema

@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Primary task runner (Taskfile.yml)
 
 ```bash
-task up                         # docker-compose up --build of journal, event-ledger, bookings, authentication, bilcool-ui and the user seed (infrastructure/dev)
-task down                       # Stop and remove all containers
+task up                         # minikube: start, build + load all images, helm install with values-dev.yaml + values-secrets.yaml (infrastructure/helm)
+task down                       # helm uninstall (keeps the DB volume); task down:purge also removes Postgres, secrets and the volume
+task minikube:port-forward      # UI :3000, Postgres :54320, LocalStack :4566
 task test-all                   # Run all unit + integration tests across every module
 task swagger                    # Regenerate Swagger/OpenAPI docs (bookings and event_ledger only)
 task vendor                     # Generate go.work (all modules incl. bilcool-lib) and vendor them
@@ -17,7 +18,7 @@ task lambda-build-all           # Build every Lambda zip (provided.al2023, arm64
 task bookings_db                # psql into the local bookings database
 ```
 
-> `task up` needs `FROM_EMAIL` and `BREVO_API_KEY` exported on the host (the authentication service refuses to start without them).
+> `task up` needs `infrastructure/helm/values-secrets.yaml` (gitignored; `cp infrastructure/helm/values-secrets.example.yaml ...`). Dev uses a placeholder Brevo key, so no mail is sent. See `infrastructure/helm/README.md`.
 
 Per-service tasks follow the pattern `<service>:<action>`:
 
@@ -54,11 +55,11 @@ go vet ./...                    # Static analysis
 ### Database (local)
 
 ```bash
-task up                                              # compose also starts the three databases and runs the migrations
-docker exec -it bookings-db psql -U postgres -d bookings
+task up                                              # Helm starts Postgres, runs db-init + the migrations
+task bookings_db                                     # psql as the bookings role (schema bookings)
 ```
 
-Migrations are managed with [dbmate](https://github.com/amacneil/dbmate). Migration files live under `<service>/internal/migrations/` (bookings, authentication, journal; event_ledger uses DynamoDB and has none). `infrastructure/dev/docker-compose.yaml` runs them with dedicated `db-migration-*` containers that depend on the database being healthy. Each of those services also has a `Dockerfile.migrate`.
+Migrations are managed with [dbmate](https://github.com/amacneil/dbmate). Migration files live under `<service>/internal/migrations/` (bookings, authentication, journal; event_ledger uses DynamoDB and has none). The Helm chart runs them as one `migrate-<service>` Job per service (pre-install/pre-upgrade hook) from the `Dockerfile.migrate` image of each service.
 
 ---
 
@@ -84,7 +85,6 @@ bilcool_monolith/
 ├── ui/bilcool-ui/          # React + TypeScript SPA (Vite)
 │
 └── infrastructure/
-    ├── dev/                # docker-compose.yaml, localstack init script, seed users
     ├── helm/bilcool/       # Helm chart (Kubernetes)
     ├── frostmoln/          # Frostmoln Terraform (VPC, Postgres, load balancer) + bootstrap scripts
     └── production/         # AWS production: terraform/ (Lambdas, SNS/SQS, DynamoDB, CloudFront/S3), bootstrap/ (state bucket), kubernetes/ (legacy), PLAN.md (historical)
@@ -103,27 +103,26 @@ BilCool is a booking application built as a monolith structured for future extra
 | Target | Used for | How |
 |---|---|---|
 | **AWS Lambda** | **Production (today)** | `cmd/lambda/*` entrypoints, Terraform in `infrastructure/production/terraform`, CI `lambda-deploy` |
-| Docker Compose | Local development | `infrastructure/dev/docker-compose.yaml`, `task up` |
+| Kubernetes (Helm, minikube) | Local development | `infrastructure/helm`, `task up` |
 | Kubernetes (Helm) | Minikube, and later Frostmoln | `infrastructure/helm/bilcool`; the CI deploy to Frostmoln is switched off by default |
 
 Production in detail: Lambdas are exposed through Lambda Function URLs behind CloudFront (the SPA comes from S3, `/api/v1/...` paths go to the Function URLs). Events flow over SNS topics and SQS queues. The outbox is published by scheduled Lambdas (`OUTBOX_MODE=polling`). The site is `bilcool.areskiftet44.se`, DNS is edited by hand at Loopia, and mail is sent through Brevo.
 
-Lambda entrypoints (`<service>/cmd/lambda/`): bookings `http, sqs, outbox, migrate`; authentication `http, outbox, migrate`; journal `http, sqs, migrate`; event_ledger `http, sqs`. `<service>/cmd/main.go` is the long-running variant used by Docker and Helm.
+Lambda entrypoints (`<service>/cmd/lambda/`): bookings `http, sqs, outbox, migrate`; authentication `http, outbox, migrate`; journal `http, sqs, migrate`; event_ledger `http, sqs`. `<service>/cmd/main.go` is the long-running variant used by the Docker images and Helm.
 
-### Services and ports (local compose)
+### Services and ports (minikube)
 
-| Service | Host port | Storage |
+Services are ClusterIP-reachable by name inside the cluster (`authentication`, `bookings`, `journal`, `event-ledger`, `ui`, all on :8080 except the UI on :80; the UI nginx proxies `/api/v1/*` to them). On the host only what `task minikube:port-forward` exposes is reachable:
+
+| Target | Host port | Notes |
 |---|---|---|
-| bookings | 8081 | PostgreSQL `bookings-db` (:54321) |
-| authentication | 8082 | PostgreSQL `authentication-db` (:54322) |
-| event-ledger | 8083 | DynamoDB (LocalStack) |
-| journal | 8084 | PostgreSQL `journal-db` (:54323) |
-| bilcool-ui | 3000 | Vite dev server in a node container (not nginx) |
+| ui | 3000 | nginx image |
+| postgres | 54320 | one instance, database `bilcool`, schema + role per service |
 | localstack | 4566 | SNS, SQS, DynamoDB |
 
 ### Databases
 
-- **Local (compose) and Helm:** three separate PostgreSQL 18 databases, one per service, with `wal_level=logical` so the outbox can use logical replication.
+- **Local (minikube/Helm):** ONE PostgreSQL 18 instance, database `bilcool`, one schema and login role per service (same shape as production), with `wal_level=logical` so `OUTBOX_MODE=replication` stays testable. Created by `infrastructure/helm/bilcool/files/db-init.sh`.
 - **Production:** **one** Frostmoln PostgreSQL database `bilcool`, with **one schema per service** (`bookings`, `authentication`, `journal`). Each service has its own login role whose default `search_path` is `<service>, public`, so every connection, including dbmate and the outbox, lands in the service's own schema. The Go code is schema-agnostic. Never schema-qualify table names and never `SET search_path` in code or migrations. Tables such as `users`, `positions`, `inbox` and `outbox` exist in several schemas on purpose.
   - Connections use `sslmode=require` (the certificate is self-signed, so `verify-full` does not work) through a public Layer-4 load balancer; there is no connection pooler, so do not use `pgbouncer=true`.
   - The Lambdas keep few connections (`MaxOpenConns=2`, no idle) because Postgres has no pooler in front.
@@ -195,7 +194,7 @@ Services publish events using the **transactional outbox pattern**:
 1. **Write**: A command handler writes domain data and an outbox record atomically in one DB transaction.
 2. **Relay** (`OUTBOX_MODE`):
    - `polling` (production Lambda, Helm default): a scheduled job reads unsent rows (`emitted_at IS NULL`) from the `outbox` table. In production this runs every 10 minutes, so an event can take up to 10 minutes to arrive.
-   - `replication` (docker compose; the default when `OUTBOX_MODE` is unset in bookings and authentication): the `message_broker` module tails the outbox table with PostgreSQL logical replication (`pgoutput`) through a replication slot. This needs `wal_level=logical`; the Frostmoln provider cannot apply parameter groups, so production uses `polling`.
+   - `replication` (the default when `OUTBOX_MODE` is unset in bookings and authentication; the Helm chart defaults to `polling`, `--set config.outboxMode=replication` tries it in dev; polling vs replication is not decided yet, both stay supported): the `message_broker` module tails the outbox table with PostgreSQL logical replication (`pgoutput`) through a replication slot. This needs `wal_level=logical`; the Frostmoln provider cannot apply parameter groups, so production uses `polling`.
 3. **Publish**: the relay publishes the event to an SNS topic (LocalStack locally, AWS in production).
 4. **Consume**: bookings, journal and event_ledger consume SQS queues subscribed to the topics. Consumers are idempotent (an `inbox` table, `ON CONFLICT DO NOTHING`).
 
@@ -278,7 +277,7 @@ Import path: `github.com/arngrimur/bilcool_monolith/testing/testdb`
 
 ## Environment variables
 
-Config is read from the process environment by each service's `internal/pkg/config` package. There is no `.env` loading in the Go code; docker compose, Helm and Terraform set the variables.
+Config is read from the process environment by each service's `internal/pkg/config` package. There is no `.env` loading in the Go code; Helm and Terraform set the variables.
 
 | Variable | Services | Description |
 |---|---|---|
