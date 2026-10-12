@@ -117,12 +117,13 @@ tasks:
       - pkill -f "kubectl port-forward" || true
 
   minikube:port-forward:
-    desc: Port-forward UI, databases and LocalStack from Minikube to localhost
+    desc: Port-forward UI, Postgres and LocalStack from minikube to localhost (leftover forwards from an earlier run are killed first)
     cmds:
+      - task: minikube:kill-port-forward
       - |
         kubectl port-forward service/ui 3000:80 &
-        kubectl port-forward service/postgres 54320:5432 &>/dev/null &
-        kubectl port-forward service/localstack 4566:4566 &>/dev/null &
+        kubectl port-forward service/postgres 54320:5432 &
+        kubectl port-forward service/localstack 4566:4566 &
         wait
 
   swagger:
