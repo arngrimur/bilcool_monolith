@@ -15,7 +15,9 @@ import (
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/application"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/config"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/event_dispatcher"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail/brevo"
+	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/mail/logsender"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/persistance/postgresql"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/web"
 	soutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
@@ -88,7 +90,11 @@ func main() {
 		defer close(closer)
 	}
 
-	mailSender := brevo.NewSender()
+	var mailSender mail.MailSender = brevo.NewSender()
+	if config.MailSender() == config.MailSenderLog {
+		log.Warn().Msg("MAIL_SENDER=log: security tokens are written to the log, not mailed (development only)")
+		mailSender = logsender.NewSender()
+	}
 
 	wauthn, err := webauthn.New(&webauthn.Config{
 		RPDisplayName: config.WebAuthnDisplayName(),

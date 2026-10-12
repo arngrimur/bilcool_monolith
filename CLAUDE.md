@@ -18,7 +18,7 @@ task lambda-build-all           # Build every Lambda zip (provided.al2023, arm64
 task bookings_db                # psql into the local bookings database
 ```
 
-> `task up` needs `infrastructure/helm/values-secrets.yaml` (gitignored; `cp infrastructure/helm/values-secrets.example.yaml ...`). Dev uses a placeholder Brevo key, so no mail is sent. See `infrastructure/helm/README.md`.
+> `task up` needs `infrastructure/helm/values-secrets.yaml` (gitignored; `cp infrastructure/helm/values-secrets.example.yaml ...`). Dev uses `MAIL_SENDER=log`: the login code is written to the authentication pod log (`kubectl logs deploy/authentication | grep "security token"`), no Brevo account needed. See `infrastructure/helm/README.md`.
 
 Per-service tasks follow the pattern `<service>:<action>`:
 
@@ -287,7 +287,8 @@ Config is read from the process environment by each service's `internal/pkg/conf
 | `API_PORT` | journal, event_ledger | Listen address, default `:8080` |
 | `JWT_SECRET` | authentication | JWT signing secret (required) |
 | `FROM_EMAIL` | authentication | Sender address (required) |
-| `BREVO_API_KEY` | authentication | Brevo transactional email API key (required) |
+| `MAIL_SENDER` | authentication | `brevo` (default) or `log` (development only: login code is logged, not mailed) |
+| `BREVO_API_KEY` | authentication | Brevo transactional email API key (required unless `MAIL_SENDER=log`) |
 | `WEBAUTHN_DISPLAY_NAME` | authentication | WebAuthn relying party display name (required) |
 | `WEBAUTHN_RP_ID` | authentication | WebAuthn RP ID (required, e.g. `localhost` or `bilcool.areskiftet44.se`) |
 | `WEBAUTHN_RP_ORIGINS` | authentication | Allowed origins, comma separated (required) |

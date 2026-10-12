@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+const (
+	MailSenderBrevo = "brevo"
+	MailSenderLog   = "log"
+)
+
 var (
 	databaseUrl         string
 	jwtSecret           string
@@ -14,6 +19,7 @@ var (
 	webAuthnDisplayName string
 	fromEmail           string
 	brevoAPIKey         string
+	mailSender          string
 	outboxMode          string
 	ginMode             string
 )
@@ -71,10 +77,21 @@ func Init() error {
 	} else {
 		missing = append(missing, "FROM_EMAIL")
 	}
-	if v, ok := os.LookupEnv("BREVO_API_KEY"); ok {
-		brevoAPIKey = v
-	} else {
-		missing = append(missing, "BREVO_API_KEY")
+	mailSender = MailSenderBrevo
+	if v, ok := os.LookupEnv("MAIL_SENDER"); ok && v != "" {
+		mailSender = v
+	}
+	switch mailSender {
+	case MailSenderBrevo:
+		if v, ok := os.LookupEnv("BREVO_API_KEY"); ok {
+			brevoAPIKey = v
+		} else {
+			missing = append(missing, "BREVO_API_KEY")
+		}
+	case MailSenderLog:
+		// Development only: the security token is logged instead of mailed, no Brevo key needed.
+	default:
+		return fmt.Errorf("unknown MAIL_SENDER %q (use %q or %q)", mailSender, MailSenderBrevo, MailSenderLog)
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required env vars: %s", strings.Join(missing, ", "))
@@ -102,6 +119,11 @@ func OutboxMode() string {
 
 func FromSenderEmail() string {
 	return fromEmail
+}
+
+// MailSender is "brevo" (default) or "log" (development only: the token is written to the log).
+func MailSender() string {
+	return mailSender
 }
 
 func BrevoAPIKey() string {

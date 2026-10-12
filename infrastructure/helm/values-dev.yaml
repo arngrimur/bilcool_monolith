@@ -13,6 +13,8 @@ config:
   authentication:
     webauthnRpId: localhost
     webauthnRpOrigins: http://localhost:3000
+    # No Brevo account needed locally: the login code is written to the authentication pod log
+    mailSender: log
 
 localstack:
   enabled: true
@@ -37,4 +39,3 @@ secrets:
       journal: dev-journal
   authentication:
     jwtSecret: changeme
-    brevoApiKey: dev-placeholder-no-mail-is-sent

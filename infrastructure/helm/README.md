@@ -20,8 +20,14 @@ task down:purge    # also deletes Postgres, secrets and the volume
 ```
 
 Put your LocalStack auth token in `values-secrets.yaml` (`secrets.localstackAuthToken`, required: LocalStack 2026.x does not start without it).
-`task up` needs no Brevo key: dev uses a placeholder, so no mail is sent. Put a real `brevoApiKey` in `values-secrets.yaml`
-to receive mail. Sign in with the seed user from `values-dev.yaml` (`seed.users`).
+Dev needs no Brevo account: `mailSender: log` makes the authentication service write the login code to its pod log instead of mailing it.
+Log in with the seed user from `values-dev.yaml` (`seed.users`), then read the code:
+
+```bash
+kubectl logs deploy/authentication | grep "security token"     # field "token" holds the code
+```
+
+To receive real mail instead, set `config.authentication.mailSender: brevo` and `secrets.authentication.brevoApiKey`.
 
 ### What gets deployed in dev
 

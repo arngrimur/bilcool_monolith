@@ -19,6 +19,7 @@ data:
   WEBAUTHN_RP_ORIGINS: {{ .Values.config.authentication.webauthnRpOrigins | quote }}
   WEBAUTHN_DISPLAY_NAME: {{ .Values.config.authentication.webauthnDisplayName | quote }}
   FROM_EMAIL: {{ .Values.config.authentication.fromEmail | quote }}
+  MAIL_SENDER: {{ .Values.config.authentication.mailSender | default "brevo" | quote }}
 ---
 apiVersion: v1
 kind: ConfigMap

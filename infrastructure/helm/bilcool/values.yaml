@@ -28,6 +28,8 @@ config:
     webauthnRpOrigins: ""
     webauthnDisplayName: BilCool
     fromEmail: "security@areskiftet44.se"
+    # brevo (mails the login code) | log (DEV ONLY: writes the login code to the authentication pod log)
+    mailSender: brevo
   eventLedger:
     dynamoTableName: event-ledger
 
