@@ -37,7 +37,7 @@ func main() {
 	}
 	repo := postgresql.NewBookingsRepository(db)
 	mapboxClient := mapbox.NewClient(config.MapboxAccessToken())
-	app := application.New(repo, mapboxClient)
+	app := application.New(repo, mapboxClient, mapboxClient)
 	ginLambda := ginadapter.NewV2(web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler).Engine())
 
 	lambda.Start(func(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {

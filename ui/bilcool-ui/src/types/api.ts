@@ -83,6 +83,18 @@ export interface TrackPoint {
   recorded_at: string; // ISO 8601
 }
 
+export interface RoutePosition {
+  lat: number;
+  lon: number;
+}
+
+// route is the track snapped to roads, one line per matched segment. It is empty when
+// snapping was not possible, in which case the raw points are drawn.
+export interface BookingRoute {
+  points: TrackPoint[];
+  route: RoutePosition[][];
+}
+
 export interface EndBookingRequest {
   odometer_start?: number;
   odometer_end?: number;

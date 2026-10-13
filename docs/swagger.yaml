@@ -73,6 +73,19 @@ definitions:
       lon:
         type: number
     type: object
+  domain.RouteResponse:
+    properties:
+      points:
+        items:
+          $ref: '#/definitions/domain.TrackPoint'
+        type: array
+      route:
+        items:
+          items:
+            $ref: '#/definitions/domain.Position'
+          type: array
+        type: array
+    type: object
   domain.TrackPoint:
     properties:
       lat:
@@ -334,6 +347,29 @@ paths:
           schema:
             $ref: '#/definitions/github_com_arngrimur_bilcool_monolith_bookings_internal_pkg_web.HTTPError'
       summary: Resume a paused booking
+      tags:
+      - bookings
+  /bookings/{id}/route:
+    get:
+      description: get the recorded GPS track points of a booking and the same track
+        snapped to roads. The route is empty when snapping is not possible, in which
+        case the points should be drawn.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.RouteResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_arngrimur_bilcool_monolith_bookings_internal_pkg_web.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_arngrimur_bilcool_monolith_bookings_internal_pkg_web.HTTPError'
+      summary: Show the route of a booking snapped to the road network
       tags:
       - bookings
   /bookings/{id}/track:

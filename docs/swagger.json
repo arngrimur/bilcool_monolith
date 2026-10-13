@@ -345,6 +345,38 @@
                 }
             }
         },
+        "/bookings/{id}/route": {
+            "get": {
+                "description": "get the recorded GPS track points of a booking and the same track snapped to roads. The route is empty when snapping is not possible, in which case the points should be drawn.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "Show the route of a booking snapped to the road network",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.RouteResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_arngrimur_bilcool_monolith_bookings_internal_pkg_web.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_arngrimur_bilcool_monolith_bookings_internal_pkg_web.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/bookings/{id}/track": {
             "get": {
                 "description": "get the recorded GPS track points of a booking, ordered by recording time",
@@ -482,6 +514,26 @@
                 },
                 "lon": {
                     "type": "number"
+                }
+            }
+        },
+        "domain.RouteResponse": {
+            "type": "object",
+            "properties": {
+                "points": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.TrackPoint"
+                    }
+                },
+                "route": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/domain.Position"
+                        }
+                    }
                 }
             }
         },

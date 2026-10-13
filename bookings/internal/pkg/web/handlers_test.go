@@ -60,6 +60,8 @@ func (s *stubCommands) AddTrackPoints(_ context.Context, _ domain.AddTrackPoints
 type stubQueries struct {
 	points    []extdomain.TrackPoint
 	pointsErr error
+	route     extdomain.RouteResponse
+	routeErr  error
 }
 
 func (s *stubQueries) GetBooking(_ context.Context, _ domain.BookingRequest) (extdomain.BookingResponse, error) {
@@ -71,6 +73,10 @@ func (s *stubQueries) GetAllBooking(_ context.Context) ([]extdomain.BookingRespo
 
 func (s *stubQueries) GetTrackPoints(_ context.Context, _ domain.BookingRequest) ([]extdomain.TrackPoint, error) {
 	return s.points, s.pointsErr
+}
+
+func (s *stubQueries) GetRoute(_ context.Context, _ domain.BookingRequest) (extdomain.RouteResponse, error) {
+	return s.route, s.routeErr
 }
 
 func newTestRouter(cmds *stubCommands) *HttpRouter {
@@ -233,3 +239,71 @@ func TestGetTrackPoints_Error(t *testing.T) {
 }
 
 // endregion getTrackPoints
+
+// region getRoute
+
+func TestGetRoute_Success(t *testing.T) {
+	id := uuid.New()
+	recorded := time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC)
+	expected := extdomain.RouteResponse{
+		Points: []extdomain.TrackPoint{
+			{Lat: 59.33, Lon: 18.06, RecordedAt: recorded},
+			{Lat: 59.34, Lon: 18.07, RecordedAt: recorded.Add(2 * time.Minute)},
+		},
+		Route: [][]extdomain.Position{{{Lat: 59.331, Lon: 18.061}, {Lat: 59.339, Lon: 18.069}}},
+	}
+	router := NewRouter(&stubQueries{route: expected}, &stubCommands{})
+
+	req := addCorrelationID(httptest.NewRequest(http.MethodGet, "/api/v1/bookings/"+id.String()+"/route", nil))
+	w := httptest.NewRecorder()
+	router.Engine().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "private, max-age=300", w.Header().Get("Cache-Control"))
+
+	var got extdomain.RouteResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+	require.Len(t, got.Points, 2)
+	require.Len(t, got.Route, 1)
+	require.InDelta(t, 59.339, got.Route[0][1].Lat, 0.000001)
+}
+
+func TestGetRoute_EmptyRouteSerialisesAsArray(t *testing.T) {
+	id := uuid.New()
+	router := NewRouter(&stubQueries{route: extdomain.RouteResponse{
+		Points: []extdomain.TrackPoint{},
+		Route:  [][]extdomain.Position{},
+	}}, &stubCommands{})
+
+	req := addCorrelationID(httptest.NewRequest(http.MethodGet, "/api/v1/bookings/"+id.String()+"/route", nil))
+	w := httptest.NewRecorder()
+	router.Engine().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.JSONEq(t, `{"points":[],"route":[]}`, w.Body.String())
+}
+
+func TestGetRoute_InvalidID(t *testing.T) {
+	router := newTestRouter(&stubCommands{})
+
+	req := addCorrelationID(httptest.NewRequest(http.MethodGet, "/api/v1/bookings/not-a-uuid/route", nil))
+	w := httptest.NewRecorder()
+	router.Engine().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Empty(t, w.Header().Get("Cache-Control"))
+}
+
+func TestGetRoute_Error(t *testing.T) {
+	id := uuid.New()
+	router := NewRouter(&stubQueries{routeErr: sql.ErrNoRows}, &stubCommands{})
+
+	req := addCorrelationID(httptest.NewRequest(http.MethodGet, "/api/v1/bookings/"+id.String()+"/route", nil))
+	w := httptest.NewRecorder()
+	router.Engine().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusNotFound, w.Code)
+	require.Empty(t, w.Header().Get("Cache-Control"))
+}
+
+// endregion getRoute

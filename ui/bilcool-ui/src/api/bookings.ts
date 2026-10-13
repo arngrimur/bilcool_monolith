@@ -6,6 +6,7 @@ import type {
   PauseBookingRequest,
   PauseBookingResponse,
   TrackPoint,
+  BookingRoute,
 } from '../types/api';
 
 const BASE = '/api/v1';
@@ -39,3 +40,14 @@ export const addTrackPoints = (id: string, points: TrackPoint[]) =>
 
 export const getTrackPoints = (id: string) =>
   apiFetch<TrackPoint[]>(`${BASE}/bookings/${id}/track`);
+
+// Falls back to the plain track points when the route endpoint is unavailable, so the map
+// still works while the UI and the bookings service are being deployed out of step.
+export const getRoute = async (id: string): Promise<BookingRoute> => {
+  try {
+    return await apiFetch<BookingRoute>(`${BASE}/bookings/${id}/route`);
+  } catch (err) {
+    if ((err as { status?: number }).status === 401) throw err;
+    return { points: await getTrackPoints(id), route: [] };
+  }
+};

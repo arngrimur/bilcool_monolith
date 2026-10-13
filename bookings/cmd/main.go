@@ -100,7 +100,7 @@ func main() {
 	defer worker.Stop()
 
 	mapboxClient := mapbox.NewClient(config.MapboxAccessToken())
-	app := application.New(repo, mapboxClient)
+	app := application.New(repo, mapboxClient, mapboxClient)
 	webService := web.NewRouter(app.GetBookingsHandler, app.UpdateBookingsHandler)
 	err = webService.StartRouter(":8080")
 	if err != nil {

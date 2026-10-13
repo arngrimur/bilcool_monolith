@@ -29,6 +29,7 @@ type (
 		GetBooking(ctx context.Context, request domain.BookingRequest) (extdomain.BookingResponse, error)
 		GetAllBooking(ctx context.Context) ([]extdomain.BookingResponse, error)
 		GetTrackPoints(ctx context.Context, request domain.BookingRequest) ([]extdomain.TrackPoint, error)
+		GetRoute(ctx context.Context, request domain.BookingRequest) (extdomain.RouteResponse, error)
 	}
 )
 
@@ -49,13 +50,13 @@ type (
 // Dummy for interface
 var _ App = (*Application)(nil)
 
-func New(bookingsRepo domain.BookingsRepository, distanceCalc commands.DistanceCalculator) *Application {
+func New(bookingsRepo domain.BookingsRepository, distanceCalc commands.DistanceCalculator, routeMatcher queries.RouteMatcher) *Application {
 	return &Application{
 		appCommands{
 			UpdateBookingsHandler: commands.NewUpdateBookingsHandler(domain.NewBookings(bookingsRepo), distanceCalc),
 		},
 		appQueries{
-			GetBookingsHandler: queries.NewGetBookingsHandler(domain.NewBookings(bookingsRepo)),
+			GetBookingsHandler: queries.NewGetBookingsHandler(domain.NewBookings(bookingsRepo), routeMatcher),
 		},
 	}
 }
