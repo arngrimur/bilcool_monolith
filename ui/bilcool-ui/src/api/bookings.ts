@@ -36,3 +36,6 @@ export const addTrackPoints = (id: string, points: TrackPoint[]) =>
     method: 'POST',
     body: JSON.stringify({ points }),
   });
+
+export const getTrackPoints = (id: string) =>
+  apiFetch<TrackPoint[]>(`${BASE}/bookings/${id}/track`);

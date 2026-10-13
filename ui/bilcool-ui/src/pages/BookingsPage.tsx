@@ -9,6 +9,7 @@ import type { BookingResponse } from '../types/api'
 import { formatDate, formatTime, formatMonthYear, formatMonthKey } from '../utils/dateUtils'
 import { listFinishedBookings } from '../api/events'
 import ActiveBookingTracker from '../components/bookings/ActiveBookingTracker'
+import BookingRouteDialog from '../components/bookings/BookingRouteDialog'
 
 type BookingStatus = 'upcoming' | 'active' | 'overdue'
 
@@ -32,6 +33,7 @@ export default function BookingsPage() {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear)
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth)
   const [selectedUser, setSelectedUser] = useState<string>('all')
+  const [routeBookingRef, setRouteBookingRef] = useState<string | null>(null)
 
   const userFilter = selectedUser !== 'all' ? selectedUser : undefined
 
@@ -221,6 +223,7 @@ export default function BookingsPage() {
                     <th className="px-4 py-3 text-left font-medium">{t('col_end')}</th>
                     <th className="px-4 py-3 text-left font-medium">{t('col_distance')}</th>
                     <th className="px-4 py-3 text-left font-medium">{t('col_status')}</th>
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -232,6 +235,15 @@ export default function BookingsPage() {
                       <td className="px-4 py-3">{formatTime(b.end_date, language)}</td>
                       <td className="px-4 py-3">{(b.distance_meters / 1000).toFixed(1)}</td>
                       <td className="px-4 py-3">{t('status_completed')}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setRouteBookingRef(b.booking_reference)}
+                          className="text-primary hover:underline"
+                        >
+                          {t('view_route')}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {filteredNonCompleted
@@ -244,6 +256,7 @@ export default function BookingsPage() {
                         <td className="px-4 py-3">{formatTime(b.end_date, language)}</td>
                         <td className="px-4 py-3">—</td>
                         <td className="px-4 py-3">{t(`status_${getStatus(b)}`)}</td>
+                        <td className="px-4 py-3" />
                       </tr>
                     ))}
                 </tbody>
@@ -260,6 +273,13 @@ export default function BookingsPage() {
                   <p className="text-muted-foreground">{formatDate(b.start_date, language)}</p>
                   <p>{formatTime(b.start_date, language)} – {formatTime(b.end_date, language)}</p>
                   <p>{(b.distance_meters / 1000).toFixed(1)} km</p>
+                  <button
+                    type="button"
+                    onClick={() => setRouteBookingRef(b.booking_reference)}
+                    className="text-primary hover:underline"
+                  >
+                    {t('view_route')}
+                  </button>
                 </div>
               ))}
               {filteredNonCompleted
@@ -278,6 +298,14 @@ export default function BookingsPage() {
           </>
         )}
       </section>
+
+      {routeBookingRef && (
+        <BookingRouteDialog
+          bookingReference={routeBookingRef}
+          open
+          onOpenChange={(open) => { if (!open) setRouteBookingRef(null) }}
+        />
+      )}
     </div>
   )
 }
