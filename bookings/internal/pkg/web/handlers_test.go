@@ -2,11 +2,13 @@ package web
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -54,14 +56,21 @@ func (s *stubCommands) AddTrackPoints(_ context.Context, _ domain.AddTrackPoints
 	return nil
 }
 
-// stubQueries implements application.Queries returning zero values.
-type stubQueries struct{}
+// stubQueries implements application.Queries returning configurable track points.
+type stubQueries struct {
+	points    []extdomain.TrackPoint
+	pointsErr error
+}
 
 func (s *stubQueries) GetBooking(_ context.Context, _ domain.BookingRequest) (extdomain.BookingResponse, error) {
 	return extdomain.BookingResponse{}, nil
 }
 func (s *stubQueries) GetAllBooking(_ context.Context) ([]extdomain.BookingResponse, error) {
 	return nil, nil
+}
+
+func (s *stubQueries) GetTrackPoints(_ context.Context, _ domain.BookingRequest) ([]extdomain.TrackPoint, error) {
+	return s.points, s.pointsErr
 }
 
 func newTestRouter(cmds *stubCommands) *HttpRouter {
@@ -164,3 +173,63 @@ func TestResumeBooking_InvalidID(t *testing.T) {
 }
 
 // endregion resumeBooking
+
+// region getTrackPoints
+
+func TestGetTrackPoints_Success(t *testing.T) {
+	id := uuid.New()
+	recorded := time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC)
+	expected := []extdomain.TrackPoint{
+		{Lat: 59.33, Lon: 18.06, RecordedAt: recorded},
+		{Lat: 59.34, Lon: 18.07, RecordedAt: recorded.Add(2 * time.Minute)},
+	}
+	router := NewRouter(&stubQueries{points: expected}, &stubCommands{})
+
+	req := addCorrelationID(httptest.NewRequest(http.MethodGet, "/api/v1/bookings/"+id.String()+"/track", nil))
+	w := httptest.NewRecorder()
+	router.Engine().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var got []extdomain.TrackPoint
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+	require.Len(t, got, 2)
+	require.InDelta(t, expected[0].Lat, got[0].Lat, 0.000001)
+	require.InDelta(t, expected[1].Lon, got[1].Lon, 0.000001)
+	require.True(t, expected[1].RecordedAt.Equal(got[1].RecordedAt))
+}
+
+func TestGetTrackPoints_Empty(t *testing.T) {
+	id := uuid.New()
+	router := NewRouter(&stubQueries{points: []extdomain.TrackPoint{}}, &stubCommands{})
+
+	req := addCorrelationID(httptest.NewRequest(http.MethodGet, "/api/v1/bookings/"+id.String()+"/track", nil))
+	w := httptest.NewRecorder()
+	router.Engine().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.JSONEq(t, "[]", w.Body.String())
+}
+
+func TestGetTrackPoints_InvalidID(t *testing.T) {
+	router := newTestRouter(&stubCommands{})
+
+	req := addCorrelationID(httptest.NewRequest(http.MethodGet, "/api/v1/bookings/not-a-uuid/track", nil))
+	w := httptest.NewRecorder()
+	router.Engine().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestGetTrackPoints_Error(t *testing.T) {
+	id := uuid.New()
+	router := NewRouter(&stubQueries{pointsErr: sql.ErrNoRows}, &stubCommands{})
+
+	req := addCorrelationID(httptest.NewRequest(http.MethodGet, "/api/v1/bookings/"+id.String()+"/track", nil))
+	w := httptest.NewRecorder()
+	router.Engine().ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// endregion getTrackPoints

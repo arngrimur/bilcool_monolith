@@ -24,3 +24,14 @@ func (h GetBookingsHandler) GetBooking(ctx context.Context, b domain.BookingRequ
 func (h GetBookingsHandler) GetAllBooking(ctx context.Context) ([]extdomain.BookingResponse, error) {
 	return h.Bookings.FindAll(ctx)
 }
+
+func (h GetBookingsHandler) GetTrackPoints(ctx context.Context, b domain.BookingRequest) ([]extdomain.TrackPoint, error) {
+	points, err := h.Bookings.GetTrackPoints(ctx, b)
+	if err != nil {
+		return nil, err
+	}
+	if points == nil {
+		points = []extdomain.TrackPoint{}
+	}
+	return points, nil
+}

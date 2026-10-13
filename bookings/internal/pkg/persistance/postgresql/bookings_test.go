@@ -487,3 +487,49 @@ func makeUserMessage(userRef uuid.UUID, messageID string) brokerpostgres.Message
 		},
 	}
 }
+
+func (suite *bookingsTestSuite) TestGetTrackPoints() {
+	database := NewBookingsRepository(suite.Db)
+	ctx := context.Background()
+	t0 := time.Now().UTC().Truncate(time.Millisecond)
+
+	// Inserted out of order to verify ordering by recorded_at.
+	err := database.AddTrackPoints(ctx, domain.AddTrackPointsRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Points: []extdomain.TrackPoint{
+			{Lat: 59.35, Lon: 18.08, RecordedAt: t0.Add(4 * time.Minute)},
+			{Lat: 59.33, Lon: 18.06, RecordedAt: t0},
+			{Lat: 59.34, Lon: 18.07, RecordedAt: t0.Add(2 * time.Minute)},
+		},
+	})
+	suite.Require().NoError(err)
+
+	points, err := database.GetTrackPoints(ctx, domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().NoError(err)
+	suite.Require().Len(points, 3)
+	suite.Require().InDelta(59.33, points[0].Lat, 0.000001)
+	suite.Require().InDelta(59.34, points[1].Lat, 0.000001)
+	suite.Require().InDelta(59.35, points[2].Lat, 0.000001)
+	suite.Require().True(points[0].RecordedAt.Equal(t0))
+}
+
+func (suite *bookingsTestSuite) TestGetTrackPoints_OnlyForRequestedBooking() {
+	database := NewBookingsRepository(suite.Db)
+	ctx := context.Background()
+
+	var otherRef uuid.UUID
+	err := suite.Db.QueryRow(
+		"SELECT booking_reference FROM bookings WHERE booking_reference <> $1 LIMIT 1", suite.bookingRef,
+	).Scan(&otherRef)
+	suite.Require().NoError(err)
+
+	err = database.AddTrackPoints(ctx, domain.AddTrackPointsRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: otherRef},
+		Points:         []extdomain.TrackPoint{{Lat: 1, Lon: 2, RecordedAt: time.Now().UTC()}},
+	})
+	suite.Require().NoError(err)
+
+	points, err := database.GetTrackPoints(ctx, domain.BookingRequest{BookingReference: suite.bookingRef})
+	suite.Require().NoError(err)
+	suite.Require().Empty(points)
+}

@@ -28,6 +28,7 @@ type (
 	Queries interface {
 		GetBooking(ctx context.Context, request domain.BookingRequest) (extdomain.BookingResponse, error)
 		GetAllBooking(ctx context.Context) ([]extdomain.BookingResponse, error)
+		GetTrackPoints(ctx context.Context, request domain.BookingRequest) ([]extdomain.TrackPoint, error)
 	}
 )
 

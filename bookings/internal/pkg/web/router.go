@@ -78,6 +78,7 @@ func internalRoutes(h *HttpRouter) {
 func queryRoutes(h *HttpRouter) {
 	h.router.GET("/api/v1/bookings", h.getAllBookings)
 	h.router.GET("/api/v1/bookings/:id", h.getBooking)
+	h.router.GET("/api/v1/bookings/:id/track", h.getTrackPoints)
 }
 
 func commandRoutes(h *HttpRouter) {
@@ -144,6 +145,32 @@ func (h *HttpRouter) getBooking(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, booking)
+}
+
+// GetTrackPoints godoc
+// @Summary Show the route of a booking
+// @Description get the recorded GPS track points of a booking, ordered by recording time
+// @Tags bookings
+// @Produce JSON
+// @Param id path uuid.UUID true "Booking reference"
+// @Success 200 {array} domain.TrackPoint
+// @Failure 400 {object} HTTPError
+// @Failure 500 {object} HTTPError
+// @Router /bookings/{id}/track [get]
+func (h *HttpRouter) getTrackPoints(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
+		return
+	}
+
+	points, err := h.queries.GetTrackPoints(c.Request.Context(), domain.BookingRequest{BookingReference: id})
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, fmt.Errorf("failed to get track points %s", e.Message))
+		return
+	}
+	c.JSON(http.StatusOK, points)
 }
 
 // GetAllBookings godoc

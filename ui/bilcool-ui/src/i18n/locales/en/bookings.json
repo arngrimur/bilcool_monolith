@@ -44,5 +44,12 @@
   "resume_tracking": "Resume",
   "tracking_active_label": "Tracking active — distance calculated on stop",
   "status_paused": "Paused",
-  "other_booking_active": "Another booking is currently active"
+  "other_booking_active": "Another booking is currently active",
+  "view_route": "View route",
+  "route_title": "Route",
+  "route_loading": "Loading route…",
+  "route_error": "Failed to load the route",
+  "route_empty": "No route was recorded for this booking",
+  "route_start": "Start",
+  "route_end": "End"
 }

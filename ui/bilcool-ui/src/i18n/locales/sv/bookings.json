@@ -44,5 +44,12 @@
   "resume_tracking": "Återuppta",
   "tracking_active_label": "Spårning aktiv — sträcka beräknas vid stopp",
   "status_paused": "Pausad",
-  "other_booking_active": "En annan bokning är just nu aktiv"
+  "other_booking_active": "En annan bokning är just nu aktiv",
+  "view_route": "Visa rutt",
+  "route_title": "Rutt",
+  "route_loading": "Laddar rutt…",
+  "route_error": "Misslyckades att hämta rutten",
+  "route_empty": "Ingen rutt registrerades för den här bokningen",
+  "route_start": "Start",
+  "route_end": "Slut"
 }
