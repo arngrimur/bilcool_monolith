@@ -30,6 +30,12 @@ func (noopDistanceCalc) CalculateRoadDistance(_ context.Context, _ []extdomain.T
 	return 0, nil
 }
 
+type stubRouteMatcher struct{ lines [][]extdomain.Position }
+
+func (m stubRouteMatcher) MatchRoute(_ context.Context, _ []extdomain.TrackPoint) ([][]extdomain.Position, error) {
+	return m.lines, nil
+}
+
 type applicationTestSuite struct {
 	suite.Suite
 	// region variables
@@ -85,7 +91,7 @@ func TestRunSuiteApplication(t *testing.T) {
 // region tests
 func (suite *applicationTestSuite) TestGetASingleBooking() {
 	bookingRepository := postgresql.NewBookingsRepository(suite.Db)
-	application := New(bookingRepository, noopDistanceCalc{})
+	application := New(bookingRepository, noopDistanceCalc{}, nil)
 	booking, err := application.GetBooking(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
 	suite.Require().NoError(err)
 	suite.Require().Equal(suite.bookingRef, booking.BookingReference, "Booking reference should be the same")
@@ -93,7 +99,7 @@ func (suite *applicationTestSuite) TestGetASingleBooking() {
 
 func (suite *applicationTestSuite) TestUpdateBooking() {
 	bookingRepository := postgresql.NewBookingsRepository(suite.Db)
-	application := New(bookingRepository, noopDistanceCalc{})
+	application := New(bookingRepository, noopDistanceCalc{}, nil)
 	r := domain.UpdateBookingRequest{
 		BookingReference: uuid.New(),
 		StartDate:        suite.now,
@@ -115,6 +121,28 @@ func (suite *applicationTestSuite) TestUpdateBooking() {
 	suite.Require().Equal(r.BookingReference, e.BookingReference, "Booking reference should be the same")
 	suite.Require().WithinDuration(r.StartDate, e.StartDate, time.Second, "Start date should be the same")
 	suite.Require().WithinDuration(r.EndDate, e.EndDate, time.Second, "Start date should be the same")
+}
+
+
+func (suite *applicationTestSuite) TestGetRoute() {
+	bookingRepository := postgresql.NewBookingsRepository(suite.Db)
+	snapped := [][]extdomain.Position{{{Lat: 59.331, Lon: 18.061}, {Lat: 59.339, Lon: 18.069}}}
+	application := New(bookingRepository, noopDistanceCalc{}, stubRouteMatcher{lines: snapped})
+	t0 := time.Now().UTC()
+	err := application.AddTrackPoints(context.Background(), domain.AddTrackPointsRequest{
+		BookingRequest: domain.BookingRequest{BookingReference: suite.bookingRef},
+		Points: []extdomain.TrackPoint{
+			{Lat: 59.33, Lon: 18.06, RecordedAt: t0},
+			{Lat: 59.34, Lon: 18.07, RecordedAt: t0.Add(2 * time.Minute)},
+		},
+	})
+	suite.Require().NoError(err)
+
+	route, err := application.GetRoute(context.Background(), domain.BookingRequest{BookingReference: suite.bookingRef})
+
+	suite.Require().NoError(err)
+	suite.Require().Len(route.Points, 2)
+	suite.Require().Equal(snapped, route.Route)
 }
 
 // endregion tests
