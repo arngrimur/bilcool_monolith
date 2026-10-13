@@ -120,7 +120,7 @@ tasks:
     preconditions:
       - test -d bookings
       - go install github.com/swaggo/swag/cmd/swag@latest
-    cmd: swag init -g router.go -o docs -d bookings/internal/pkg/web,bookings/internal/pkg/domain,event_ledger/internal/pkg/web,event_ledger/internal/pkg/domain --generatedTime
+    cmd: swag init -g router.go -o docs -d bookings/internal/pkg/web,bookings/internal/pkg/domain,bookings/pkg/domain,event_ledger/internal/pkg/web,event_ledger/internal/pkg/domain --generatedTime --parseDependency --parseInternal
 
   test:
     dir: '{{.USER_WORKING_DIR}}'

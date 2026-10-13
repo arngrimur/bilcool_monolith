@@ -123,8 +123,8 @@ func (h *HttpRouter) StartRouter(addr string) error {
 // @Summary Show a booking
 // @Description get booking by booking reference
 // @Tags bookings
-// @Accept JSON
-// @Produce JSON
+// @Accept json
+// @Produce json
 // @Param id path uuid.UUID true "Booking reference"
 // @Success 200 {object} domain.BookingResponse
 // @Failure 400 {object} HTTPError
@@ -151,7 +151,7 @@ func (h *HttpRouter) getBooking(c *gin.Context) {
 // @Summary Show the route of a booking
 // @Description get the recorded GPS track points of a booking, ordered by recording time
 // @Tags bookings
-// @Produce JSON
+// @Produce json
 // @Param id path uuid.UUID true "Booking reference"
 // @Success 200 {array} domain.TrackPoint
 // @Failure 400 {object} HTTPError
@@ -177,8 +177,8 @@ func (h *HttpRouter) getTrackPoints(c *gin.Context) {
 // @Summary List all bookings
 // @Description get all booking
 // @Tags bookings
-// @Accept JSON
-// @Produce JSON
+// @Accept json
+// @Produce json
 // @Success 200 {array} domain.BookingResponse
 // @Failure 400 {object} HTTPError
 // @Failure 404 {object} HTTPError
@@ -198,8 +198,8 @@ func (h *HttpRouter) getAllBookings(c *gin.Context) {
 // updateBooking godoc
 // @Description Update or add a new booking
 // @Tags bookings
-// @Accept JSON
-// @Produce JSON
+// @Accept json
+// @Produce json
 // @BParam body domain.UpdateBookingRequest true "Booking to update"
 // @Success 202
 // @Failure 400 {object} HTTPError
@@ -226,8 +226,8 @@ func (h *HttpRouter) updateBooking(c *gin.Context) {
 // @Summary Delete a booking
 // @Description delete booking by booking reference
 // @Tags bookings
-// @Accept JSON
-// @Produce JSON
+// @Accept json
+// @Produce json
 // @Param id path uuid.UUID true "Booking reference"
 // @Success 202
 // @Failure 400 {object} HTTPError
@@ -255,8 +255,8 @@ func (h *HttpRouter) deleteBooking(c *gin.Context) {
 // @Summary Pause a booking
 // @Description Pause an active booking. Requires speed below 7 km/h. Saves the current GPS position.
 // @Tags bookings
-// @Accept JSON
-// @Produce JSON
+// @Accept json
+// @Produce json
 // @Param id path string true "Booking reference"
 // @Param body body extdomain.Position true "Current GPS position"
 // @Success 202
@@ -291,7 +291,7 @@ func (h *HttpRouter) pauseBooking(c *gin.Context) {
 // @Summary Resume a paused booking
 // @Description Resume a previously paused booking. Returns the saved pause position to resume GPS tracking from.
 // @Tags bookings
-// @Produce JSON
+// @Produce json
 // @Param id path string true "Booking reference"
 // @Success 200 {object} domain.PauseBookingResponse
 // @Failure 400 {object} HTTPError
