@@ -19,6 +19,14 @@ type TrackPoint struct {
 	RecordedAt time.Time `json:"recorded_at"`
 }
 
+// RouteResponse is the travelled route of a booking. Points are the recorded GPS samples.
+// Route is the same track snapped to the road network, as one line per matched segment.
+// Route is empty when snapping was not possible, in which case clients draw Points.
+type RouteResponse struct {
+	Points []TrackPoint `json:"points"`
+	Route  [][]Position `json:"route"`
+}
+
 type CompletedBooking struct {
 	Booking  BookingResponse `json:"booking"`
 	Distance Distance        `json:"distance"`

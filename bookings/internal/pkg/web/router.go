@@ -79,6 +79,7 @@ func queryRoutes(h *HttpRouter) {
 	h.router.GET("/api/v1/bookings", h.getAllBookings)
 	h.router.GET("/api/v1/bookings/:id", h.getBooking)
 	h.router.GET("/api/v1/bookings/:id/track", h.getTrackPoints)
+	h.router.GET("/api/v1/bookings/:id/route", h.getRoute)
 }
 
 func commandRoutes(h *HttpRouter) {
@@ -171,6 +172,35 @@ func (h *HttpRouter) getTrackPoints(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, points)
+}
+
+// GetRoute godoc
+// @Summary Show the route of a booking snapped to the road network
+// @Description get the recorded GPS track points of a booking and the same track snapped to roads. The route is empty when snapping is not possible, in which case the points should be drawn.
+// @Tags bookings
+// @Produce json
+// @Param id path uuid.UUID true "Booking reference"
+// @Success 200 {object} domain.RouteResponse
+// @Failure 400 {object} HTTPError
+// @Failure 500 {object} HTTPError
+// @Router /bookings/{id}/route [get]
+func (h *HttpRouter) getRoute(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format or missing id"})
+		return
+	}
+
+	route, err := h.queries.GetRoute(c.Request.Context(), domain.BookingRequest{BookingReference: id})
+	if err != nil {
+		e := NewHttpError(err)
+		NewError(c, e.Code, fmt.Errorf("failed to get route %s", e.Message))
+		return
+	}
+	// The recorded track of a finished booking does not change, so the snapped route (which
+	// costs a Mapbox request) may be reused by the browser for a few minutes.
+	c.Header("Cache-Control", "private, max-age=300")
+	c.JSON(http.StatusOK, route)
 }
 
 // GetAllBookings godoc
