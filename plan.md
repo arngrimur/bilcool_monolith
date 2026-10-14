@@ -56,8 +56,9 @@ parameter. `public` stays in the path so `uuid-ossp` functions resolve (the exte
 5. **Data move from Neon (decide if needed):** `pg_dump --no-owner` each Neon DB. The dumps contain `public.` qualified
    names and a `SET search_path = ''`, so rewrite `public.` to `<svc>.` (sed) before `psql`. Skip if the data is only test data.
    Include `schema_migrations` so dbmate does not re-run migrations.
-6. **Helm/k8s later:** set `postgres.location: frostmoln` and the three `secrets.*.databaseUrl` values. They use the
-   same URLs, so no chart changes are needed beyond values.
+6. **Helm/k8s later:** the chart no longer has `postgres.location`; prod needs `values-prod.yaml` (`postgres.enabled=false`,
+   `localstack.enabled=false`, `seed.enabled=false`, the three `secrets.*.databaseUrl`, AWS IAM-user keys, ingress). More is needed than
+   values, see "Infrastructure refactor" below.
 
 ## 2. Make the Frostmoln DB reachable
 Files: `infrastructure/frostmoln/terraform/db.tf`, `main.tf`, `variables.tf`, `environments/*.tfvars`.
@@ -158,3 +159,41 @@ Files: `infrastructure/frostmoln/terraform/db.tf`, `main.tf`, `variables.tf`, `e
   locally. Applying needs a gitignored `terraform.tfvars` with `db_host`, `db_passwords` (from `bootstrap/db-credentials.env`)
   and the existing jwt_secret, brevo_api_key, mapbox_access_token, neon_api_key and so on.
 - **2026-10-04, Neon removed (PR #80):** `module "neon"`, `modules/neon/`, the neon provider and the helm `postgres.location: neon` option are gone. The leftover `neon_api_key` variable was removed afterwards.
+
+
+## Infrastructure refactor: Helm for dev and prod
+
+Goal: two environments, both deployed with the same Helm chart (`infrastructure/helm/bilcool`); AWS stays under Terraform.
+
+| | dev | prod |
+|---|---|---|
+| Runtime | minikube (`task up`), docker-compose removed | Frostmoln managed k8s (not created yet); Lambda stays live until cutover |
+| Database | one in-cluster Postgres, schema + role per service | Frostmoln Postgres `bilcool` |
+| SNS/SQS/DynamoDB | LocalStack in minikube | AWS (Terraform) |
+
+### Plan 1: minikube + local run (done)
+
+- One chart with toggles (`localstack.enabled`, `postgres.enabled`, `migrations.enabled`, `seed.enabled`), `values-dev.yaml`,
+  `values-secrets.example.yaml`. See `infrastructure/helm/README.md`.
+- Dev Postgres mirrors Frostmoln (one database, schema + role per service); `files/db-init.sh` is the port of `bootstrap.sh`.
+- LocalStack init is a single file (`files/init-aws.sh`); the old chart's DynamoDB table (`pk`/`sk`) had the wrong keys and is gone,
+  the event_ledger service creates its table.
+- Secrets, dev Postgres and `db-init` are `pre-install` hooks because the migrate Jobs need them; `task down:purge` removes the leftovers.
+- Service images run as uid 10001 (numeric, needed for `runAsNonRoot` on Frostmoln's `restricted` pod security).
+- LocalStack 2026.x requires `LOCALSTACK_AUTH_TOKEN` (`secrets.localstackAuthToken`).
+- `OUTBOX_MODE` stays configurable; polling vs WAL is **undecided**. Both verified in minikube: polling ~15 s, replication ~3 s.
+  Replication needs `REPLICATION` + `CREATE ON DATABASE` for the service role and exactly one consumer per slot, so bookings and
+  authentication run one replica with `Recreate` in that mode.
+- Not covered: UI login/booking flow in the browser (needs a Brevo token for mail).
+
+### Plan 2: Frostmoln k8s cluster + prod Helm (not started)
+
+Decisions so far: Kubernetes 1.35, ingress controller Traefik, CI reaches the private API through `fm kubernetes cluster kubeconfig --exec`
+(API key as GitHub secret), AWS access for pods via a dedicated IAM user (Frostmoln Workload Identity does not federate with AWS),
+secrets stay in `HELM_VALUES_SECRETS` for now (follow-up issue: sealed/external secrets). Terraform for the cluster does not exist
+yet (provider has `frostmoln_kubernetes_cluster` / `frostmoln_kubernetes_node_pool`). Open: control-plane tier, node flavor/count.
+
+Remaining steps: cluster Terraform, Traefik + cert-manager, IAM user and a per-service Lambda-disable variable in the AWS Terraform,
+configurable queue names in `message_broker` (prod queues are `bilcool-production-*`), `nginx-unprivileged` UI image, `values-prod.yaml`,
+CI (`helm lint`/`template` on PRs, `fm` tunnel in `helm-deploy-frostmoln`), staged cutover from Lambda.
+Note: until `values-prod.yaml` exists, `helm-deploy-frostmoln` (off by default) must not be enabled.

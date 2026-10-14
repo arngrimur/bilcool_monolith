@@ -1,12 +1,13 @@
+{{- if .Values.migrations.enabled }}
+{{- range $svc := list "bookings" "authentication" "journal" }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: migrate-bookings
+  name: migrate-{{ $svc }}
   annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "0"
-    helm.sh/hook-delete-policy: before-hook-creation
+    {{- include "bilcool.preHook" "0" | nindent 4 }}
 spec:
+  backoffLimit: 20
   template:
     spec:
       securityContext:
@@ -16,8 +17,8 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: migrate
-          image: arngrimur/bilcool-bookings-migrate:{{ .Values.image.tag | default "latest" }}
-          imagePullPolicy: IfNotPresent
+          image: arngrimur/bilcool-{{ $svc }}-migrate:{{ $.Values.image.tag | default "latest" }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -27,66 +28,10 @@ spec:
           args: ["migrate"]
           env:
             - name: DATABASE_URL
-              value: {{ .Values.secrets.bookings.databaseUrl | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $svc }}
+                  key: DATABASE_URL
 ---
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: migrate-authentication
-  annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "0"
-    helm.sh/hook-delete-policy: before-hook-creation
-spec:
-  template:
-    spec:
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
-      restartPolicy: OnFailure
-      containers:
-        - name: migrate
-          image: arngrimur/bilcool-authentication-migrate:{{ .Values.image.tag | default "latest" }}
-          imagePullPolicy: IfNotPresent
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsUser: 65534
-            runAsNonRoot: true
-          args: ["migrate"]
-          env:
-            - name: DATABASE_URL
-              value: {{ .Values.secrets.authentication.databaseUrl | quote }}
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: migrate-journal
-  annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "0"
-    helm.sh/hook-delete-policy: before-hook-creation
-spec:
-  template:
-    spec:
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
-      restartPolicy: OnFailure
-      containers:
-        - name: migrate
-          image: arngrimur/bilcool-journal-migrate:{{ .Values.image.tag | default "latest" }}
-          imagePullPolicy: IfNotPresent
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsUser: 65534
-            runAsNonRoot: true
-          args: ["migrate"]
-          env:
-            - name: DATABASE_URL
-              value: {{ .Values.secrets.journal.databaseUrl | quote }}
+{{- end }}
+{{- end }}

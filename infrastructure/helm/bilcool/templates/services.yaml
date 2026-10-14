@@ -1,0 +1,101 @@
+{{- /* The four Go services. Service names are fixed: ui/bilcool-ui/nginx.conf proxies to them by name. */}}
+{{- $services := list
+  (dict "name" "authentication" "image" "authentication" "replicas" .Values.replicas.authentication "configMap" true)
+  (dict "name" "bookings" "image" "bookings" "replicas" .Values.replicas.bookings "configMap" false)
+  (dict "name" "journal" "image" "journal" "replicas" .Values.replicas.journal "configMap" false)
+  (dict "name" "event-ledger" "image" "event-ledger" "replicas" .Values.replicas.eventLedger "configMap" true)
+}}
+{{- range $s := $services }}
+{{- /* A logical replication slot has exactly one consumer: with OUTBOX_MODE=replication the outbox-owning services
+       must run one replica and must not overlap during a rollout. */}}
+{{- $slotOwner := and (eq $.Values.config.outboxMode "replication") (or (eq $s.name "bookings") (eq $s.name "authentication")) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $s.name }}
+  labels:
+    app: {{ $s.name }}
+spec:
+  replicas: {{ if $slotOwner }}1{{ else }}{{ $s.replicas }}{{ end }}
+  {{- /* Always rendered explicitly so Helm owns the field and can switch types (server-side apply). */}}
+  strategy:
+    {{- if $slotOwner }}
+    type: Recreate
+    {{- else }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    {{- end }}
+  selector:
+    matchLabels:
+      app: {{ $s.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $s.name }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ $.Values.podSecurity.runAsUser }}
+        seccompProfile:
+          type: RuntimeDefault
+      {{- if $.Values.localstack.enabled }}
+      initContainers:
+        - name: wait-for-localstack
+          image: busybox:1.36
+          securityContext:
+            {{- include "bilcool.containerSecurity" $ | nindent 12 }}
+          command:
+            - sh
+            - -c
+            - |
+              until wget -qO- http://localstack:4566/_localstack/init/ready | grep -q SUCCESSFUL; do
+                echo "Waiting for LocalStack init to complete..."; sleep 3;
+              done
+      {{- end }}
+      containers:
+        - name: {{ $s.name }}
+          image: arngrimur/bilcool-{{ $s.image }}:{{ $.Values.image.tag | default "latest" }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          securityContext:
+            {{- include "bilcool.containerSecurity" $ | nindent 12 }}
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: bilcool-shared
+            {{- if $s.configMap }}
+            - configMapRef:
+                name: {{ $s.name }}
+            {{- end }}
+            - secretRef:
+                name: {{ $s.name }}
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $s.name }}
+spec:
+  selector:
+    app: {{ $s.name }}
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: NodePort
+---
+{{- end }}

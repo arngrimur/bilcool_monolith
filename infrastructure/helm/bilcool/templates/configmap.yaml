@@ -4,7 +4,9 @@ metadata:
   name: bilcool-shared
 data:
   AWS_REGION: {{ .Values.config.awsRegion | quote }}
-  AWS_ENDPOINT_URL: {{ .Values.config.awsEndpointUrl | quote }}
+  {{- with .Values.config.awsEndpointUrl }}
+  AWS_ENDPOINT_URL: {{ . | quote }}
+  {{- end }}
   OUTBOX_MODE: {{ .Values.config.outboxMode | default "polling" | quote }}
   RELEASE: "true"
 ---
@@ -17,6 +19,7 @@ data:
   WEBAUTHN_RP_ORIGINS: {{ .Values.config.authentication.webauthnRpOrigins | quote }}
   WEBAUTHN_DISPLAY_NAME: {{ .Values.config.authentication.webauthnDisplayName | quote }}
   FROM_EMAIL: {{ .Values.config.authentication.fromEmail | quote }}
+  MAIL_SENDER: {{ .Values.config.authentication.mailSender | default "brevo" | quote }}
 ---
 apiVersion: v1
 kind: ConfigMap

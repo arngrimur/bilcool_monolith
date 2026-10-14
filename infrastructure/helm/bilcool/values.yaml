@@ -1,184 +1,83 @@
-# Default values for bilcool.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# Defaults for the bilcool chart. Environment specifics live in ../values-dev.yaml and ../values-prod.yaml;
+# secrets live in ../values-secrets.yaml (gitignored, see ../values-secrets.example.yaml).
 
-# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
-replicaCount: 1
-
-# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
-  repository: nginx
-  # This sets the pull policy for images.
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
+  # Tag for all bilcool images. Empty means "latest" for services/migrations and the chart appVersion for the UI.
   tag: ""
+  pullPolicy: IfNotPresent
 
-# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-imagePullSecrets: []
-# This is to override the chart name.
-nameOverride: ""
-fullnameOverride: ""
+# Pod-level hardening applied to the Go services (images run as uid 10001).
+podSecurity:
+  runAsUser: 10001
 
-# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
-serviceAccount:
-  # Specifies whether a service account should be created.
-  create: true
-  # Automatically mount a ServiceAccount's API credentials?
-  automount: true
-  # Annotations to add to the service account.
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template.
-  name: ""
-
-# This is for setting Kubernetes Annotations to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
-podAnnotations: {}
-# This is for setting Kubernetes Labels to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-podLabels: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
-
-# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
-service:
-  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  type: ClusterIP
-  # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
-  port: 80
-
-# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
-    # - secretName: chart-example-tls
-    #   hosts:
-    #     - chart-example.local
-
-# -- Expose the service via gateway-api HTTPRoute
-# Requires Gateway API resources and suitable controller installed within the cluster
-# (see: https://gateway-api.sigs.k8s.io/guides/)
-httpRoute:
-  # HTTPRoute enabled.
-  enabled: false
-  # HTTPRoute annotations.
-  annotations: {}
-  # Which Gateways this Route is attached to.
-  parentRefs:
-  - name: gateway
-    sectionName: http
-    # namespace: default
-  # Hostnames matching HTTP header.
-  hostnames:
-  - chart-example.local
-  # List of rules and filters applied.
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /headers
-  #   filters:
-  #   - type: RequestHeaderModifier
-  #     requestHeaderModifier:
-  #       set:
-  #       - name: My-Overwrite-Header
-  #         value: this-is-the-only-value
-  #       remove:
-  #       - User-Agent
-  # - matches:
-  #   - path:
-  #       type: PathPrefix
-  #       value: /echo
-  #     headers:
-  #     - name: version
-  #       value: v2
-
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-
-# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
-livenessProbe:
-  httpGet:
-    path: /
-    port: http
-readinessProbe:
-  httpGet:
-    path: /
-    port: http
-
-# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
-
-# Additional volumes on the output Deployment definition.
-volumes: []
-  # - name: foo
-  #   secret:
-  #     secretName: mysecret
-  #     optional: false
-
-# Additional volumeMounts on the output Deployment definition.
-volumeMounts: []
-  # - name: foo
-  #   mountPath: "/etc/foo"
-  #   readOnly: true
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
-
-postgres:
-  location: local  # local | frostmoln
+replicas:
+  authentication: 2
+  bookings: 2
+  journal: 2
+  eventLedger: 2
+  ui: 1
 
 config:
   awsRegion: eu-north-1
-  awsEndpointUrl: http://localstack:4566
+  # Empty means "real AWS" (no AWS_ENDPOINT_URL is set). Dev points this at LocalStack.
+  awsEndpointUrl: ""
+  # polling | replication. Undecided which one wins; both stay supported. replication needs wal_level=logical.
   outboxMode: polling
   authentication:
     webauthnRpId: ""
     webauthnRpOrigins: ""
     webauthnDisplayName: BilCool
     fromEmail: "security@areskiftet44.se"
+    # brevo (mails the login code) | log (DEV ONLY: writes the login code to the authentication pod log)
+    mailSender: brevo
   eventLedger:
     dynamoTableName: event-ledger
 
+# LocalStack (SNS/SQS/DynamoDB stand-in). Dev only.
+localstack:
+  enabled: false
+  image: localstack/localstack:2026.3.0
+
+# In-cluster Postgres: ONE instance, database "bilcool", one schema + login role per service (mirrors Frostmoln).
+postgres:
+  enabled: false
+  image: postgres:18
+  storage: 1Gi
+  # Grant REPLICATION to the service roles so OUTBOX_MODE=replication can be tried in dev.
+  replicationRoles: false
+
+# dbmate migrations (one Job per service, pre-install/pre-upgrade hook).
+migrations:
+  enabled: true
+
+# Dev users inserted into authentication, bookings and journal. Never enable in prod.
+seed:
+  enabled: false
+  users: []
+  #  - username: someone
+  #    email: someone@example.com
+  #    role: admin
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  annotations: {}
+  # tls: [{secretName: bilcool-tls, hosts: [bilcool.example.com]}]
+  tls: []
+
+# Set in values-secrets.yaml. DB URLs may be left empty when postgres.enabled: they are then derived from
+# secrets.postgres.passwords.
 secrets:
   awsAccessKeyId: ""
   awsSecretAccessKey: ""
   localstackAuthToken: ""
+  postgres:
+    adminPassword: ""
+    passwords:
+      bookings: ""
+      authentication: ""
+      journal: ""
   authentication:
     jwtSecret: ""
     brevoApiKey: ""
@@ -187,4 +86,3 @@ secrets:
     databaseUrl: ""
   journal:
     databaseUrl: ""
-

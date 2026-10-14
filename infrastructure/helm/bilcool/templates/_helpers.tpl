@@ -60,3 +60,29 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/* Hook annotations: resources that must exist before the migrate Jobs run. Args: weight */}}
+{{- define "bilcool.preHook" -}}
+helm.sh/hook: pre-install,pre-upgrade
+helm.sh/hook-weight: {{ . | quote }}
+helm.sh/hook-delete-policy: before-hook-creation
+{{- end }}
+
+{{/* Database URL of a service. Args: (list $ "bookings"). Explicit value wins, else derived from the in-cluster Postgres. */}}
+{{- define "bilcool.dbUrl" -}}
+{{- $root := index . 0 -}}
+{{- $svc := index . 1 -}}
+{{- $explicit := (index $root.Values.secrets $svc).databaseUrl -}}
+{{- if $explicit -}}
+{{- $explicit -}}
+{{- else -}}
+{{- printf "postgres://%s:%s@postgres:5432/bilcool?sslmode=disable" $svc (index $root.Values.secrets.postgres.passwords $svc) -}}
+{{- end -}}
+{{- end }}
+
+{{/* Restricted-compatible container security context for the Go services. */}}
+{{- define "bilcool.containerSecurity" -}}
+allowPrivilegeEscalation: false
+capabilities:
+  drop: ["ALL"]
+{{- end }}
