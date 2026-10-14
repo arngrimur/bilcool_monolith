@@ -43,28 +43,24 @@ tasks:
 
   minikube:build-authentication:
     desc: Build authentication image and load into minikube
-    deps: [vendor-if-missing]
     cmds:
       - docker build -f authentication/Dockerfile -t arngrimur/bilcool-authentication:latest .
       - minikube image load arngrimur/bilcool-authentication:latest
 
   minikube:build-bookings:
     desc: Build bookings image and load into minikube
-    deps: [vendor-if-missing]
     cmds:
       - docker build -f bookings/Dockerfile -t arngrimur/bilcool-bookings:latest .
       - minikube image load arngrimur/bilcool-bookings:latest
 
   minikube:build-journal:
     desc: Build journal image and load into minikube
-    deps: [vendor-if-missing]
     cmds:
       - docker build -f journal/Dockerfile -t arngrimur/bilcool-journal:latest .
       - minikube image load arngrimur/bilcool-journal:latest
 
   minikube:build-event-ledger:
     desc: Build event-ledger image and load into minikube
-    deps: [vendor-if-missing]
     cmds:
       - docker build -f event_ledger/Dockerfile -t arngrimur/bilcool-event-ledger:latest .
       - minikube image load arngrimur/bilcool-event-ledger:latest
@@ -115,10 +111,6 @@ tasks:
       - kubectl rollout restart deployment/bookings deployment/authentication deployment/journal deployment/event-ledger deployment/ui
       - kubectl rollout status deployment/bookings deployment/authentication deployment/journal deployment/event-ledger deployment/ui
 
-    cmds:
-      - kubectl rollout restart deployment/bookings deployment/authentication deployment/journal deployment/event-ledger deployment/ui
-      - kubectl rollout status deployment/bookings deployment/authentication deployment/journal deployment/event-ledger deployment/ui
-
   helm:upgrade:
     aliases: [minikube:helm-upgrade]
     desc: "Helm: install/upgrade the bilcool release with values-dev.yaml + values-secrets.yaml, then restart all deployments so freshly loaded :latest images are used"
@@ -127,24 +119,6 @@ tasks:
         msg: "infrastructure/helm/values-secrets.yaml is missing. Run: cp infrastructure/helm/values-secrets.example.yaml infrastructure/helm/values-secrets.yaml and fill it in."
     cmds:
       - helm upgrade --install bilcool ./infrastructure/helm/bilcool -f infrastructure/helm/values-dev.yaml -f infrastructure/helm/values-secrets.yaml --wait --timeout 10m
-          for s in authentication bookings journal; do
-            printf '  %s:\n    databaseUrl: "%s"\n' "$s" "$(kubectl get secret "$s" -o jsonpath='{.data.DATABASE_URL}' | base64 -d)"
-            if [ "$s" = authentication ]; then
-              # Only when set, so a key from values-secrets.yaml is not overridden by an empty one.
-              brevo=$(kubectl get secret authentication -o jsonpath='{.data.BREVO_API_KEY}' | base64 -d)
-              if [ -n "$brevo" ]; then printf '    brevoApiKey: "%s"\n' "$brevo"; fi
-            fi
-          done
-          printf '  awsAccessKeyId: "%s"\n  awsSecretAccessKey: "%s"\n' \
-            "$(kubectl get secret event-ledger -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)" \
-            "$(kubectl get secret event-ledger -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)"
-        } >"$f"
-        rc=0
-        helm upgrade --install bilcool ./infrastructure/helm/bilcool -f infrastructure/helm/values-secrets.yaml -f "$f" \
-          --set image.tag=latest --set postgres.location=frostmoln \
-          --set config.authentication.webauthnRpId=localhost --set config.authentication.webauthnRpOrigins=http://localhost:3000 || rc=$?
-        rm -f "$f"
-        exit $rc
       - kubectl rollout restart deployment/bookings deployment/authentication deployment/journal deployment/event-ledger deployment/ui
 
   minikube:kill-port-forward:
@@ -163,7 +137,7 @@ tasks:
         wait
 
   swagger:
-    desc: 'Regenerate Swagger/OpenAPI docs (bookings and event_ledger)'
+    desc: "Regenerate Swagger/OpenAPI docs (bookings and event_ledger)"
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
       - test -d bookings
@@ -180,7 +154,7 @@ tasks:
       - go test ./...
 
   integration-test:
-    desc: 'Run integration tests in the root module (needs Docker)'
+    desc: "Run integration tests in the root module (needs Docker)"
     dir: '{{.USER_WORKING_DIR}}'
     preconditions:
       - test -f go.mod
@@ -219,7 +193,7 @@ tasks:
       - go test ./...
 
   authentication:integration-test:
-    desc: 'Run authentication integration tests (needs Docker)'
+    desc: "Run authentication integration tests (needs Docker)"
     dir: authentication
     cmds:
       - go generate ./...
@@ -251,7 +225,7 @@ tasks:
       - go test ./...
 
   journal:integration-test:
-    desc: 'Run journal integration tests (needs Docker)'
+    desc: "Run journal integration tests (needs Docker)"
     dir: journal
     cmds:
       - go test -tags=integration ./...
@@ -271,7 +245,7 @@ tasks:
       - go test ./...
 
   message_broker:integration-test:
-    desc: 'Run message_broker integration tests (needs Docker)'
+    desc: "Run message_broker integration tests (needs Docker)"
     dir: message_broker
     cmds:
       - go generate ./...
@@ -292,7 +266,7 @@ tasks:
       - go test ./...
 
   bookings:integration-test:
-    desc: 'Run bookings integration tests (needs Docker)'
+    desc: "Run bookings integration tests (needs Docker)"
     dir: bookings
     cmds:
       - go generate ./...
@@ -315,7 +289,7 @@ tasks:
       - go test ./...
 
   event_ledger:integration-test:
-    desc: 'Run event_ledger integration tests (needs Docker)'
+    desc: "Run event_ledger integration tests (needs Docker)"
     dir: event_ledger
     cmds:
       - go generate ./...
@@ -353,7 +327,7 @@ tasks:
       - npm test
 
   ui:dev:
-    desc: 'Start the UI Vite dev server on :3000'
+    desc: "Start the UI Vite dev server on :3000"
     dir: ui/bilcool-ui
     preconditions:
       - test -f package.json
@@ -397,25 +371,15 @@ tasks:
       - GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda/migrate && zip -j ../dist/journal-migrate.zip bootstrap && rm bootstrap
 
   lambda-build-all:
-    desc: 'Build every Lambda zip (provided.al2023, arm64)'
+    desc: "Build every Lambda zip (provided.al2023, arm64)"
     cmds:
       - task: bookings:lambda-build
       - task: authentication:lambda-build
       - task: event_ledger:lambda-build
       - task: journal:lambda-build
 
-  # The service Dockerfiles copy go.work and vendor/, which are gitignored. `go work init` fails when go.work
-  # exists, so only generate them when missing; run `task vendor` after go.mod changes.
-  vendor-if-missing:
-    internal: true
-    status:
-      - test -f go.work
-      - test -f vendor/modules.txt
-    cmds:
-      - task: vendor
-
   vendor:
-    desc: 'Generate go.work for all modules and vendor them (run after go.mod changes; delete go.work and vendor/ first)'
+    desc: "Generate go.work for all modules and vendor them (for local tooling; the Docker builds do not need it)"
     cmds:
       - go work init . ./bookings ./message_broker ./testing ./authentication ./event_ledger ./journal ./bilcool-lib
       - go work vendor
