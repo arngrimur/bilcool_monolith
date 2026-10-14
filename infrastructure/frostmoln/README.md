@@ -109,7 +109,33 @@ bash bootstrap/check-tables.sh
 Connects as each service role and prints its `search_path`, the schema-qualified tables and the table count, and checks that
 the `bookings` role cannot use the `authentication` schema. Run it after the migrate Lambdas have run.
 
+### Copy the database to local compose
+
+```bash
+task up
+bash bootstrap/dump-to-local.sh
+```
+
+Dumps each service's schema (`pg_dump` run inside the local `<service>-db` container, as the service role from
+`db-credentials.env`) and restores it into a new local database `<service>_prod`, with the schema renamed to `public`.
+Your normal dev databases are untouched. Unsent `outbox` rows are marked emitted so local replication does not publish
+them (`KEEP_OUTBOX=1` to skip). `SERVICES="bookings"` limits it to one service; `KEEP_DUMPS=1` keeps the dump files in
+`$DUMP_DIR` (default `/tmp/bilcool-dumps`, mode 600). The data includes personal data, so keep it out of the repo.
+
+### Copy the database to minikube
+
+```bash
+bash bootstrap/dump-to-minikube.sh
+```
+
+Minikube has the same layout as Frostmoln (pod `postgres-0`, database `bilcool`, one schema per service), so each schema is
+dumped inside the pod and restored under the same name, as the service role. **The target schema is dropped first**, so
+minikube's own data (seed users, test bookings) is replaced. Same `SERVICES`, `KEEP_OUTBOX` options; `RESTART=0` skips
+the deployment restarts.
+
 ## How production uses this
+
+
 
 `infrastructure/production/terraform/modules/database` builds the connection strings from `db_host` (this stack's `db_host`
 output) and `db_passwords`. There is no connection pooler, so URLs must not contain `pgbouncer=true`, and the Lambdas keep few

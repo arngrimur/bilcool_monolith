@@ -1,7 +1,7 @@
 {{- if .Values.postgres.enabled }}
 {{- /* ONE Postgres, database "bilcool". The db-init Job creates a schema + login role per service (like
        infrastructure/frostmoln/bootstrap/bootstrap.sh). Hook resources so they exist before the migrate Jobs;
-       they survive `helm uninstall` (use `task down:purge`). */}}
+       they survive `helm uninstall` (use `task helm:down:purge`). */}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:

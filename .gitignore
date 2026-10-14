@@ -26,3 +26,6 @@ dist/
 
 .claude/settings.local.json
 infrastructure/frostmoln/bootstrap/db-credentials.env
+
+# database dumps (contain personal data)
+*.dump

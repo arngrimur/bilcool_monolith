@@ -16,7 +16,7 @@ cp infrastructure/helm/values-secrets.example.yaml infrastructure/helm/values-se
 task up            # start minikube, build + load all images, helm upgrade --install -f values-dev.yaml -f values-secrets.yaml
 task minikube:port-forward   # UI on :3000, Postgres on :54320, LocalStack on :4566
 task down          # helm uninstall (keeps the database volume)
-task down:purge    # also deletes Postgres, secrets and the volume
+task helm:down:purge # DESTRUCTIVE: also deletes Postgres, secrets and the volume
 ```
 
 Put your LocalStack auth token in `values-secrets.yaml` (`secrets.localstackAuthToken`, required: LocalStack 2026.x does not start without it).
@@ -48,7 +48,7 @@ after pre-hooks, so the Secrets, the dev Postgres StatefulSet/Service and the `d
 migrate 0; seed 4/5). Consequences:
 
 - Helm does not wait for the Postgres StatefulSet; `db-init` waits with `pg_isready`.
-- Hook resources are **not** removed by `helm uninstall`. Use `task down:purge`.
+- Hook resources are **not** removed by `helm uninstall`. Use `task helm:down:purge`.
 
 ### OUTBOX_MODE
 

@@ -178,7 +178,7 @@ Goal: two environments, both deployed with the same Helm chart (`infrastructure/
 - Dev Postgres mirrors Frostmoln (one database, schema + role per service); `files/db-init.sh` is the port of `bootstrap.sh`.
 - LocalStack init is a single file (`files/init-aws.sh`); the old chart's DynamoDB table (`pk`/`sk`) had the wrong keys and is gone,
   the event_ledger service creates its table.
-- Secrets, dev Postgres and `db-init` are `pre-install` hooks because the migrate Jobs need them; `task down:purge` removes the leftovers.
+- Secrets, dev Postgres and `db-init` are `pre-install` hooks because the migrate Jobs need them; `task helm:down:purge` removes the leftovers.
 - Service images run as uid 10001 (numeric, needed for `runAsNonRoot` on Frostmoln's `restricted` pod security).
 - LocalStack 2026.x requires `LOCALSTACK_AUTH_TOKEN` (`secrets.localstackAuthToken`).
 - `OUTBOX_MODE` stays configurable; polling vs WAL is **undecided**. Both verified in minikube: polling ~15 s, replication ~3 s.

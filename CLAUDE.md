@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 task up                         # minikube: start, build + load all images, helm install with values-dev.yaml + values-secrets.yaml (infrastructure/helm)
-task down                       # helm uninstall (keeps the DB volume); task down:purge also removes Postgres, secrets and the volume
+task down                       # helm uninstall (keeps the DB volume); task helm:down:purge also removes Postgres, secrets and the volume
 task minikube:port-forward      # UI :3000, Postgres :54320, LocalStack :4566
 task test-all                   # Run all unit + integration tests across every module
 task swagger                    # Regenerate Swagger/OpenAPI docs (bookings and event_ledger only)
@@ -36,7 +36,7 @@ task ui:test
 task ui:dev                     # Vite dev server on :3000
 ```
 
-Minikube / Helm helpers: `minikube:build`, `minikube:build-<service>`, `minikube:build-migrate[-<service>]`, `minikube:helm-upgrade`, `minikube:port-forward`, `minikube:kill-port-forward`. Run `task --list` for the full, current list.
+Minikube / Helm helpers: `minikube:build`, `minikube:build-<service>`, `minikube:build-migrate[-<service>]`, `helm:upgrade`, `minikube:port-forward`, `minikube:kill-port-forward`. Run `task --list` for the full, current list.
 
 ### Direct Go commands (run from the relevant module directory)
 
