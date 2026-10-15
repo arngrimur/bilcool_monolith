@@ -2,7 +2,7 @@
 # secrets live in ../values-secrets.yaml (gitignored, see ../values-secrets.example.yaml).
 
 image:
-  # Tag for all bilcool images. Empty means "latest" for services/migrations and the chart appVersion for the UI.
+  # Tag for all bilcool images (CI sets it to the release tag). Empty means "latest", which is what `task minikube:build` loads.
   tag: ""
   pullPolicy: IfNotPresent
 
@@ -84,5 +84,7 @@ secrets:
     databaseUrl: ""
   bookings:
     databaseUrl: ""
+    # Optional. Without it bookings returns only the raw GPS track (no road-snapped route) and no road distance.
+    mapboxAccessToken: ""
   journal:
     databaseUrl: ""

@@ -15,6 +15,7 @@ variable "db_allowed_cidrs" {
 }
 
 # Releasing this address is irreversible and it ends up in connection strings, so protect it.
+# set to false so tf can destory it
 resource "frostmoln_public_ip" "db" {
   lifecycle {
     prevent_destroy = true

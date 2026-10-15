@@ -118,7 +118,7 @@ tasks:
       - sh: test -f infrastructure/helm/values-secrets.yaml
         msg: "infrastructure/helm/values-secrets.yaml is missing. Run: cp infrastructure/helm/values-secrets.example.yaml infrastructure/helm/values-secrets.yaml and fill it in."
     cmds:
-      - helm upgrade --install bilcool ./infrastructure/helm/bilcool -f infrastructure/helm/values-dev.yaml -f infrastructure/helm/values-secrets.yaml --wait --timeout 10m
+      - helm upgrade --install bilcool ./infrastructure/helm/bilcool -f infrastructure/helm/values-dev.yaml -f infrastructure/helm/values-secrets.yaml --wait --timeout 10m --set-string secrets.bookings.mapboxAccessToken="$TF_VAR_mapbox_access_token"
       - kubectl rollout restart deployment/bookings deployment/authentication deployment/journal deployment/event-ledger deployment/ui
 
   minikube:kill-port-forward:
