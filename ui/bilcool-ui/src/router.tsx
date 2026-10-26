@@ -10,7 +10,7 @@ import AdminUsersPage from './pages/AdminUsersPage'
 import WhereIsPage from './pages/WhereIsPage'
 import NotFoundPage from './pages/NotFoundPage'
 
-function RequireAuth() {
+export function RequireAuth() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   if (!isAuthenticated) return <Navigate to="/login" replace />
   return <Outlet />
