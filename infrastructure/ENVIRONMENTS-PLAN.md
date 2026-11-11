@@ -1,161 +1,189 @@
 # Plan: three environments, all as infrastructure as code
 
-> **Status: proposal for review. Nothing is implemented.** Written 2026-11-11.
-> Section 2 lists the decisions I need from you; each has a recommendation that the rest of the plan assumes.
+> **Status: proposal for review, revision 2 (2026-11-11). Nothing is implemented.**
+> Revision 2 applies your answers: two independent production environments, Terraform everywhere, LocalStack in Docker,
+> LavinMQ on Frostmoln, provider interfaces selected by environment variables, secrets only in the secrets services with
+> the same keys in both environments, DNS unchanged, state in S3, small pull requests.
 
 ## 1. Target
 
-| | **local** | **aws** (today's production) | **frostmoln** (everything on Frostmoln) |
+| | **local** | **aws** (production 1, as today) | **frostmoln** (production 2) |
 |---|---|---|---|
-| Runtime | minikube, Helm chart | AWS Lambda + Function URLs | Frostmoln managed Kubernetes, Helm chart |
-| Database | Postgres 18 in Docker, beside minikube | Frostmoln Postgres via the public L4 load balancer | Frostmoln Postgres over the private VPC network |
-| Messaging | LocalStack SNS/SQS in Docker, beside minikube | AWS SNS/SQS | In-cluster broker (no AWS) |
-| Event ledger store | LocalStack DynamoDB | AWS DynamoDB | Postgres schema `event_ledger` |
-| UI | nginx pod | S3 + CloudFront | nginx pod behind ingress (Traefik + cert-manager) |
-| Mail | `MAIL_SENDER=log` | Brevo | Brevo |
-| Defined by | Terraform (`stacks/local`) | Terraform (`stacks/frostmoln-base` + `stacks/aws-app`) | Terraform (`stacks/frostmoln-base` + `stacks/frostmoln-app`) |
+| Runtime | minikube, Helm chart | AWS Lambda + Function URLs | Frostmoln Kubernetes, Helm chart |
+| Database | Postgres 18 in Docker beside minikube | its own Frostmoln Postgres (the existing instance, public L4 load balancer) | its own, new Frostmoln Postgres (private VPC address) |
+| Messaging | LocalStack SNS/SQS in Docker (LavinMQ in Docker as a switch) | AWS SNS/SQS | LavinMQ (AMQP 0-9-1) |
+| Secrets | LocalStack Secrets Manager | AWS Secrets Manager | Frostmoln secrets service |
+| Event ledger store | LocalStack DynamoDB | DynamoDB | Postgres schema `event_ledger` (assumed, see 6.2) |
+| UI | nginx pod | S3 + CloudFront | nginx pod behind Traefik + cert-manager |
+| Hostname | `localhost:3000` | `bilcool.areskiftet44.se` | a second hostname (see 6.1) |
+| Terraform roots | `stacks/local` | `stacks/aws/database`, `stacks/aws/app` | `stacks/frostmoln/platform`, `stacks/frostmoln/app` |
 
-### What is not infrastructure as code today
+`aws` and `frostmoln` share nothing at runtime: separate databases, brokers, secrets, users and hostnames. The only common
+things are the git repository, the container images and the S3 bucket that holds Terraform state.
 
-| Gap | Where | Fixed in |
-|---|---|---|
-| Database, schemas and roles are created by shell scripts, in two copies | `frostmoln/bootstrap/bootstrap.sh`, `helm/bilcool/files/db-init.sh` | Phase 2 (local), Phase 3 (Frostmoln) |
-| Topics, queues and subscriptions are defined twice, once as a shell script | `helm/bilcool/files/init-aws.sh` vs `production/terraform/modules/messaging` | Phase 2 |
-| `db_host` and the role passwords are copied by hand from one stack to the other | `db-credentials.env` -> `TF_VAR_db_passwords` | Phase 3 |
-| The load balancer listener was created in the portal and imported | `frostmoln/terraform/db_access.tf` | Phase 3 (if the platform bug is fixed), gone in Phase 6 |
-| No Kubernetes cluster, ingress or prod Helm values exist | `plan.md` "Plan 2" | Phase 5 |
-| CI only runs `terraform validate`, never a plan against state | `build.yml` `terraform-plan` | Phase 3 |
-| DNS is edited by hand at Loopia | - | Stays manual (see 2.6) |
+## 2. Provider interfaces (Go)
 
-## 2. Decisions for you
+Each service picks its concrete implementation at start-up from an environment variable. Unset means today's behaviour,
+so existing deployments keep working while the pull requests land.
 
-1. **Are `aws` and `frostmoln` two targets for the one production, or two environments running side by side?**
-   Recommended: two targets for one production. They share the one Frostmoln database, and you cut over from `aws` to
-   `frostmoln` when ready (Phase 6). Side by side would need a second database, a second domain and double the cost.
-2. **Local IaC tool: Terraform or docker compose?**
-   Recommended: Terraform (`kreuzwerker/docker`, `cyrilgdn/postgresql`, `hashicorp/aws` pointed at LocalStack,
-   `hashicorp/helm`). Local then runs the *same* database and messaging modules as production, and the two shell
-   scripts disappear. `minikube start` itself stays a Taskfile step.
-3. **Should LocalStack also move out of minikube into Docker?** You only mentioned the database.
-   Recommended: yes. Terraform on the host must reach it to create topics and queues before the Helm release is installed.
-4. **Message broker for `frostmoln`.** There is no SNS/SQS there, so `message_broker` needs a second transport (Go change).
-   Recommended: NATS JetStream in the cluster. A stream per topic and a durable consumer per service map directly onto
-   today's topic -> queue fan-out. Alternatives: RabbitMQ (heavier to run), or a Frostmoln managed queue if one exists
-   (I could not check, see section 6).
-5. **Event ledger store for `frostmoln`.** No DynamoDB there.
-   Recommended: a Postgres implementation in a fourth schema `event_ledger` (the `EventStore` and `EventQuerier`
-   interfaces already exist).
-6. **DNS.** Loopia has no maintained Terraform provider.
-   Recommended: keep it manual and documented as the one exception. Alternative: delegate `bilcool.areskiftet44.se`
-   to a DNS service that Terraform can manage.
-7. **Role passwords when the bootstrap moves into Terraform.** They will be stored in Terraform state (S3).
-   Recommended: import the existing roles and keep the current passwords (no rotation, no Lambda change), and confirm
-   the state bucket is encrypted and not public.
-8. **Terraform state for `frostmoln`.** Recommended: stay in the existing S3 bucket for now. "No AWS at all" would also
-   need a new state backend, which depends on what Frostmoln offers.
+| Variable | Values | Default | Interface lives in |
+|---|---|---|---|
+| `MESSAGING_PROVIDER` | `sns-sqs`, `amqp` | `sns-sqs` | `message_broker/pkg/messaging` (`Publisher`, `Subscriber`) |
+| `SECRETS_PROVIDER` | `env`, `aws`, `frostmoln` | `env` | `bilcool-lib/pkg/secrets` (`Provider.Get(ctx, key)`) |
+| `EVENT_STORE` | `dynamodb`, `postgres` | `dynamodb` | `event_ledger` (the existing `EventStore` / `EventQuerier`) |
 
-## 3. Layout
+| | local | aws | frostmoln |
+|---|---|---|---|
+| `MESSAGING_PROVIDER` | `sns-sqs` (or `amqp`) | `sns-sqs` | `amqp` |
+| `SECRETS_PROVIDER` | `aws` (LocalStack) | `aws` | `frostmoln` |
+| `EVENT_STORE` | `dynamodb` | `dynamodb` | `postgres` |
+
+- **Messaging.** The outbox relay and the inbox worker depend only on the interfaces. `sns-sqs` wraps today's code.
+  `amqp` maps a topic to a fanout exchange and a service queue to a durable queue with a dead-letter queue, which is the
+  same fan-out shape as SNS -> SQS. Topic and queue names come from the environment; the defaults are today's names.
+  The Lambda SQS entrypoints stay as they are (Lambda is handed the messages by AWS).
+- **Secrets.** `env` reads process environment variables (unit tests, and the fallback). `aws` reads Secrets Manager.
+  `frostmoln` reads the Frostmoln secrets API using the pod's workload identity token. Values are fetched once at
+  start-up and cached in memory; they are never logged.
+
+### Secret keys (identical in both environments)
+
+| Key | Used by |
+|---|---|
+| `bilcool-bookings-database-url` | bookings (runtime and migrate) |
+| `bilcool-authentication-database-url` | authentication (runtime and migrate) |
+| `bilcool-journal-database-url` | journal (runtime and migrate) |
+| `bilcool-event-ledger-database-url` | event_ledger (only where `EVENT_STORE=postgres`) |
+| `bilcool-authentication-jwt-secret` | authentication |
+| `bilcool-authentication-brevo-api-key` | authentication |
+| `bilcool-bookings-mapbox-access-token` | bookings |
+| `bilcool-<service>-amqp-url` | each service (only where `MESSAGING_PROVIDER=amqp`) |
+
+Lowercase letters and hyphens only, so the names are valid in both services. With `SECRETS_PROVIDER=env` the key
+`bilcool-<service>-<name>` is read from the variable `<NAME>` in upper snake case (`DATABASE_URL`), which is what the
+services read today.
+
+## 3. No secret is exposed
+
+- **Not in git:** unchanged rule. `values-secrets.yaml`, `db-credentials.env` and the secret `*.tfvars` entries disappear
+  because nothing needs them any more.
+- **Not in Terraform state:** generated secrets (role passwords, JWT secret, broker passwords) are created with
+  ephemeral `random_password` and written with write-only arguments (`secret_string_wo` on AWS, `secret_value_wo` on
+  `frostmoln_secret`, `password_wo` on the Postgres role). This needs Terraform 1.11 or later (the repository says 1.9 today).
+- **Not in Terraform variables:** secrets that come from outside (Brevo key, Mapbox token) are entered once directly in
+  the secrets service; Terraform creates only the empty secret and its access policy. The `pgadmin` password and the
+  Frostmoln API key are passed as ephemeral variables from your shell.
+- **Not in Lambda or pod configuration:** environment variables hold `SECRETS_PROVIDER` and nothing secret. The Lambda
+  role gets `secretsmanager:GetSecretValue` on `bilcool-*`; each Frostmoln service account gets a policy for exactly its
+  own secrets.
+- **Clean-up:** today's state and Lambda configuration already contain the database URLs and the JWT secret, and S3 keeps
+  old state versions. Every secret is therefore **rotated once** after the switch (pull request 17).
+
+## 4. Layout
 
 ```
 infrastructure/
-├── modules/                    # reusable Terraform modules
-│   ├── db-bootstrap/           # schema + login role per service, search_path, grants (replaces bootstrap.sh and db-init.sh)
-│   ├── messaging-sns-sqs/      # topics, queues, DLQs, subscriptions; names as variables (from production/terraform/modules/messaging)
-│   ├── dynamodb/               # from production/terraform/modules
-│   ├── aws-lambda/, aws-iam/, aws-frontend/, aws-scheduler/   # from production/terraform/modules
-│   ├── frostmoln-network/      # VPC, subnet, gateway
-│   ├── frostmoln-postgres/     # instance, plus the public load balancer behind a switch
-│   ├── frostmoln-k8s/          # cluster and node pool
-│   └── bilcool-release/        # helm_release of the chart
-├── stacks/                     # one Terraform root per thing you apply
-│   ├── local/                  # Docker Postgres + LocalStack, db-bootstrap, messaging, Helm release into minikube
-│   ├── frostmoln-base/         # network, Postgres, db-bootstrap   (today: frostmoln/terraform)
-│   ├── aws-app/                # Lambdas, SNS/SQS, DynamoDB, CloudFront   (today: production/terraform)
-│   └── frostmoln-app/          # cluster, Traefik, cert-manager, broker, Helm release
-└── helm/bilcool/               # application workloads only: services, UI, migrations, seed, ingress
+├── modules/
+│   ├── db-bootstrap/          # schema + login role per service, search_path, grants (replaces bootstrap.sh and db-init.sh)
+│   ├── messaging-sns-sqs/     # topics, queues, DLQs, subscriptions; names as variables
+│   ├── messaging-amqp/        # exchanges, queues, DLQs, bindings (cloudamqp/lavinmq provider)
+│   ├── secrets-aws/           # Secrets Manager entries with the keys above
+│   ├── secrets-frostmoln/     # frostmoln_secret entries with the same keys
+│   ├── dynamodb/, aws-lambda/, aws-iam/, aws-frontend/, aws-scheduler/
+│   ├── frostmoln-network/, frostmoln-postgres/, frostmoln-k8s/
+│   └── bilcool-release/       # helm_release of the chart
+├── stacks/
+│   ├── local/                 # Docker: Postgres, LocalStack, (LavinMQ); bootstrap, messaging, secrets, Helm release
+│   ├── aws/database/          # today's frostmoln/terraform  (state key unchanged)
+│   ├── aws/app/               # today's production/terraform (state key unchanged)
+│   ├── frostmoln/platform/    # VPC, Postgres, cluster, LavinMQ, secrets
+│   └── frostmoln/app/         # Traefik, cert-manager, bilcool release
+└── helm/bilcool/              # application workloads only: services, UI, migrations, seed, ingress
 ```
 
-- `aws` = `frostmoln-base` + `aws-app`. `frostmoln` = `frostmoln-base` + `frostmoln-app`.
-- The app stacks read `db_host` and the role passwords from `frostmoln-base` with `terraform_remote_state`.
-- The Helm chart loses its Postgres StatefulSet, `db-init` Job and LocalStack Deployment. It takes database URLs and
-  messaging settings as values only, so the same chart serves `local` and `frostmoln`.
+The chart loses its Postgres StatefulSet, `db-init` Job, LocalStack Deployment and secret values.
 
-## 4. Phases (one pull request each)
+## 5. Pull requests
 
-### Phase 1: restructure, no behaviour change
-- Move `frostmoln/terraform` -> `stacks/frostmoln-base`, `production/terraform` -> `stacks/aws-app`, modules -> `modules/`.
-- **Keep the S3 backend keys unchanged** and add `moved` blocks for every changed module address.
-- Update the paths in `build.yml`, `Taskfile.yml`, the READMEs and the `CLAUDE.md` files.
-- Remove dead material: `production/kubernetes` (legacy), the `dump-to-local.sh` section of the Frostmoln README (the script
-  no longer exists), the unused `env` variable.
-- **Acceptance:** `terraform plan` on both live stacks reports no changes. You run this (it needs your credentials).
+Small and independently mergeable. "No-op" means production behaves exactly as before; for Terraform it means
+`terraform plan` reports no changes (you run it; it needs your credentials).
 
-### Phase 2: local environment
-- `stacks/local`: Postgres 18 container (`wal_level=logical`, named volume, port 54320) and LocalStack container (port 4566).
-- `modules/db-bootstrap` creates database objects, roles and schemas; `modules/messaging-sns-sqs` creates topics and queues
-  in LocalStack. Delete `db-init.sh` and `init-aws.sh`.
-- Pods reach both through `host.minikube.internal`; the stack passes the URLs to the Helm release.
-- Chart: remove `postgres.yaml`, `localstack.yaml` and their secrets; rename `values-dev.yaml` to `values-local.yaml`.
-- `task up` becomes: start minikube, build and load images, `terraform -chdir=infrastructure/stacks/local apply`.
-  `task down` destroys the release and keeps the database volume; `task down:purge` removes the volume.
-  The port-forward task only needs the UI.
-- Update `dump-to-minikube.sh` and `task bookings_db` (they use the pod `postgres-0` today).
-- Local state is a gitignored local file. The LocalStack token and Mapbox token come from `TF_VAR_*`; `values-secrets.yaml` goes away.
-- **Acceptance:** from a clean machine, `task up` gives a working login and a booking whose event reaches journal and
-  event_ledger, in both `polling` and `replication` outbox modes.
-- **To verify early:** that pods can reach a host-published port on Linux with the minikube Docker driver (the container
-  must not bind to 127.0.0.1 only).
+### A. Go interfaces (no infrastructure change)
+1. `message_broker`: `Publisher` / `Subscriber` interfaces and a factory on `MESSAGING_PROVIDER`; SNS/SQS implement them. No-op.
+2. Topic and queue names from the environment, defaults unchanged. No-op.
+3. `bilcool-lib/pkg/secrets`: `Provider` interface, `env` implementation, factory on `SECRETS_PROVIDER`; the four
+   `config` packages read secrets through it. No-op.
+4. `aws` secrets implementation (integration test against LocalStack).
+5. `amqp` messaging implementation (integration test against a LavinMQ container).
+6. `event_ledger`: factory on `EVENT_STORE`, Postgres store, migrations and a migrate image.
+7. `frostmoln` secrets implementation (after the API check in 6.4).
 
-### Phase 3: close the IaC gaps in `aws`
-- `frostmoln-base` uses `modules/db-bootstrap`; import the existing roles and schemas; delete `bootstrap.sh`
-  (`check-tables.sh` stays as a verification tool). The `pgadmin` password is supplied as `TF_VAR`, never stored in the repo.
-- `aws-app` reads `db_host` and passwords from remote state; `db-credentials.env` and the hand-copied variables go away.
-- Retry managing the listener and `allowed_cidrs` in Terraform; if the platform still refuses, keep the documented exception.
-- Queue and topic names become variables. No rename in production.
-- CI: a real `terraform plan` on pull requests (read-only AWS role and a Frostmoln API key as secrets), posted as a job summary.
-- **Acceptance:** plan shows no changes to Lambdas, queues or the database; `check-tables.sh` passes.
+### B. Terraform restructure (no-op)
+8. Move the modules to `infrastructure/modules` with `moved` blocks.
+9. Move the two roots to `stacks/aws/database` and `stacks/aws/app`; update `build.yml`, `Taskfile.yml`, READMEs, `CLAUDE.md`.
+10. Delete dead material: `production/kubernetes`, the stale `dump-to-local.sh` README section, the unused `env` variable.
 
-### Phase 4: make the code portable (Go, no infrastructure change)
-- `message_broker`: a transport interface with the existing SNS/SQS implementation and a new NATS one, selected by
-  `MESSAGING_TRANSPORT` (default `sns-sqs`). Queue and topic names from the environment, with today's names as defaults.
-- `event_ledger`: a Postgres store beside DynamoDB, selected by configuration; a migrate image like the other services.
-- `stacks/local` gets `-var messaging=nats` so the new path is tested in minikube before any cluster exists.
-- **Acceptance:** unit and integration tests pass for both transports; the Lambda path is byte-for-byte the same configuration.
+### C. Local
+11. `stacks/local`: Postgres in Docker + `modules/db-bootstrap`; remove Postgres and `db-init.sh` from the chart.
+12. LocalStack in Docker + `modules/messaging-sns-sqs`; remove LocalStack and `init-aws.sh` from the chart.
+13. Secrets in LocalStack Secrets Manager (`SECRETS_PROVIDER=aws`); remove `values-secrets.yaml` and the chart's secret values.
+14. Helm release from Terraform; `task up` / `task down` / `task down:purge` call the stack; fix `dump-to-minikube.sh` and `task bookings_db`.
+15. LavinMQ in Docker + `modules/messaging-amqp`, switched on with `-var messaging=amqp`.
 
-### Phase 5: `frostmoln-app`
-- `modules/frostmoln-k8s`: cluster (Kubernetes 1.35) and node pool. Open from `plan.md`: control-plane tier, node flavor and count.
-- Helm releases via Terraform: Traefik, cert-manager, NATS JetStream, then `bilcool` with `values-frostmoln.yaml`.
-- Database over the private VPC address; `event_ledger` schema and role added in `frostmoln-base`.
-- UI image switches to `nginx-unprivileged` (restricted pod security).
-- CI: `helm lint` and `helm template` on pull requests; `helm-deploy-frostmoln` is replaced by a Terraform apply and stays
-  behind the `DEPLOY_FROSTMOLN_K8S` variable.
-- **Acceptance:** the full flow works on a temporary hostname while production keeps running on Lambda.
+### D. aws: secrets and remaining gaps
+16. `modules/secrets-aws` and the IAM permission. Lambdas still use their current variables. No-op for behaviour.
+17. Lambdas switch to `SECRETS_PROVIDER=aws`; secret variables and sensitive Terraform variables are removed; rotate every secret.
+18. `modules/db-bootstrap` on the existing database (import the roles and schemas); delete `bootstrap.sh` and `db-credentials.env`.
+19. CI: a real `terraform plan` on pull requests with a read-only role.
 
-### Phase 6: cutover (a separate go/no-go)
-- Stop the outbox schedulers and drain the SQS queues, point the Loopia record at the Frostmoln ingress address, keep
-  `WEBAUTHN_RP_ID` and origins unchanged so passkeys keep working.
-- After a soak period: `terraform destroy` on `aws-app`, switch off the public database load balancer, and stop CI's
-  `lambda-deploy` and `ui-deploy`.
-- Rollback until the destroy: point DNS back at CloudFront and re-enable the schedulers.
+### E. frostmoln
+20. `stacks/frostmoln/platform`: VPC, Postgres, `db-bootstrap` with the fourth schema, `modules/secrets-frostmoln`.
+21. Cluster, node pool, workload identity and the per-service secret policies.
+22. LavinMQ and `modules/messaging-amqp`.
+23. `stacks/frostmoln/app`: Traefik, cert-manager, the `bilcool` release with `values-frostmoln.yaml`; UI image on `nginx-unprivileged`.
+24. CI: deploy job for `frostmoln`, independent of the `aws` deploy (see 6.5).
 
-## 5. Risks
+Groups A and B can start immediately and in parallel. C needs A.3-A.5. D needs A.3-A.4 and B. E needs A, and B for the modules.
 
-- **Phase 1 touches the code of the live stacks.** The `moved` blocks and the no-change plan are the safeguard; nothing is
-  applied by CI.
-- **Merging any phase to `main` redeploys the Lambdas and UI** (same code, so harmless, but it happens).
-- **Role passwords in Terraform state** (decision 2.7).
-- **In-order delivery and redelivery differ between SQS and NATS.** Consumers are already idempotent (`inbox`), so the
-  integration tests in Phase 4 focus on redelivery and dead-lettering.
-- **Frostmoln cannot set `wal_level`**, so `frostmoln` runs the outbox in `polling` mode, with a short interval in-cluster
-  (seconds instead of today's 10 minutes).
-- **The Frostmoln workspace is called `dev` but holds production.** I propose leaving the name alone (renaming recreates
-  resources) and documenting it.
+## 6. Still open
 
-## 6. What I could not check from this session
+1. **Hostname for `frostmoln`.** It needs its own name (passkeys are bound to the hostname), added by hand at Loopia.
+   Proposal: `bilcool-fm.areskiftet44.se`. Please name it.
+2. **Event ledger on Frostmoln.** You did not answer this one. The plan assumes a Postgres store behind `EVENT_STORE`,
+   in the same interface style as messaging and secrets. Say so if you want something else.
+3. **LavinMQ: managed or self-hosted?** I could not find a LavinMQ or broker resource in what is publicly indexed of the
+   Frostmoln Terraform provider, so I cannot confirm it is offered as a managed service. Pull request 22 starts by reading
+   the provider schema. If there is no managed resource, LavinMQ runs in the cluster as a Helm release, still from
+   Terraform. The Go code is the same either way (plain AMQP 0-9-1).
+4. **Frostmoln secrets API from a pod.** What I found: `frostmoln_secret` supports `secret_value_wo`; a pod can call the
+   secrets lookup API with its projected service-account token; access policies match secrets by UUID. The exact endpoint
+   and whether lookup by name works must be confirmed before pull request 7.
+5. **When does CI deploy to which environment?** Proposal: `aws` stays as today (push to `main`); `frostmoln` deploys on
+   tags behind the existing `DEPLOY_FROSTMOLN_K8S` variable, plus a manual trigger for either.
+6. **Bootstrapping a private database.** Terraform on your machine cannot reach a Postgres that only has a VPC address.
+   Proposal: a public L4 listener restricted to your IP while bootstrapping, if the `allowed_cidrs` bug is fixed;
+   otherwise a one-off Job in the cluster.
 
-- The Frostmoln provider schema: the registry is blocked here. Before Phase 5 someone must confirm the Kubernetes
-  resources, whether a managed queue or S3-compatible storage exists, and whether the listener bug is fixed.
-- No `terraform`, `helm` or `minikube` in this session, so plans and local runs must happen on your machine or after the
-  session environment is extended.
-- I did not read `environments/*.tfvars` (the repository rules mark `*.tfvars` as secret). Note that `dev.tfvars` and
-  `prod.tfvars` under `frostmoln/terraform/environments` are tracked by git; worth a look to confirm they hold nothing sensitive.
+## 7. Risks
+
+- **Pull requests 8 and 9 move the code of the live stacks.** `moved` blocks and a no-change plan are the safeguard. CI never applies Terraform.
+- **Pull request 17 changes how production reads every secret.** Mitigation: 16 lands first, and the `env` provider
+  remains as a one-variable rollback until the rotation.
+- **Cold starts get slower** by one Secrets Manager call per secret (cached for the lifetime of the Lambda instance).
+- **`password_wo` on the Postgres role** depends on the `cyrilgdn/postgresql` provider version; if it is missing, the role
+  passwords are set by a small job that reads the secrets service instead.
+- **The cluster kubeconfig is a sensitive value in state** according to the provider's guide. `stacks/frostmoln/app`
+  will authenticate with the `fm` exec plugin rather than read it, but the value still sits in the platform state.
+  This is the one known exception to section 3 and needs a closer look in pull request 21.
+- **Delivery semantics differ between SQS and AMQP.** Consumers are already idempotent (`inbox`); the tests in pull
+  request 5 cover redelivery and dead-lettering.
+- **Frostmoln cannot set `wal_level`**, so `frostmoln` runs the outbox in `polling` mode with a short in-cluster interval.
+- **Merging any pull request to `main` redeploys the Lambdas and the UI.**
+- **The existing Frostmoln workspace is called `dev` but is production 1.** Left as is; renaming would recreate resources.
+
+## 8. What I could not check
+
+- The full Frostmoln provider schema and API reference (only search snippets were reachable from this session).
+- No `terraform`, `helm` or `minikube` in this session, so every plan and local run is yours until the session environment is extended.
+- `frostmoln/terraform/environments/dev.tfvars` and `prod.tfvars` are tracked by git although `*.tfvars` is treated as
+  secret. I did not open them; please confirm they hold nothing sensitive.
