@@ -12,7 +12,6 @@ import (
 	"time"
 
 	aws_sns "github.com/aws/aws-sdk-go-v2/service/sns"
-	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
@@ -20,6 +19,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/bookings/internal/migrations"
 	extdomain "github.com/arngrimur/bilcool_monolith/bookings/pkg/domain"
 	outboxdomain "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 	"github.com/arngrimur/bilcool_monolith/testing/aws"
@@ -29,7 +29,7 @@ import (
 type snsDispatcherTestSuite struct {
 	suite.Suite
 	cloud      *aws.AwsLocalCloud
-	dispatcher *SnsDispatcher[*sql.DB]
+	dispatcher *Dispatcher[*sql.DB]
 	db         testdb.SuiteDbIntegration
 	snsTopic   string
 
@@ -44,8 +44,9 @@ func (suite *snsDispatcherTestSuite) SetupSuite() {
 	suite.db = testdb.SetupDatabase(suite.T(), migrations.FS, "bookings")
 	err := postgres.CreateTable(suite.db.ConnString)
 	suite.Require().NoError(err)
-	suite.dispatcher, err = NewSnsDispatcher(context.Background(), suite.db.Db, suite.cloud.CreateConfig(suite.T()))
+	publisher, err := sns.NewPublisher(context.Background(), suite.cloud.CreateConfig(suite.T()))
 	suite.Require().NoError(err)
+	suite.dispatcher = NewDispatcher(suite.db.Db, publisher)
 
 	suite.snsTopic = "test_topic"
 	snsClient := aws_sns.NewFromConfig(suite.cloud.CreateConfig(suite.T()))
@@ -104,22 +105,19 @@ func (suite *snsDispatcherTestSuite) TestSendBatchMessages() {
 		eventIds = append(eventIds, e.EventId.String())
 	}
 
-	out, err := suite.dispatcher.SendBatchMessages(context.Background(), events, suite.snsTopic)
+	out, err := suite.dispatcher.PublishBatch(context.Background(), suite.snsTopic, events)
 	suite.Require().NoError(err)
 
 	suite.Require().Equal(11, len(out.Successful))
 	suite.Require().Equal(0, len(out.Failed))
 
 	for _, e := range out.Successful {
-		suite.Require().Contains(eventIds, *e.Id, "Event id should be in the list of sent events")
+		suite.Require().Contains(eventIds, e.String(), "Event id should be in the list of sent events")
 	}
 }
 
 func (suite *snsDispatcherTestSuite) TestExecuteSendOnlySuccessful() {
 	controller := gomock.NewController(suite.T())
-	dispatcher, err := NewSnsDispatcher(context.Background(), suite.db.Db, suite.cloud.CreateConfig(suite.T()))
-	suite.Require().NoError(err)
-	suite.Require().NotNil(dispatcher)
 
 	okEvent := postgres.Event{
 		EventId:       uuid.New(),
@@ -128,7 +126,7 @@ func (suite *snsDispatcherTestSuite) TestExecuteSendOnlySuccessful() {
 		Producer:      "test",
 		Payload:       []byte(`{"foo":"bar"}`),
 	}
-	err = postgres.Insert(context.Background(), suite.db.Db, okEvent)
+	err := postgres.Insert(context.Background(), suite.db.Db, okEvent)
 	suite.Require().NoError(err)
 	failedEvent := postgres.Event{
 		EventId:       uuid.New(),
@@ -140,13 +138,13 @@ func (suite *snsDispatcherTestSuite) TestExecuteSendOnlySuccessful() {
 	err = postgres.Insert(context.Background(), suite.db.Db, failedEvent)
 	suite.Require().NoError(err)
 
-	out := aws_sns.PublishBatchOutput{
-		Failed:     []types.BatchResultErrorEntry{{Id: new(failedEvent.EventId.String()), SenderFault: false, Message: new("error")}},
-		Successful: []types.PublishBatchResultEntry{{Id: new(okEvent.EventId.String())}},
+	out := messaging.PublishResult{
+		Successful: []uuid.UUID{okEvent.EventId},
+		Failed:     []messaging.PublishFailure{{EventId: failedEvent.EventId, Reason: "error"}},
 	}
-	snsMock := sns.NewMockPublisher(controller)
-	snsMock.EXPECT().SendBatchMessages(gomock.Any(), gomock.Any(), gomock.Any()).Return(&out, nil).Times(1)
-	dispatcher.Publisher = snsMock
+	publisherMock := messaging.NewMockPublisher(controller)
+	publisherMock.EXPECT().PublishBatch(gomock.Any(), gomock.Any(), gomock.Any()).Return(out, nil).Times(1)
+	dispatcher := NewDispatcher(suite.db.Db, publisherMock)
 
 	err = dispatcher.Execute(context.Background(), outboxdomain.Table{TableName: "outbox"})
 	suite.Require().NoError(err)

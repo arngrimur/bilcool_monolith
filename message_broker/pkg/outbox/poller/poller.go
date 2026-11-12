@@ -5,26 +5,23 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
-	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
-//go:generate mockgen -source=poller.go -destination=poller_mock.go -package=poller
-
 type Poller struct {
 	db        *sql.DB
-	publisher sns.Publisher
+	publisher messaging.Publisher
 	topic     string
 }
 
-func New(db *sql.DB, publisher sns.Publisher, topic string) *Poller {
+func New(db *sql.DB, publisher messaging.Publisher, topic string) *Poller {
 	return &Poller{db: db, publisher: publisher, topic: topic}
 }
 
-// Poll fetches unprocessed outbox records, publishes them to SNS, and marks
+// Poll fetches unprocessed outbox records, publishes them through the publisher, and marks
 // them emitted — all within a single transaction using SKIP LOCKED so
 // concurrent Lambda invocations never process the same record twice.
 func (p *Poller) Poll(ctx context.Context) error {
@@ -65,19 +62,17 @@ func (p *Poller) Poll(ctx context.Context) error {
 		events[i].EmittedAt = &now
 	}
 
-	results, err := p.publisher.SendBatchMessages(ctx, events, p.topic)
+	result, err := p.publisher.PublishBatch(ctx, p.topic, events)
 	if err != nil {
 		return err
 	}
+	for _, failure := range result.Failed {
+		log.Ctx(ctx).Warn().Stringer("event_id", failure.EventId).Str("reason", failure.Reason).Msg("event was not published")
+	}
 
-	successful := make([]postgres.Event, 0, len(results.Successful))
-	for _, m := range results.Successful {
-		uid, err := uuid.Parse(*m.Id)
-		if err != nil {
-			log.Ctx(ctx).Warn().Str("id", *m.Id).Msg("failed to parse successful message id")
-			continue
-		}
-		successful = append(successful, postgres.Event{EventId: uid, EmittedAt: &now})
+	successful := make([]postgres.Event, 0, len(result.Successful))
+	for _, id := range result.Successful {
+		successful = append(successful, postgres.Event{EventId: id, EmittedAt: &now})
 	}
 
 	if len(successful) == 0 {

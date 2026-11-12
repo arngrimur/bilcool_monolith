@@ -10,14 +10,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssns "github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
+	"github.com/google/uuid"
 
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
-
-type Publisher interface {
-	SendMessage(ctx context.Context, event postgres.Event, topic string) (*awssns.PublishOutput, error)
-	SendBatchMessages(ctx context.Context, events []postgres.Event, topic string) (*awssns.PublishBatchOutput, error)
-}
 
 //go:generate mockgen -source=publisher.go -destination=publisher_mock.go -package=sns github.com/arngrimur/bilcool_monolith/message_broker
 type SnsClientAPI interface {
@@ -31,6 +28,8 @@ type SnsPublisher struct {
 	snsClient SnsClientAPI
 	cache     *TopicCache
 }
+
+var _ messaging.Publisher = (*SnsPublisher)(nil)
 
 type batchOutput struct {
 	*awssns.PublishBatchOutput
@@ -72,6 +71,42 @@ func (s *SnsPublisher) SendMessage(ctx context.Context, event postgres.Event, to
 		return nil, err
 	}
 	return messageId, nil
+}
+
+// PublishBatch implements messaging.Publisher on top of SendBatchMessages.
+func (s *SnsPublisher) PublishBatch(ctx context.Context, topic string, events []postgres.Event) (messaging.PublishResult, error) {
+	out, err := s.SendBatchMessages(ctx, events, topic)
+	if out == nil {
+		return messaging.PublishResult{}, err
+	}
+	return toPublishResult(out), err
+}
+
+// toPublishResult converts the SNS batch output. A successful entry whose id is not an event id cannot be
+// marked as emitted by the caller, so it is reported as failed.
+func toPublishResult(out *awssns.PublishBatchOutput) messaging.PublishResult {
+	result := messaging.PublishResult{
+		Successful: make([]uuid.UUID, 0, len(out.Successful)),
+		Failed:     make([]messaging.PublishFailure, 0, len(out.Failed)),
+	}
+	for _, entry := range out.Successful {
+		id, err := uuid.Parse(aws.ToString(entry.Id))
+		if err != nil {
+			result.Failed = append(result.Failed, messaging.PublishFailure{
+				Reason: "published, but the broker returned an id that is not an event id: " + aws.ToString(entry.Id),
+			})
+			continue
+		}
+		result.Successful = append(result.Successful, id)
+	}
+	for _, entry := range out.Failed {
+		failure := messaging.PublishFailure{Reason: aws.ToString(entry.Message)}
+		if id, err := uuid.Parse(aws.ToString(entry.Id)); err == nil {
+			failure.EventId = id
+		}
+		result.Failed = append(result.Failed, failure)
+	}
+	return result
 }
 
 func (s *SnsPublisher) SendBatchMessages(ctx context.Context, events []postgres.Event, topic string) (*awssns.PublishBatchOutput, error) {

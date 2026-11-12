@@ -118,6 +118,7 @@ Small and independently mergeable. "No-op" means production behaves exactly as b
 
 ### A. Go interfaces (no infrastructure change)
 1. `message_broker`: `Publisher` / `Subscriber` interfaces and a factory on `MESSAGING_PROVIDER`; SNS/SQS implement them. No-op.
+   Split in two: 1a the publishing side (outbox poller and dispatchers), 1b the consuming side (inbox subscribers).
 2. Topic and queue names from the environment, defaults unchanged. No-op.
 3. `bilcool-lib/pkg/secrets`: `Provider` interface, `env` implementation, factory on `SECRETS_PROVIDER`; the four
    `config` packages read secrets through it. No-op.

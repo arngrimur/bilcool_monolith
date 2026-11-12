@@ -8,7 +8,7 @@ Shared library implementing the transactional outbox/inbox pattern. It is not a 
 2. **Relay** (`OUTBOX_MODE`):
    - `polling` (production Lambda, Helm default): a scheduled job reads unsent rows (`emitted_at IS NULL`) from the `outbox` table. In production this runs every 10 minutes, so an event can take up to 10 minutes to arrive.
    - `replication` (the default when `OUTBOX_MODE` is unset in bookings and authentication; `--set config.outboxMode=replication` tries it in dev): tails the outbox table with PostgreSQL logical replication (`pgoutput`) through a replication slot. This needs `wal_level=logical`; the Frostmoln provider cannot apply parameter groups, so production uses `polling`. Polling vs replication is not decided yet; both stay supported.
-3. **Publish**: the relay publishes the event to an SNS topic (LocalStack locally, AWS in production).
+3. **Publish**: the relay publishes the event through a `messaging.Publisher` (`pkg/messaging`). `pkg/messaging/provider` picks the implementation from `MESSAGING_PROVIDER`; the only one today, and the default when the variable is unset, is `sns-sqs` (an SNS topic: LocalStack locally, AWS in production). New brokers implement the interface; relay code must not import a broker SDK.
 4. **Consume**: bookings, journal and event_ledger consume SQS queues subscribed to the topics. Consumers are idempotent (an `inbox` table, `ON CONFLICT DO NOTHING`).
 
 ```
