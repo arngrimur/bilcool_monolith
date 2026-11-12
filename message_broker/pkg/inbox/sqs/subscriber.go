@@ -11,8 +11,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/rs/zerolog/log"
 
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
+
+var _ messaging.Subscriber = (*SqsSubscriber)(nil)
 
 type SqsSubscriber struct {
 	sqsClient         *aws_sqs.Client

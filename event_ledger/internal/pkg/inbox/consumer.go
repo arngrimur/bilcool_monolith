@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/domain"
-	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging"
 	brokerpostgres "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
@@ -16,11 +16,11 @@ type EventStore interface {
 }
 
 type Consumer struct {
-	handler *sqs.SqsSubscriber
+	handler messaging.Subscriber
 	store   EventStore
 }
 
-func NewConsumer(client *sqs.SqsSubscriber, store EventStore) *Consumer {
+func NewConsumer(client messaging.Subscriber, store EventStore) *Consumer {
 	return &Consumer{
 		handler: client,
 		store:   store,

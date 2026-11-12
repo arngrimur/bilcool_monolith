@@ -39,3 +39,10 @@ func TestNewPublisherRejectsUnknownProvider(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, publisher)
 }
+
+func TestNewSubscriberRejectsUnknownProvider(t *testing.T) {
+	t.Setenv(EnvVar, "kafka")
+	subscriber, err := NewSubscriber(t.Context(), "a-queue")
+	require.Error(t, err)
+	require.Nil(t, subscriber)
+}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/url"
 
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/rs/zerolog/log"
 
 	"github.com/arngrimur/bilcool-lib/pkg/logging"
@@ -14,6 +13,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/journal/internal/pkg/web"
 	brokerinbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging/provider"
 	brokerpostgres "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
@@ -37,13 +37,9 @@ func main() {
 		log.Fatal().Err(err).Msg("Error creating outbox table")
 	}
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
+	sqsSubscriber, err := provider.NewSubscriber(ctx, sqs.JournalSqsQueue)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error loading AWS config")
-	}
-	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, sqs.JournalSqsQueue)
-	if err != nil {
-		log.Ctx(ctx).Fatal().Err(err).Msg("Error creating SQS subscriber")
+		log.Ctx(ctx).Fatal().Err(err).Msg("Error creating subscriber")
 	}
 	repo := postgres.NewEventRepository(psqlDb)
 	eventHandler := inbox.NewEventHandler(sqsSubscriber, repo)
