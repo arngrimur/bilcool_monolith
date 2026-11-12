@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"net/url"
 	"time"
 
@@ -22,8 +21,9 @@ import (
 	soutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
-	snspublisher "github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging/provider"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/poller"
+	snspublisher "github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
 	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
@@ -53,19 +53,16 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error loading AWS config")
 	}
+	publisher, err := provider.NewPublisher(ctx)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error creating publisher")
+	}
 	switch config.OutboxMode() {
 	case "polling":
-		publisher, err := snspublisher.NewPublisher(ctx, awsCfg)
-		if err != nil {
-			log.Fatal().Err(err).Msg("Error creating SNS publisher")
-		}
 		p := poller.New(psqlDb, publisher, snspublisher.TopicBookings)
 		go p.RunLoop(ctx, 15*time.Second)
 	default: // "replication"
-		dispatcher, err := event_dispatcher.NewSnsDispatcher[*sql.DB](ctx, psqlDb, awsCfg)
-		if err != nil {
-			log.Fatal().Err(err).Msg("Error creating SNS dispatcher")
-		}
+		dispatcher := event_dispatcher.NewDispatcher(psqlDb, publisher)
 		outbox, err := soutbox.NewOutbox(
 			ctx,
 			dbUrl,

@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"net/url"
 	"time"
 
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/go-webauthn/webauthn/webauthn"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
@@ -21,6 +19,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/persistance/postgresql"
 	"github.com/arngrimur/bilcool_monolith/authentication/internal/pkg/web"
 	soutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging/provider"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/poller"
 	snspublisher "github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
 	coutbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
@@ -49,24 +48,16 @@ func main() {
 		log.Fatal().Err(err).Msg("error creating outbox table")
 	}
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
+	publisher, err := provider.NewPublisher(ctx)
 	if err != nil {
-		log.Fatal().Err(err).Msg("error loading AWS config")
+		log.Fatal().Err(err).Msg("error creating publisher")
 	}
-
 	switch config.OutboxMode() {
 	case "polling":
-		publisher, err := snspublisher.NewPublisher(ctx, awsCfg)
-		if err != nil {
-			log.Fatal().Err(err).Msg("error creating SNS publisher")
-		}
 		p := poller.New(psqlDb, publisher, snspublisher.TopicUsers)
 		go p.RunLoop(ctx, 15*time.Second)
 	default: // "replication"
-		dispatcher, err := event_dispatcher.NewSnsDispatcher[*sql.DB](ctx, psqlDb, awsCfg)
-		if err != nil {
-			log.Fatal().Err(err).Msg("error creating SNS dispatcher")
-		}
+		dispatcher := event_dispatcher.NewDispatcher(psqlDb, publisher)
 		outbox, err := soutbox.NewOutbox(
 			ctx,
 			dbUrl,
