@@ -1,6 +1,6 @@
 # Plan: three environments, all as infrastructure as code
 
-> **Status: proposal for review, revision 3 (2026-11-11). Nothing is implemented.**
+> **Status: proposal for review, revision 4 (2026-11-12). Nothing is implemented. All decisions are made (section 6).**
 > Applied so far: Terraform everywhere, LocalStack in Docker, provider interfaces selected by environment variables,
 > secrets only in the secrets services with the same keys, DNS unchanged, state in S3, small pull requests.
 > Revision 3: only one of `aws` and `frostmoln` exists at a time, on the same URL; Frostmoln's managed LavinMQ, secrets
@@ -14,7 +14,7 @@
 | Database | Postgres 18 in Docker beside minikube | Frostmoln Postgres through the public L4 load balancer | Frostmoln Postgres on its private VPC address |
 | Messaging | LocalStack SNS/SQS in Docker (LavinMQ in Docker as a switch) | AWS SNS/SQS | Frostmoln managed LavinMQ (AMQPS, private to the VPC) |
 | Secrets | LocalStack Secrets Manager | AWS Secrets Manager | Frostmoln Secrets, read with workload identity |
-| Event ledger store | LocalStack DynamoDB | DynamoDB | Postgres schema `event_ledger` (recommended, see 6.1) |
+| Event ledger store | LocalStack DynamoDB | DynamoDB | ScyllaDB Alternator (DynamoDB API) on a Frostmoln compute node |
 | UI | nginx pod | S3 + CloudFront | nginx pod behind Traefik + cert-manager |
 | Hostname | `localhost:3000` | `bilcool.areskiftet44.se` | `bilcool.areskiftet44.se` |
 | Terraform roots | `stacks/local` | `stacks/database` + `stacks/aws` | `stacks/database` + `stacks/frostmoln/platform` + `stacks/frostmoln/app` |
@@ -25,7 +25,7 @@ changing the Loopia record by hand (CNAME to CloudFront for `aws`, A record to t
 
 The database is a separate root (`stacks/database`) that both targets use and that **survives a switch**, so users,
 bookings and passkeys are kept (passkeys are bound to the hostname, which does not change). Its public load balancer is a
-switch: on for `aws`, off for `frostmoln`. Say so if you would rather have each target own a database and start empty (6.2).
+switch: on for `aws`, off for `frostmoln`.
 
 ## 2. Provider interfaces (Go)
 
@@ -36,18 +36,18 @@ so existing deployments keep working while the pull requests land.
 |---|---|---|---|
 | `MESSAGING_PROVIDER` | `sns-sqs`, `amqp` | `sns-sqs` | `message_broker/pkg/messaging` (`Publisher`, `Subscriber`) |
 | `SECRETS_PROVIDER` | `env`, `aws`, `frostmoln` | `env` | `bilcool-lib/pkg/secrets` (`Provider.Get(ctx, key)`) |
-| `EVENT_STORE` | `dynamodb`, `postgres` | `dynamodb` | `event_ledger` (the existing `EventStore` / `EventQuerier`) |
 
 | | local | aws | frostmoln |
 |---|---|---|---|
 | `MESSAGING_PROVIDER` | `sns-sqs` (or `amqp`) | `sns-sqs` | `amqp` |
 | `SECRETS_PROVIDER` | `aws` (LocalStack) | `aws` | `frostmoln` |
-| `EVENT_STORE` | `dynamodb` | `dynamodb` | `postgres` |
 
 - **Messaging.** The outbox relay and the inbox worker depend only on the interfaces. `sns-sqs` wraps today's code.
   `amqp` maps a topic to a fanout exchange and a service queue to a durable queue with a dead-letter queue, which is the
   same fan-out shape as SNS -> SQS. Topic and queue names come from the environment; the defaults are today's names.
   The Lambda SQS entrypoints stay as they are (Lambda is handed the messages by AWS).
+- **Event ledger.** No interface is needed: ScyllaDB Alternator speaks the DynamoDB API, so `event_ledger` keeps its
+  DynamoDB client and only gets a different endpoint (`AWS_ENDPOINT_URL_DYNAMODB`) and credentials on Frostmoln.
 - **Secrets.** `env` reads process environment variables (unit tests, and the fallback). `aws` reads Secrets Manager.
   `frostmoln` calls `GET https://api.frostmoln.cloud/api/v1/tenants/<tenant>/secrets/lookup?name=<key>` with the
   workload identity token from the file named by `FROSTMOLN_WORKLOAD_CREDENTIALS_FILE` (re-read on every call, since
@@ -60,7 +60,7 @@ so existing deployments keep working while the pull requests land.
 | `bilcool-bookings-database-url` | bookings (runtime and migrate) |
 | `bilcool-authentication-database-url` | authentication (runtime and migrate) |
 | `bilcool-journal-database-url` | journal (runtime and migrate) |
-| `bilcool-event-ledger-database-url` | event_ledger (only where `EVENT_STORE=postgres`) |
+| `bilcool-event-ledger-dynamodb-access-key-id`, `bilcool-event-ledger-dynamodb-secret-access-key` | event_ledger (only on Frostmoln, for Alternator) |
 | `bilcool-authentication-jwt-secret` | authentication |
 | `bilcool-authentication-brevo-api-key` | authentication |
 | `bilcool-bookings-mapbox-access-token` | bookings |
@@ -93,7 +93,8 @@ infrastructure/
 ├── modules/
 │   ├── db-bootstrap/          # schema + login role per service, search_path, grants (replaces bootstrap.sh and db-init.sh)
 │   ├── messaging-sns-sqs/     # topics, queues, DLQs, subscriptions; names as variables
-│   ├── messaging-lavinmq/     # frostmoln_messaging_instance, one vhost, one user + permission per service
+│   ├── messaging-lavinmq/     # frostmoln_messaging_instance, one vhost, permissions (users are created with fm)
+│   ├── scylla-alternator/     # compute instance + volume running ScyllaDB with the DynamoDB-compatible API
 │   ├── secrets-aws/           # Secrets Manager entries with the keys above
 │   ├── secrets-frostmoln/     # frostmoln_secret entries with the same keys
 │   ├── dynamodb/, aws-lambda/, aws-iam/, aws-frontend/, aws-scheduler/
@@ -103,7 +104,7 @@ infrastructure/
 │   ├── local/                 # Docker: Postgres, LocalStack, (LavinMQ); bootstrap, messaging, secrets, Helm release
 │   ├── database/              # today's frostmoln/terraform  (state key unchanged); kept across a switch
 │   ├── aws/                   # today's production/terraform (state key unchanged)
-│   ├── frostmoln/platform/    # cluster, node pool, LavinMQ, secrets, workload identity bindings
+│   ├── frostmoln/platform/    # cluster, node pool, LavinMQ, ScyllaDB node, secrets, workload identity bindings
 │   └── frostmoln/app/         # Traefik, cert-manager, bilcool release
 └── helm/bilcool/              # application workloads only: services, UI, migrations, seed, ingress
 ```
@@ -122,7 +123,7 @@ Small and independently mergeable. "No-op" means production behaves exactly as b
    `config` packages read secrets through it. No-op.
 4. `aws` secrets implementation (integration test against LocalStack).
 5. `amqp` messaging implementation (integration test against a LavinMQ container).
-6. `event_ledger`: factory on `EVENT_STORE`, Postgres store, migrations and a migrate image.
+6. `event_ledger`: integration test of the existing DynamoDB store against a ScyllaDB Alternator container; fix any incompatibility it shows.
 7. `frostmoln` secrets implementation (API in section 8).
 
 ### B. Terraform restructure (no-op)
@@ -144,11 +145,14 @@ Small and independently mergeable. "No-op" means production behaves exactly as b
 19. CI: a real `terraform plan` on pull requests with a read-only role.
 
 ### E. frostmoln
-20. `stacks/database`: public load balancer behind a variable; fourth schema and role `event_ledger`; `modules/secrets-frostmoln`.
+20. `stacks/database`: public load balancer behind a variable. `modules/secrets-frostmoln` in `stacks/frostmoln/platform`.
 21. `stacks/frostmoln/platform`: cluster and node pool with the `workload-identity` add-on, one
     `frostmoln_workload_identity_binding` per service with a policy allowing `secrets:secrets:read`.
 22. `modules/messaging-lavinmq`: managed instance (`require_tls` on), vhost `bilcool`, a user per service with
-    permission patterns limited to its own exchanges and queues.
+    permission patterns limited to its own exchanges and queues. The users are created by a Taskfile/CI step with `fm`,
+    which pipes each generated password straight into Frostmoln Secrets, so it never reaches Terraform state or a log.
+22b. `modules/scylla-alternator`: a compute instance with a data volume in the VPC, ScyllaDB installed by cloud-init
+    with Alternator and authorization enabled, volume snapshots as backup. No secret in `user_data`.
 23. `stacks/frostmoln/app`: Traefik, cert-manager, the `bilcool` release with `values-frostmoln.yaml`; UI image on `nginx-unprivileged`.
 24. CI: a repository variable `DEPLOY_TARGET` (`aws` or `frostmoln`) decides which deploy jobs run on push to `main`;
     replaces `DEPLOY_FROSTMOLN_K8S`. Plus a manual trigger.
@@ -156,26 +160,21 @@ Small and independently mergeable. "No-op" means production behaves exactly as b
 
 Groups A and B can start immediately and in parallel. C needs pull requests 3 to 5. D needs 3, 4 and B. E needs A and B.
 
-## 6. Still open
+## 6. Decisions
 
-1. **Event ledger on Frostmoln: DynamoDB on a compute node?** DynamoDB itself is an AWS-only service. Two things can
-   speak its API elsewhere:
-   - *DynamoDB Local*: AWS provides it for development and testing only. It is a single process on a local file with no
-     replication or backup tooling, so I advise against it for production.
-   - *ScyllaDB Alternator*: an open-source database with a DynamoDB-compatible API. It would run on a Frostmoln compute
-     node and `event_ledger` would need no code change, but you would operate a database yourself (backups, upgrades,
-     monitoring), and Scylla wants a few dedicated cores and several GB of RAM.
-
-   Recommended instead: the Postgres store behind `EVENT_STORE` (pull request 6). Frostmoln already runs and backs up
-   Postgres, it costs nothing extra, and it follows the same interface pattern as messaging and secrets. The plan assumes
-   this; tell me if you prefer Alternator and I will swap pull request 6 for a compute node.
-2. **Database across a switch.** The plan keeps one database for both targets (section 1). Confirm, or choose a database per target.
-3. **Exchanges and queues in LavinMQ.** Frostmoln manages the instance, vhosts, users and permissions, but not
-   exchanges and queues. Proposal: each service declares its own at start-up (idempotent, the usual AMQP practice),
-   restricted by its permission patterns. The alternative is the `cloudamqp/lavinmq` Terraform provider, which needs the
-   admin login and a tunnel into the VPC.
-4. **LavinMQ user passwords.** The platform generates them and exposes them as the Terraform attribute `password`, which
-   lands in state. See the first risk below.
+| Question | Decision |
+|---|---|
+| `aws` and `frostmoln` | Only one exists at a time, on the same URL |
+| Database | One common Frostmoln Postgres for both targets; it survives a switch |
+| Local tooling | Terraform; Postgres and LocalStack in Docker beside minikube |
+| Messaging | One interface; SNS/SQS on AWS, managed LavinMQ on Frostmoln; chosen by `MESSAGING_PROVIDER` |
+| Exchanges and queues in LavinMQ | Each service declares its own at start-up |
+| LavinMQ user passwords | Created with `fm` and pushed straight into Frostmoln Secrets |
+| Secrets | One interface; AWS Secrets Manager or Frostmoln Secrets; chosen by `SECRETS_PROVIDER`; same keys |
+| Event ledger on Frostmoln | ScyllaDB Alternator on a compute node |
+| DNS | Unchanged, by hand at Loopia |
+| Terraform state | S3 |
+| CI | `DEPLOY_TARGET` selects the deploy jobs on push to `main` |
 
 ## 7. Risks
 
@@ -183,11 +182,14 @@ Groups A and B can start immediately and in parallel. C needs pull requests 3 to
 - **Pull request 17 changes how production reads every secret.** Mitigation: 16 lands first, and the `env` provider
   remains as a one-variable rollback until the rotation.
 - **Cold starts get slower** by one Secrets Manager call per secret (cached for the lifetime of the Lambda instance).
-- **Two values cannot be kept out of Terraform state with what the Frostmoln provider documents today:** the LavinMQ
-  user passwords (computed attribute `password`) and the cluster kubeconfig. Options: accept them in the encrypted,
-  access-restricted state bucket as documented exceptions; or create the LavinMQ users with `fm` in a pipeline step that
-  writes the password straight into Frostmoln Secrets. I recommend the second for the passwords and exec-based
-  authentication (`fm`) instead of the stored kubeconfig. To settle in pull requests 21 and 22.
+- **The cluster kubeconfig is a sensitive attribute in the platform state.** `stacks/frostmoln/app` authenticates through
+  `fm` instead of reading it, but the attribute still exists in state. Pull request 21 checks whether the provider can
+  leave it out; if not, it is the one documented exception.
+- **ScyllaDB is a database you operate yourself:** upgrades, monitoring and restores are yours, and a single node has no
+  redundancy. Alternator is compatible with most, not all, of the DynamoDB API, which is why pull request 6 tests it
+  before any infrastructure is built. Its sizing needs (dedicated cores, several GB of RAM) set the compute flavor and cost.
+- **Event ledger data does not follow a switch of target** (DynamoDB and ScyllaDB are separate stores). The Postgres
+  data does. If the ledger history matters, a copy step is added to the switch runbook.
 - **A switch of target has downtime** (DNS propagation, and unsent outbox rows are published by the new target's relay).
   In-flight messages in the old broker are drained before it is destroyed.
 - **`password_wo` on the Postgres role** depends on the `cyrilgdn/postgresql` provider version; if it is missing, the role
@@ -212,7 +214,7 @@ Confirmed from `docs.frostmoln.se` (2026-11-11):
   annotation `frostmoln.cloud/workload-identity: "true"`, token file in `FROSTMOLN_WORKLOAD_CREDENTIALS_FILE`.
 - **Databases:** PostgreSQL 14 to 18 are offered (the existing instance is 16; local uses 18). Private instances are
   reachable from your machine with `fm forward`, which is how Terraform will bootstrap a database without a public listener.
-- **No DynamoDB-like service** in the documentation (compute, databases, caches, messaging, object storage, registry,
+- **No managed DynamoDB-like service** in the documentation (compute, databases, caches, messaging, object storage, registry,
   DNS, secrets, Kubernetes).
 
 Not checked:
