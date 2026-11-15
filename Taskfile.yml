@@ -5,6 +5,12 @@ vars:
   COVERAGE_OUTPUT_FILE: coverage.out
   COVERAGE_OUTPUT_HTML: coverage.html
 
+env:
+  # testcontainers shares one cleanup container ("reaper") between the packages of a `go test ./...` run and removes it
+  # 10 s after the last package disconnects. A package that is still pulling its image (LocalStack) then attaches to a
+  # reaper that is being removed and fails with: unexpected container status "removing". Keep the reaper around longer.
+  RYUK_RECONNECTION_TIMEOUT: 2m
+
 tasks:
   helm:up:
     aliases: [up]
