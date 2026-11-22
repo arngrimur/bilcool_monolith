@@ -37,7 +37,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Error creating outbox table")
 	}
 
-	sqsSubscriber, err := provider.NewSubscriber(ctx, sqs.JournalSqsQueue)
+	sqsSubscriber, err := provider.NewSubscriber(ctx, provider.Queue(sqs.JournalSqsQueue))
 	if err != nil {
 		log.Ctx(ctx).Fatal().Err(err).Msg("Error creating subscriber")
 	}

@@ -44,11 +44,11 @@ func (suite *snsDispatcherTestSuite) SetupSuite() {
 	suite.db = testdb.SetupDatabase(suite.T(), migrations.FS, "bookings")
 	err := postgres.CreateTable(suite.db.ConnString)
 	suite.Require().NoError(err)
+	suite.snsTopic = "test_topic"
 	publisher, err := sns.NewPublisher(context.Background(), suite.cloud.CreateConfig(suite.T()))
 	suite.Require().NoError(err)
-	suite.dispatcher = NewDispatcher(suite.db.Db, publisher)
+	suite.dispatcher = NewDispatcher(suite.db.Db, publisher, suite.snsTopic)
 
-	suite.snsTopic = "test_topic"
 	snsClient := aws_sns.NewFromConfig(suite.cloud.CreateConfig(suite.T()))
 	snsClient.CreateTopic(context.Background(), &aws_sns.CreateTopicInput{Name: &suite.snsTopic})
 }
@@ -144,7 +144,7 @@ func (suite *snsDispatcherTestSuite) TestExecuteSendOnlySuccessful() {
 	}
 	publisherMock := messaging.NewMockPublisher(controller)
 	publisherMock.EXPECT().PublishBatch(gomock.Any(), gomock.Any(), gomock.Any()).Return(out, nil).Times(1)
-	dispatcher := NewDispatcher(suite.db.Db, publisherMock)
+	dispatcher := NewDispatcher(suite.db.Db, publisherMock, sns.TopicBookings)
 
 	err = dispatcher.Execute(context.Background(), outboxdomain.Table{TableName: "outbox"})
 	suite.Require().NoError(err)

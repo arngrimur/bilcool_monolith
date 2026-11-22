@@ -54,10 +54,10 @@ func main() {
 	}
 	switch config.OutboxMode() {
 	case "polling":
-		p := poller.New(psqlDb, publisher, snspublisher.TopicUsers)
+		p := poller.New(psqlDb, publisher, provider.Topic(snspublisher.TopicUsers))
 		go p.RunLoop(ctx, 15*time.Second)
 	default: // "replication"
-		dispatcher := event_dispatcher.NewDispatcher(psqlDb, publisher)
+		dispatcher := event_dispatcher.NewDispatcher(psqlDb, publisher, provider.Topic(snspublisher.TopicUsers))
 		outbox, err := soutbox.NewOutbox(
 			ctx,
 			dbUrl,

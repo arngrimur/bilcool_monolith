@@ -29,7 +29,7 @@ func main() {
 	}
 
 	db := postgresql.SetupPostgresDatabase()
-	p := poller.New(db, publisher, snspublisher.TopicBookings)
+	p := poller.New(db, publisher, provider.Topic(snspublisher.TopicBookings))
 
 	lambda.Start(func(ctx context.Context) error {
 		return p.Poll(ctx)

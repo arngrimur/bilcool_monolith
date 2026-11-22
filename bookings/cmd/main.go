@@ -54,10 +54,10 @@ func main() {
 	}
 	switch config.OutboxMode() {
 	case "polling":
-		p := poller.New(psqlDb, publisher, snspublisher.TopicBookings)
+		p := poller.New(psqlDb, publisher, provider.Topic(snspublisher.TopicBookings))
 		go p.RunLoop(ctx, 15*time.Second)
 	default: // "replication"
-		dispatcher := event_dispatcher.NewDispatcher(psqlDb, publisher)
+		dispatcher := event_dispatcher.NewDispatcher(psqlDb, publisher, provider.Topic(snspublisher.TopicBookings))
 		outbox, err := soutbox.NewOutbox(
 			ctx,
 			dbUrl,
@@ -82,7 +82,7 @@ func main() {
 	}
 	repo := postgresql.NewBookingsRepository(psqlDb)
 
-	sqsSubscriber, err := provider.NewSubscriber(ctx, sqs.BookingsSqsQueue)
+	sqsSubscriber, err := provider.NewSubscriber(ctx, provider.Queue(sqs.BookingsSqsQueue))
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create subscriber")
 	}
