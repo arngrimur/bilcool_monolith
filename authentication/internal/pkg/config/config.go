@@ -1,10 +1,18 @@
 package config
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/arngrimur/bilcool-lib/pkg/secrets"
 )
+
+// service is this service's name in secret keys (bilcool-authentication-<name>).
+const service = "authentication"
 
 const (
 	MailSenderBrevo = "brevo"
@@ -45,14 +53,23 @@ func WebAuthnDisplayName() string {
 }
 
 func Init() error {
+	store, ctx, cancel, err := newSecretStore()
+	if err != nil {
+		return err
+	}
+	defer cancel()
 	var missing []string
 
-	if v, ok := os.LookupEnv("DATABASE_URL"); ok {
+	if v, ok, err := readSecret(ctx, store, "database-url"); err != nil {
+		return err
+	} else if ok {
 		databaseUrl = v
 	} else {
 		missing = append(missing, "DATABASE_URL")
 	}
-	if v, ok := os.LookupEnv("JWT_SECRET"); ok {
+	if v, ok, err := readSecret(ctx, store, "jwt-secret"); err != nil {
+		return err
+	} else if ok {
 		jwtSecret = v
 	} else {
 		missing = append(missing, "JWT_SECRET")
@@ -83,7 +100,9 @@ func Init() error {
 	}
 	switch mailSender {
 	case MailSenderBrevo:
-		if v, ok := os.LookupEnv("BREVO_API_KEY"); ok {
+		if v, ok, err := readSecret(ctx, store, "brevo-api-key"); err != nil {
+			return err
+		} else if ok {
 			brevoAPIKey = v
 		} else {
 			missing = append(missing, "BREVO_API_KEY")
@@ -136,4 +155,26 @@ func AwsSecret() string {
 
 func AwsKey() string {
 	panic("not implemented")
+}
+
+// readSecret returns the secret, or ok=false when the provider has no value for it. Any other error is returned.
+func readSecret(ctx context.Context, store secrets.Provider, name string) (value string, ok bool, err error) {
+	value, err = store.Get(ctx, secrets.Key{Service: service, Name: name})
+	if errors.Is(err, secrets.ErrNotFound) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return value, true, nil
+}
+
+func newSecretStore() (secrets.Provider, context.Context, context.CancelFunc, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	store, err := secrets.New(ctx)
+	if err != nil {
+		cancel()
+		return nil, nil, nil, err
+	}
+	return store, ctx, cancel, nil
 }
