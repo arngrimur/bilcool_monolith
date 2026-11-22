@@ -6,7 +6,6 @@ import (
 
 	soutbox_domain "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging"
-	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
@@ -14,16 +13,18 @@ import (
 type Dispatcher[T postgres.Connector] struct {
 	messaging.Publisher
 	connector T
+	topic     string
 }
 
-func NewDispatcher[T postgres.Connector](connector T, publisher messaging.Publisher) *Dispatcher[T] {
+func NewDispatcher[T postgres.Connector](connector T, publisher messaging.Publisher, topic string) *Dispatcher[T] {
 	return &Dispatcher[T]{
 		Publisher: publisher,
 		connector: connector,
+		topic:     topic,
 	}
 }
 
-// Execute publishes the new outbox events to the bookings topic, where each subscriber gets them on its own queue
+// Execute publishes the new outbox events to the dispatcher's topic, where each subscriber gets them on its own queue
 func (s Dispatcher[T]) Execute(ctx context.Context, table soutbox_domain.Table) error {
 	events, err := postgres.FindAllNewEvents(ctx, s.connector)
 	if err != nil {
@@ -32,7 +33,7 @@ func (s Dispatcher[T]) Execute(ctx context.Context, table soutbox_domain.Table) 
 	for i := range events {
 		events[i].EmittedAt = new(time.Now())
 	}
-	messages, err := s.PublishBatch(ctx, sns.TopicBookings, events)
+	messages, err := s.PublishBatch(ctx, s.topic, events)
 	if err != nil {
 		return err
 	}

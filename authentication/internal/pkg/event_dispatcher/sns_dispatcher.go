@@ -10,7 +10,6 @@ import (
 
 	soutbox_domain "github.com/arngrimur/bilcool_monolith/message_broker/pkg/domain"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging"
-	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/postgres"
 )
 
@@ -18,12 +17,14 @@ import (
 type Dispatcher[T postgres.Connector] struct {
 	messaging.Publisher
 	connector T
+	topic     string
 }
 
-func NewDispatcher[T postgres.Connector](connector T, publisher messaging.Publisher) *Dispatcher[T] {
+func NewDispatcher[T postgres.Connector](connector T, publisher messaging.Publisher, topic string) *Dispatcher[T] {
 	return &Dispatcher[T]{
 		Publisher: publisher,
 		connector: connector,
+		topic:     topic,
 	}
 }
 
@@ -42,7 +43,7 @@ func (s Dispatcher[T]) Execute(ctx context.Context, table soutbox_domain.Table) 
 	for i := range events {
 		events[i].EmittedAt = new(time.Now())
 	}
-	messages, err := s.PublishBatch(ctx, sns.TopicUsers, events)
+	messages, err := s.PublishBatch(ctx, s.topic, events)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to send batch messages")
 		return err
