@@ -36,22 +36,4 @@ paths:
 
 ## Service package layout
 
-Followed fully by **bookings** and **authentication**:
-
-```
-<service>/
-  cmd/main.go                               # Long-running entrypoint
-  cmd/lambda/{http,sqs,outbox,migrate}/     # Lambda entrypoints
-  internal/pkg/config/                      # Config loading (env vars)
-  internal/pkg/domain/                      # Domain types, business logic, repository interfaces
-  internal/pkg/application/                 # Use-case layer
-  internal/pkg/application/commands/        # Command handlers (writes)
-  internal/pkg/application/queries/         # Query handlers (reads)
-  internal/pkg/persistance/postgresql/      # Postgres implementations + DbActions interface
-  internal/pkg/event_dispatcher/            # SNS outbox dispatcher
-  internal/pkg/web/                         # Gin HTTP router, handlers, Swagger annotations
-  internal/migrations/                      # dbmate SQL migration files
-  pkg/domain/                               # Public domain types (exported for other modules)
-```
-
-The nested `internal/` ensures service internals cannot be imported by other services. journal and event_ledger differ; see their `CLAUDE.md`.
+bookings and authentication follow the full layout (see either service's tree). The nested `internal/` ensures service internals cannot be imported by other services. journal and event_ledger differ; see their `CLAUDE.md`.
