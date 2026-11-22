@@ -13,6 +13,7 @@ import (
 	"github.com/arngrimur/bilcool_monolith/event_ledger/internal/pkg/web"
 	brokerinbox "github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging/provider"
 )
 
 func main() {
@@ -37,9 +38,9 @@ func main() {
 
 	repo := dynstore.NewEventRepository(dynamoClient, config.DynamoTableName())
 
-	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, sqs.EventLedgerSqsQueue)
+	sqsSubscriber, err := provider.NewSubscriber(ctx, sqs.EventLedgerSqsQueue)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create SQS subscriber")
+		log.Fatal().Err(err).Msg("failed to create subscriber")
 	}
 
 	consumer := inbox.NewConsumer(sqsSubscriber, repo)

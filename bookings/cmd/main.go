@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"time"
 
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/rs/zerolog/log"
 
 	_ "github.com/lib/pq"
@@ -49,10 +48,6 @@ func main() {
 		log.Fatal().Err(err).Msg("Error creating outbox table")
 	}
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error loading AWS config")
-	}
 	publisher, err := provider.NewPublisher(ctx)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating publisher")
@@ -87,9 +82,9 @@ func main() {
 	}
 	repo := postgresql.NewBookingsRepository(psqlDb)
 
-	sqsSubscriber, err := sqs.NewSubscriber(ctx, awsCfg, sqs.BookingsSqsQueue)
+	sqsSubscriber, err := provider.NewSubscriber(ctx, sqs.BookingsSqsQueue)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create SQS subscriber")
+		log.Fatal().Err(err).Msg("failed to create subscriber")
 	}
 	eventHandler := bookinginbox.NewEventHandler(sqsSubscriber, repo)
 	worker := inbox.NewWorker(eventHandler, 5)

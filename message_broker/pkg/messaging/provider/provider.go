@@ -8,6 +8,7 @@ import (
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 
+	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/inbox/sqs"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/messaging"
 	"github.com/arngrimur/bilcool_monolith/message_broker/pkg/outbox/sns"
 )
@@ -32,6 +33,7 @@ func Name() (string, error) {
 
 // NewPublisher creates the Publisher of the selected implementation. Each implementation reads its own
 // connection settings from the environment (for sns-sqs: the AWS SDK default configuration).
+// NewSubscriber does the same.
 func NewPublisher(ctx context.Context) (messaging.Publisher, error) {
 	name, err := Name()
 	if err != nil {
@@ -46,5 +48,23 @@ func NewPublisher(ctx context.Context) (messaging.Publisher, error) {
 		return sns.NewPublisher(ctx, cfg)
 	default:
 		return nil, fmt.Errorf("no publisher for %s=%q", EnvVar, name)
+	}
+}
+
+// NewSubscriber creates the Subscriber of the selected implementation for the named queue.
+func NewSubscriber(ctx context.Context, queue string) (messaging.Subscriber, error) {
+	name, err := Name()
+	if err != nil {
+		return nil, err
+	}
+	switch name {
+	case SnsSqs:
+		cfg, err := awsconfig.LoadDefaultConfig(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("loading AWS config: %w", err)
+		}
+		return sqs.NewSubscriber(ctx, cfg, queue)
+	default:
+		return nil, fmt.Errorf("no subscriber for %s=%q", EnvVar, name)
 	}
 }
