@@ -312,6 +312,7 @@ module "outbox_scheduler" {
   source     = "./modules/scheduler"
   prefix     = local.prefix
   aws_region = var.aws_region
+  enabled    = var.outbox_scheduler_enabled
 
   bookings_outbox_lambda_arn       = module.bookings_outbox.function_arn
   authentication_outbox_lambda_arn = module.authentication_outbox.function_arn

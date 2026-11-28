@@ -10,7 +10,7 @@ PostgreSQL database through its public load balancer.
 | `lambda` | A Lambda function (and optionally a Function URL), used for every function below |
 | `messaging` | SNS topics (`bilcool_users`, `bilcool_bookings`), SQS queues, subscriptions, DLQs |
 | `dynamodb` | The event ledger table |
-| `scheduler` | EventBridge Scheduler (`rate(10 minutes)`) that runs the outbox Lambdas |
+| `scheduler` | EventBridge Scheduler (`rate(10 minutes)`) that runs the outbox Lambdas. **Paused by default** (`outbox_scheduler_enabled = false`); set it to `true` and apply to restore |
 | `frontend` | S3 bucket, CloudFront distribution (SPA + `/api` routed to the Function URLs), ACM certificate |
 | `iam` | Lambda roles and the GitHub deploy role |
 | `networking` | Empty stub (the Lambdas are not in a VPC) |

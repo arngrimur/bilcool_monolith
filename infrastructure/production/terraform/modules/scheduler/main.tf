@@ -1,8 +1,13 @@
-variable "prefix"                              { type = string }
-variable "aws_region"                          { type = string }
-variable "scheduler_role_arn"                  { type = string }
-variable "bookings_outbox_lambda_arn"          { type = string }
-variable "authentication_outbox_lambda_arn"    { type = string }
+variable "prefix" { type = string }
+variable "aws_region" { type = string }
+variable "scheduler_role_arn" { type = string }
+variable "bookings_outbox_lambda_arn" { type = string }
+variable "authentication_outbox_lambda_arn" { type = string }
+variable "enabled" {
+  description = "false pauses the schedules (state DISABLED) without deleting them"
+  type        = bool
+  default     = true
+}
 
 resource "aws_scheduler_schedule_group" "outbox" {
   name = "${var.prefix}-outbox"
@@ -20,6 +25,7 @@ resource "aws_scheduler_schedule" "bookings_outbox" {
   }
 
   schedule_expression = "rate(10 minutes)"
+  state               = var.enabled ? "ENABLED" : "DISABLED"
 
   target {
     arn      = var.bookings_outbox_lambda_arn
@@ -48,6 +54,7 @@ resource "aws_scheduler_schedule" "authentication_outbox" {
   }
 
   schedule_expression = "rate(10 minutes)"
+  state               = var.enabled ? "ENABLED" : "DISABLED"
 
   target {
     arn      = var.authentication_outbox_lambda_arn

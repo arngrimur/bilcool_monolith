@@ -82,3 +82,13 @@ variable "mapbox_access_token" {
   type        = string
   sensitive   = true
 }
+
+variable "outbox_scheduler_enabled" {
+  description = <<-EOT
+    Runs the outbox Lambdas every 10 minutes via EventBridge Scheduler. false pauses the schedules (they are kept,
+    state DISABLED) to save Lambda invocations; outbox rows then wait in the database and are published once it is
+    set back to true. Paused 2026-11-28 to save free-tier usage.
+  EOT
+  type        = bool
+  default     = false
+}
